@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Dashboard | EasyLatih</title>
+
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <style>
+    body{
+      font-family:'Poppins',sans-serif;
+      background:#f8fafc;
+      margin:0;
+    }
+
+    .portal-header{
+      background:#0d3b66;
+      color:#fff;
+      padding:1rem 1.5rem;
+    }
+
+    .portal-header-inner{
+      max-width:1100px;
+      margin:auto;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:1rem;
+      flex-wrap:wrap;
+    }
+
+    .portal-title h2{margin:0;font-size:1.4rem;}
+    .portal-title small{opacity:.85;}
+
+    .container{
+      max-width:1100px;
+      margin:auto;
+      padding:2rem;
+    }
+
+    .sop-card{
+      border:1px solid #e6e8ef;
+      background:#fff;
+      border-radius:12px;
+      padding:1.6rem;
+      margin-bottom:1rem;
+    }
+
+    .sop-muted{
+      color:#555;
+      font-size:.95rem;
+      line-height:1.65;
+    }
+
+    .hidden{display:none !important;}
+
+    input,select,textarea{
+      width:100%;
+      padding:.75rem;
+      border:1px solid #ccc;
+      border-radius:8px;
+      font-family:inherit;
+      margin-bottom:.75rem;
+      box-sizing:border-box;
+    }
+
+    textarea{min-height:90px;resize:vertical;}
+
+    button{
+      background:#0d3b66;
+      color:#fff;
+      border:none;
+      padding:.75rem 1rem;
+      border-radius:8px;
+      cursor:pointer;
+      font-family:inherit;
+      font-weight:600;
+    }
+
+    .secondary-btn{
+      background:#fff;
+      color:#0d3b66;
+      border:1px solid #0d3b66;
+    }
+
+    .danger-box{
+      background:#fee2e2;
+      border:1px solid #fecaca;
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:1rem;
+      line-height:1.6;
+    }
+
+    .success-box{
+      background:#dcfce7;
+      border:1px solid #86efac;
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:1rem;
+      line-height:1.6;
+    }
+
+    .warning-box{
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:1rem;
+      line-height:1.6;
+    }
+
+    .kpi{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:1rem;
+    }
+
+    .kpi-card{
+      border:1px solid #e6e8ef;
+      background:#fff;
+      border-radius:12px;
+      padding:1.25rem;
+      text-align:center;
+    }
+
+    .kpi-card h1{
+      color:#0d3b66;
+      margin:.35rem 0;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:1rem;
+      align-items:start;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
+
+    td,th{
+      padding:.75rem;
+      border-bottom:1px solid #eee;
+      text-align:left;
+    }
+
+    .prospect-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+      gap:1rem;
+    }
+
+    .prospect-card{
+      border:1px solid #e6e8ef;
+      border-radius:12px;
+      padding:1rem;
+      background:#fff;
+    }
+
+    .prospect-company{
+      font-size:1.1rem;
+      font-weight:700;
+      color:#0d3b66;
+      margin-bottom:.5rem;
+    }
+
+    .prospect-info{
+      margin:.35rem 0;
+      color:#555;
+      font-size:.95rem;
+      line-height:1.45;
+    }
+
+    .status-badge{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:600;
+      background:#eef2ff;
+      margin-bottom:10px;
+    }
+
+    .prospect-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:12px;
+      margin-bottom:12px;
+    }
+
+    .action-btn{
+      color:white;
+      padding:8px 12px;
+      border-radius:8px;
+      text-decoration:none;
+      font-size:14px;
+      display:inline-block;
+    }
+
+    .whatsapp-btn{background:#25D366;}
+    .call-btn{background:#0d3b66;}
+    .email-btn{background:#f59e0b;}
+    .folder-btn{background:#0d3b66;}
+
+    .queue-card{
+      border-left:5px solid #f59e0b;
+    }
+
+    .overdue-card{
+      border-color:#fecaca;
+      background:#fff7f7;
+    }
+
+    .tab-menu{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:.75rem;
+      margin-top:1rem;
+    }
+
+    .tab-btn{
+      background:#fff;
+      border:1px solid #d1d5db;
+      color:#111;
+      border-radius:12px;
+      padding:1rem;
+      text-align:center;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .tab-btn.active{
+      background:#0d3b66;
+      color:#fff;
+      border-color:#0d3b66;
+    }
+
+    .tab-content{
+      display:none;
+    }
+
+    .tab-content.active{
+      display:block;
+    }
+
+    .resource-filter{
+      display:grid;
+      grid-template-columns:2fr 1fr 1fr;
+      gap:1rem;
+      margin-bottom:1rem;
+    }
+
+    .match-card{
+      padding:10px;
+      border:1px solid #ddd;
+      border-radius:8px;
+      margin-bottom:8px;
+      background:#fff;
+    }
+
+    @media(max-width:600px){
+      .container{padding:1rem;}
+      .sop-card{padding:1rem;}
+      .tab-menu{grid-template-columns:1fr;}
+      .tab-btn,button{width:100%;text-align:center;}
+      h2{font-size:1.35rem;}
+      .prospect-grid{grid-template-columns:1fr;}
+      .portal-header-inner{align-items:flex-start;}
+      .resource-filter{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="portal-header">
+  <div class="portal-header-inner">
+    <div class="portal-title">
+      <h2>EasyLatih Agent Portal</h2>
+      <small>Internal Use Only</small>
+    </div>
+    <button id="headerLogoutBtn" class="secondary-btn hidden" onclick="logout()">🚪 Logout</button>
+  </div>
+</header>
+
+<section class="container">
+
+  <div id="loginBox" class="sop-card">
+    <h2>EasyLatih Agent Login</h2>
+    <p class="sop-muted">Login untuk akses dashboard ejen.</p>
+
+    <input id="agentId" placeholder="Agent ID">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="dashboard" class="hidden">
+
+    <div class="sop-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h2 id="welcome"></h2>
+          <p class="sop-muted">Daily target: contact 10 new companies and follow up 10 existing companies.</p>
+        </div>
+        <button onclick="logout()">Logout</button>
+        <div id="adminButton"></div>
+      </div>
+
+      <div class="tab-menu">
+        <button class="tab-btn active" onclick="showTab('dashboardTab', this)">📊 Dashboard</button>
+        <button class="tab-btn" onclick="showTab('prospectsTab', this)">👥 Prospects</button>
+        <button class="tab-btn" onclick="showTab('followupTab', this)">📞 Follow Up</button>
+        <button class="tab-btn" onclick="showTab('resourcesTab', this)">📚 Resources</button>
+      </div>
+    </div>
+
+    <!-- TAB 1: DASHBOARD -->
+    <div id="dashboardTab" class="tab-content active">
+      <div class="kpi">
+        <div class="kpi-card">
+          <h3>Total Prospects</h3>
+          <h1 id="totalProspects">0</h1>
+        </div>
+        <div class="kpi-card">
+          <h3>HRD Levy</h3>
+          <h1 id="levy">0</h1>
+        </div>
+        <div class="kpi-card">
+          <h3>Non Levy</h3>
+          <h1 id="nonLevy">0</h1>
+        </div>
+        <div class="kpi-card">
+          <h3>New Companies Today</h3>
+          <h1 id="newCompaniesToday">0/10</h1>
+          <small>Target: 10</small>
+        </div>
+        <div class="kpi-card">
+          <h3>Follow Up Done</h3>
+          <h1 id="followUpDoneToday">0/10</h1>
+          <small>Target: 10</small>
+        </div>
+      </div>
+
+      <br>
+
+      <div class="sop-card">
+        <h3>📊 Conversion Funnel</h3>
+        <table>
+          <tr><td>New Lead</td><td id="funnelNewLead">0</td></tr>
+          <tr><td>Contacted</td><td id="funnelContacted">0</td></tr>
+          <tr><td>Interested</td><td id="funnelInterested">0</td></tr>
+          <tr><td>Quotation Sent</td><td id="funnelQuotation">0</td></tr>
+          <tr><td>HRD Application</td><td id="funnelHrd">0</td></tr>
+          <tr><td>Registered</td><td id="funnelRegistered">0</td></tr>
+          <tr><td>Not Interested</td><td id="funnelNotInterested">0</td></tr>
+        </table>
+      </div>
+
+      <div class="sop-card">
+        <h3>📄 Quotation Tracker</h3>
+        <div class="kpi">
+          <div class="kpi-card"><h3>Sent</h3><h1 id="quotationSent">0</h1></div>
+          <div class="kpi-card"><h3>Accepted</h3><h1 id="quotationAccepted">0</h1></div>
+          <div class="kpi-card"><h3>Rejected</h3><h1 id="quotationRejected">0</h1></div>
+          <div class="kpi-card"><h3>Potential Sales</h3><h1 id="potentialSales">RM0</h1></div>
+          <div class="kpi-card"><h3>Confirmed Sales</h3><h1 id="confirmedSales">RM0</h1></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: PROSPECTS -->
+    <div id="prospectsTab" class="tab-content">
+      <div id="addProspectSection" class="sop-card">
+        <h3>➕ Add Prospect</h3>
+        <p class="sop-muted">Semak duplicate dahulu sebelum save prospect baru. Jika sistem jumpa possible duplicate, ia hanya memberi warning. Anda masih boleh save jika yakin syarikat itu berbeza.</p>
+
+        <div class="form-grid">
+          <div>
+            <input id="company" placeholder="Company Name">
+            <button type="button" onclick="checkProspect()">Check Duplicate</button>
+            <div id="checkResult" style="margin-top:.75rem;"></div>
+          </div>
+          <input id="contact" placeholder="Contact Person">
+          <input id="position" placeholder="Position">
+          <input id="phone" placeholder="Phone 1">
+          <input id="phone2" placeholder="Phone 2">
+          <input id="email" placeholder="Email">
+          <input id="state" placeholder="State">
+          <input id="district" placeholder="District">
+          <input id="training" placeholder="Training Interested">
+
+          <select id="levySelect">
+            <option value="YA">HRD Levy</option>
+            <option value="TIDAK">Non Levy</option>
+          </select>
+
+          <input id="followUpDate" type="date">
+          <input id="remarks" placeholder="Remarks">
+        </div>
+
+        <button onclick="addProspect()">Save Prospect</button>
+      </div>
+
+      <div id="prospectSection" class="sop-card">
+        <h3>👥 My Prospects</h3>
+
+        <input
+          type="text"
+          id="searchProspect"
+          placeholder="Search company, contact, phone or email..."
+          onkeyup="searchProspects()"
+        >
+
+        <div id="prospectTable" class="prospect-grid"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: FOLLOW UP -->
+    <div id="followupTab" class="tab-content">
+      <div id="followUpSection" class="sop-card">
+        <h3>🔥 Auto Follow Up Queue</h3>
+        <p class="sop-muted">
+          Sistem cadangkan sehingga 10 syarikat untuk follow up berdasarkan Next Follow Up Date dan Last Call Date.
+        </p>
+        <div id="suggestedFollowUps">Loading...</div>
+      </div>
+
+      <div class="sop-card">
+        <h3>📞 Follow Up Due Today</h3>
+        <div id="followUpTodayBox">Tiada follow up hari ini.</div>
+      </div>
+
+      <div class="sop-card">
+        <h3>🔴 Overdue Follow Up</h3>
+        <p class="sop-muted">
+          Senarai syarikat yang sudah melepasi tarikh follow up.
+        </p>
+
+        <div id="overdueFollowUps" class="prospect-grid">
+          Tiada overdue follow up.
+        </div>
+      </div>
+
+      <div class="sop-card">
+        <h3>📄 Quotation Follow Up</h3>
+        <p class="sop-muted">
+          Quotation yang telah dihantar lebih 3 hari dan perlu di-follow up.
+        </p>
+
+        <div id="quotationFollowUps" class="prospect-grid">
+          Tiada quotation perlu follow up.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: RESOURCES -->
+    <div id="resourcesTab" class="tab-content">
+      <div class="sop-card">
+        <h3>📚 Resources</h3>
+        <p class="sop-muted">
+          Folder program untuk ejen. Setiap folder boleh mengandungi brochure, course outline, trainer profile, grant guideline dan registration link.
+        </p>
+
+        <div class="resource-filter">
+          <input id="resourceSearch" placeholder="Search program..." onkeyup="renderResources()">
+          <select id="resourceState" onchange="renderResources()">
+            <option value="">All States</option>
+          </select>
+          <select id="resourceMonth" onchange="renderResources()">
+            <option value="">All Months</option>
+          </select>
+        </div>
+
+        <div id="resourceList" class="prospect-grid"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-container">
+    <div>
+      <h4>Contact Us</h4>
+      <p>B62, Tingkat 1, Jalan IM 7/1<br />Bandar Indera Mahkota 6, 25200<br />Kuantan, Pahang, Malaysia</p>
+      <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
+      <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
+      <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank">+60 10 920 2811</a></p>
+    </div>
+  </div>
+  <div class="text-center" style="margin-top:2rem;">
+    EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br />
+    &copy; 2025 EasyLatih. All rights reserved.
+  </div>
+</footer>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycby5Tl6A7Vip6GdkNsMstjl6026EvH6boWU9de-11DO6EaSR4XJTogXdY7ZDIxyJS6Go/exec";
+
+let prospectAvailable = true;
+
+const resources = [
+  {
+    program: "Basic HR for Non-HR",
+    date: "2026-06-15",
+    state: "Kuala Lumpur",
+    link: "PASTE_GOOGLE_DRIVE_FOLDER_LINK"
+  },
+  {
+    program: "E-Invoice Implementation",
+    date: "2026-06-20",
+    state: "Pahang",
+    link: "PASTE_GOOGLE_DRIVE_FOLDER_LINK"
+  },
+  {
+    program: "Basic Accounting & Tax for SMEs",
+    date: "2026-06-25",
+    state: "Terengganu",
+    link: "PASTE_GOOGLE_DRIVE_FOLDER_LINK"
+  }
+];
+
+function setText(id, value){
+  const el = document.getElementById(id);
+  if(el) el.innerHTML = value;
+}
+
+function showTab(tabId, btn){
+  document.querySelectorAll(".tab-content").forEach(tab => {
+    tab.classList.remove("active");
+  });
+
+  document.querySelectorAll(".tab-btn").forEach(button => {
+    button.classList.remove("active");
+  });
+
+  document.getElementById(tabId).classList.add("active");
+  btn.classList.add("active");
+
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function cleanPhone(phone){
+  return String(phone || "").replace(/[^0-9]/g, "");
+}
+
+function actionButtons(p){
+  const phone = cleanPhone(p.phone);
+  const email = p.email || "";
+  const message = encodeURIComponent(
+    "Assalamualaikum dan salam sejahtera.\n\n" +
+    "Saya dari EasyLatih Consultancy, HRD Corp Training Provider.\n\n" +
+    "Saya ingin berkongsi maklumat program latihan yang mungkin sesuai untuk syarikat Tuan/Puan."
+  );
+
+  return `
+    <div class="prospect-actions">
+      <a href="https://wa.me/${phone}?text=${message}" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>
+      <a href="tel:${phone}" class="action-btn call-btn">📞 Call</a>
+      <a href="mailto:${email}" class="action-btn email-btn">✉️ Email</a>
+    </div>
+  `;
+}
+
+async function checkProspect(){
+  const company = document.getElementById("company").value;
+  const phone = document.getElementById("phone").value;
+  const email = document.getElementById("email").value;
+
+  if(!company){
+    alert("Please enter company name first");
+    return;
+  }
+
+  const params = new URLSearchParams({
+    action: "checkProspect",
+    company: company,
+    phone: phone,
+    email: email
+  });
+
+  const response = await fetch(`${API_URL}?${params.toString()}`);
+  const data = await response.json();
+
+  if(!data.success){
+    prospectAvailable = true;
+    document.getElementById("checkResult").innerHTML = `
+      <div class="danger-box">Ralat semakan: ${data.message || data.error || "Unknown error"}</div>
+    `;
+    return;
+  }
+
+  if(data.exists){
+    prospectAvailable = true;
+
+    let html = `
+      <div class="warning-box">
+        <strong>⚠ Possible Duplicate Found</strong><br>
+        Sistem menjumpai rekod yang mungkin sama. Sila semak dahulu. Jika syarikat ini berbeza, anda masih boleh tekan <strong>Save Prospect</strong>.
+      </div>
+    `;
+
+    (data.matches || []).forEach(m => {
+      html += `
+        <div class="match-card">
+          <strong>${m.company || "-"}</strong><br>
+          Contact: ${m.contact || "-"}<br>
+          Owner: ${m.ownerName || "-"} (${m.ownerAgent || "-"})<br>
+          Status: ${m.status || "-"}<br>
+          Phone: ${m.phone || "-"}<br>
+          Email: ${m.email || "-"}<br>
+          State: ${m.state || "-"}
+        </div>
+      `;
+    });
+
+    document.getElementById("checkResult").innerHTML = html;
+
+  }else{
+    prospectAvailable = true;
+    document.getElementById("checkResult").innerHTML = `
+      <div class="success-box">✅ Prospect available. You may save this prospect.</div>
+    `;
+  }
+}
+
+async function login(){
+  const agentId = document.getElementById("agentId").value;
+  const password = document.getElementById("password").value;
+
+  const response = await fetch(`${API_URL}?action=login&agentId=${encodeURIComponent(agentId)}&password=${encodeURIComponent(password)}`);
+  const data = await response.json();
+
+  if(!data.success){
+    alert("Invalid Login");
+    return;
+  }
+
+  localStorage.setItem("agentId", data.agentId);
+  localStorage.setItem("agentName", data.name);
+  localStorage.setItem("role", data.role);
+  showAdminButton();
+
+  loadDashboard();
+}
+
+async function loadDashboard(){
+  const agentId = localStorage.getItem("agentId");
+  const name = localStorage.getItem("agentName");
+
+  setText("welcome", "Welcome, " + (name || "Agent"));
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  document.getElementById("headerLogoutBtn").classList.remove("hidden");
+
+  const response = await fetch(`${API_URL}?action=getDashboard&agentId=${encodeURIComponent(agentId)}`);
+  const data = await response.json();
+
+  setText("totalProspects", data.totalProspects || 0);
+  setText("levy", data.levy || 0);
+  setText("nonLevy", data.nonLevy || 0);
+  setText("newCompaniesToday", (data.newCompaniesToday || 0) + "/10");
+  setText("followUpDoneToday", (data.followUpDoneToday || 0) + "/10");
+
+  renderAutoFollowUpQueue(data.suggestedFollowUps || []);
+  renderFollowUpDueToday(data.followUpsToday || []);
+  renderOverdueFollowUps(data.overdueFollowUps || []);
+  renderFunnel(data.funnel || {});
+  renderQuotation(data);
+  renderProspects(data.prospects || []);
+  setupResourceFilters();
+  renderResources();
+}
+
+function renderAutoFollowUpQueue(list){
+  let html = "";
+
+  if(list.length === 0){
+    html = "Tiada cadangan follow up buat masa ini.";
+  }
+
+  list.forEach((p, index) => {
+    html += `
+      <div class="prospect-card queue-card">
+        <div class="status-badge">Priority ${index + 1}</div>
+        <div class="prospect-company">${p.company || "-"}</div>
+        <div class="prospect-info">👤 ${p.contact || "-"}</div>
+        <div class="prospect-info">📞 ${p.phone || "-"}</div>
+        <div class="prospect-info">✉️ ${p.email || "-"}</div>
+        <div class="prospect-info">📍 ${p.state || "-"}</div>
+        <div class="prospect-info">Status: ${p.status || "-"}</div>
+        <div class="prospect-info">Last Call: ${p.lastCallDate || "Never"}</div>
+        <div class="prospect-info">Last Remark: ${p.callRemark || "-"}</div>
+        <div class="prospect-info">Next Follow Up: ${p.nextFollowUpDate || "-"}</div>
+
+        ${actionButtons(p)}
+
+        <textarea id="remark_${p.rowNumber}" placeholder="Call Remark"></textarea>
+        <input type="date" id="next_${p.rowNumber}">
+        <button onclick="saveCallLog(${p.rowNumber})">Save Call Update</button>
+      </div>
+    `;
+  });
+
+  document.getElementById("suggestedFollowUps").innerHTML = `<div class="prospect-grid">${html}</div>`;
+}
+
+function renderFollowUpDueToday(list){
+  let html = "";
+
+  if(list.length === 0){
+    html = "Tiada follow up hari ini.";
+  }
+
+  list.forEach(p => {
+    html += `
+      <div class="prospect-card">
+        <div class="prospect-company">${p.company || "-"}</div>
+        <div class="prospect-info">👤 ${p.contact || "-"}</div>
+        <div class="prospect-info">📞 ${p.phone || "-"}</div>
+        <div class="prospect-info">✉️ ${p.email || "-"}</div>
+        <div class="prospect-info">Status: ${p.status || "-"}</div>
+        ${actionButtons(p)}
+      </div>
+    `;
+  });
+
+  document.getElementById("followUpTodayBox").innerHTML = `<div class="prospect-grid">${html}</div>`;
+}
+
+function renderOverdueFollowUps(list){
+  let html = "";
+
+  if(list.length === 0){
+    html = "Tiada overdue follow up.";
+  }
+
+  list.forEach(p => {
+    html += `
+      <div class="prospect-card overdue-card">
+        <div class="status-badge" style="background:#fee2e2;">
+          OVERDUE ${p.daysOverdue || 0} DAYS
+        </div>
+
+        <div class="prospect-company">${p.company || "-"}</div>
+        <div class="prospect-info">👤 ${p.contact || "-"}</div>
+        <div class="prospect-info">📞 ${p.phone || "-"}</div>
+        <div class="prospect-info">✉️ ${p.email || "-"}</div>
+        <div class="prospect-info">📅 Due Date: ${p.nextFollowUpDate || "-"}</div>
+        <div class="prospect-info">Status: ${p.status || "-"}</div>
+
+        ${actionButtons(p)}
+      </div>
+    `;
+  });
+
+  document.getElementById("overdueFollowUps").innerHTML = html;
+}
+
+function renderFunnel(funnel){
+  setText("funnelNewLead", funnel["NEW LEAD"] || 0);
+  setText("funnelContacted", funnel["CONTACTED"] || 0);
+  setText("funnelInterested", funnel["INTERESTED"] || 0);
+  setText("funnelQuotation", funnel["QUOTATION SENT"] || 0);
+  setText("funnelHrd", funnel["HRD APPLICATION"] || 0);
+  setText("funnelRegistered", funnel["REGISTERED"] || 0);
+  setText("funnelNotInterested", funnel["NOT INTERESTED"] || 0);
+}
+
+function renderQuotation(data){
+  setText("quotationSent", data.quotationSent || 0);
+  setText("quotationAccepted", data.quotationAccepted || 0);
+  setText("quotationRejected", data.quotationRejected || 0);
+  setText("potentialSales", "RM" + Number(data.potentialSales || 0).toLocaleString());
+  setText("confirmedSales", "RM" + Number(data.confirmedSales || 0).toLocaleString());
+
+  let html = "";
+
+  (data.quotationFollowUps || []).forEach(q => {
+    html += `
+      <div class="prospect-card">
+        <div class="status-badge">QUOTATION SENT</div>
+
+        <div class="prospect-company">${q.company || "-"}</div>
+        <div class="prospect-info">👤 ${q.contact || "-"}</div>
+        <div class="prospect-info">📞 ${q.phone || "-"}</div>
+        <div class="prospect-info">✉️ ${q.email || "-"}</div>
+        <div class="prospect-info">📅 Sent Date: ${q.quotationDate || "-"}</div>
+        <div class="prospect-info">⏰ Outstanding: ${q.daysOutstanding || 0} days</div>
+        <div class="prospect-info">💰 Amount: RM${Number(q.quotationAmount || 0).toLocaleString()}</div>
+
+        ${actionButtons(q)}
+      </div>
+    `;
+  });
+
+  document.getElementById("quotationFollowUps").innerHTML =
+    html || "Tiada quotation perlu follow up.";
+}
+
+function renderProspects(list){
+  let html = "";
+
+  list.forEach(p => {
+    html += `
+      <div class="prospect-card">
+        <div class="status-badge">${p.status || "NEW LEAD"}</div>
+        <div class="prospect-company">${p.company || "-"}</div>
+        <div class="prospect-info">👤 ${p.contact || "-"}</div>
+        <div class="prospect-info">📞 ${p.phone || "-"}</div>
+        <div class="prospect-info">✉️ ${p.email || "-"}</div>
+        <div class="prospect-info">📍 ${p.state || "-"}</div>
+        <div class="prospect-info">📅 Follow Up: ${p.followUpDate || "-"}</div>
+        <div class="prospect-info">📝 ${p.remarks || "-"}</div>
+        <div class="prospect-info">☎️ Last Call: ${p.lastCallDate || "Never"}</div>
+        <div class="prospect-info">🗒️ Call Remark: ${p.callRemark || "-"}</div>
+        <div class="prospect-info">🔁 Next Follow Up: ${p.nextFollowUpDate || "-"}</div>
+        <div class="prospect-info">📄 Quotation: ${p.quotationStatus || "NOT SENT"}</div>
+        <div class="prospect-info">💰 Amount: RM${Number(p.quotationAmount || 0).toLocaleString()}</div>
+
+        ${actionButtons(p)}
+
+        <div style="margin-top:1rem;">
+          <select onchange="updateStatus(${p.rowNumber}, this.value)">
+            <option value="NEW LEAD" ${p.status=="NEW LEAD"?"selected":""}>NEW LEAD</option>
+            <option value="CONTACTED" ${p.status=="CONTACTED"?"selected":""}>CONTACTED</option>
+            <option value="INTERESTED" ${p.status=="INTERESTED"?"selected":""}>INTERESTED</option>
+            <option value="QUOTATION SENT" ${p.status=="QUOTATION SENT"?"selected":""}>QUOTATION SENT</option>
+            <option value="HRD APPLICATION" ${p.status=="HRD APPLICATION"?"selected":""}>HRD APPLICATION</option>
+            <option value="REGISTERED" ${p.status=="REGISTERED"?"selected":""}>REGISTERED</option>
+            <option value="NOT INTERESTED" ${p.status=="NOT INTERESTED"?"selected":""}>NOT INTERESTED</option>
+          </select>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById("prospectTable").innerHTML = html;
+}
+
+function setupResourceFilters(){
+  const stateSelect = document.getElementById("resourceState");
+  const monthSelect = document.getElementById("resourceMonth");
+
+  if(!stateSelect || !monthSelect) return;
+
+  if(stateSelect.dataset.loaded === "true") return;
+
+  const states = [...new Set(resources.map(r => r.state))].sort();
+  states.forEach(state => {
+    stateSelect.innerHTML += `<option value="${state}">${state}</option>`;
+  });
+
+  const months = [...new Set(resources.map(r => r.date.slice(0,7)))].sort();
+  months.forEach(month => {
+    monthSelect.innerHTML += `<option value="${month}">${month}</option>`;
+  });
+
+  stateSelect.dataset.loaded = "true";
+}
+
+function renderResources(){
+  const search = (document.getElementById("resourceSearch")?.value || "").toUpperCase();
+  const state = document.getElementById("resourceState")?.value || "";
+  const month = document.getElementById("resourceMonth")?.value || "";
+
+  let html = "";
+
+  resources
+    .filter(r => !search || r.program.toUpperCase().includes(search))
+    .filter(r => !state || r.state === state)
+    .filter(r => !month || r.date.startsWith(month))
+    .forEach(r => {
+      html += `
+        <div class="prospect-card">
+          <div class="prospect-company">${r.program}</div>
+          <div class="prospect-info">📅 ${r.date}</div>
+          <div class="prospect-info">📍 ${r.state}</div>
+          <div class="prospect-actions">
+            <a href="${r.link}" target="_blank" class="action-btn folder-btn">📂 Open Folder</a>
+          </div>
+        </div>
+      `;
+    });
+
+  document.getElementById("resourceList").innerHTML =
+    html || "Tiada resource dijumpai.";
+}
+
+function logout(){
+  localStorage.clear();
+  location.reload();
+}
+
+function showAdminButton(){
+
+  const role = localStorage.getItem("role");
+
+  if(role === "ADMIN"){
+
+    document.getElementById("adminButton").innerHTML = `
+      <button
+        onclick="window.location.href='admin-dashboard.html'"
+        style="
+          background:#0d3b66;
+          color:white;
+          border:none;
+          padding:10px 16px;
+          border-radius:8px;
+          cursor:pointer;
+          margin-left:10px;
+        ">
+        📊 Admin Dashboard
+      </button>
+    `;
+
+  }
+
+}
+
+function searchProspects(){
+  const filter = document.getElementById("searchProspect").value.toUpperCase();
+  const cards = document.querySelectorAll("#prospectTable .prospect-card");
+
+  cards.forEach(card => {
+    const text = card.innerText.toUpperCase();
+    card.style.display = text.indexOf(filter) > -1 ? "" : "none";
+  });
+}
+
+function resetProspectCheck(){
+  prospectAvailable = true;
+  const box = document.getElementById("checkResult");
+  if(box) box.innerHTML = "";
+}
+
+async function addProspect(){
+  if(!prospectAvailable){
+    alert("Please check duplicate first before saving.");
+    return;
+  }
+
+  const params = new URLSearchParams({
+    action: "addProspect",
+    agentId: localStorage.getItem("agentId"),
+    agentName: localStorage.getItem("agentName"),
+    company: document.getElementById("company").value,
+    contact: document.getElementById("contact").value,
+    position: document.getElementById("position").value,
+    phone: document.getElementById("phone").value,
+    phone2: document.getElementById("phone2").value,
+    email: document.getElementById("email").value,
+    state: document.getElementById("state").value,
+    district: document.getElementById("district").value,
+    levy: document.getElementById("levySelect").value,
+    training: document.getElementById("training").value,
+    followUpDate: document.getElementById("followUpDate").value,
+    remarks: document.getElementById("remarks").value
+  });
+
+  const response = await fetch(`${API_URL}?${params.toString()}`);
+  const data = await response.json();
+
+  if(data.success){
+    alert("Prospect Saved");
+    prospectAvailable = true;
+    document.getElementById("checkResult").innerHTML = "";
+
+    ["company","contact","position","phone","phone2","email","state","district","training","followUpDate","remarks"]
+      .forEach(id => document.getElementById(id).value = "");
+
+    document.getElementById("levySelect").value = "YA";
+    loadDashboard();
+  }else{
+    alert("Error Saving: " + (data.message || data.error || "Unknown error"));
+  }
+}
+
+async function updateStatus(rowNumber, status){
+  const params = new URLSearchParams({
+    action: "updateStatus",
+    rowNumber: rowNumber,
+    status: status
+  });
+
+  const response = await fetch(`${API_URL}?${params.toString()}`);
+  const data = await response.json();
+
+  if(data.success){
+    loadDashboard();
+    showAdminButton();
+  }else{
+    alert("Update Failed");
+  }
+}
+
+async function saveCallLog(rowNumber){
+  const remark = document.getElementById(`remark_${rowNumber}`).value;
+  const nextDate = document.getElementById(`next_${rowNumber}`).value;
+
+  const params = new URLSearchParams({
+    action: "updateCallLog",
+    rowNumber: rowNumber,
+    callRemark: remark,
+    nextFollowUpDate: nextDate,
+    callType: "FOLLOW UP"
+  });
+
+  const response = await fetch(`${API_URL}?${params.toString()}`);
+  const data = await response.json();
+
+  if(data.success){
+    alert("Call Log Saved");
+    loadDashboard();
+  }else{
+    alert("Update Failed");
+  }
+}
+
+window.onload = () => {
+  if(localStorage.getItem("agentId")){
+    loadDashboard();
+    showAdminButton();
+  }
+
+  ["company","phone","email"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener("input", resetProspectCheck);
+  });
+};
+</script>
+
+</body>
+</html>

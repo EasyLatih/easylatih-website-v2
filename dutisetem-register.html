@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ms">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Webinar Duti Setem</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f4f4f4;
+      }
+      .container {
+        max-width: 700px;
+        margin: auto;
+        padding: 20px;
+        background: #fff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-top: 40px;
+        border-radius: 8px;
+      }
+      h1, h3 {
+        color: #333;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+        font-weight: bold;
+      }
+      input[type="text"],
+      input[type="email"],
+      input[type="tel"] {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .participant {
+        margin-bottom: 10px;
+      }
+      button[type="button"],
+      button[type="submit"] {
+        margin-top: 15px;
+        padding: 10px 15px;
+        background: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button[type="button"]:hover,
+      button[type="submit"]:hover {
+        background: #0056b3;
+      }
+      #totalPrice {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Webinar Duti Setem</h1>
+      <p>Selamat datang ke webinar duti setem! Sila isi borang di bawah untuk mendaftar.</p>
+      <form id="registrationForm">
+        <h3>Maklumat Pembayar</h3>
+        <label for="payorName">Nama Pembayar:</label>
+        <input type="text" id="payorName" placeholder="Nama penuh" required>
+        <label for="payorEmail">Emel Pembayar:</label>
+        <input type="email" id="payorEmail" placeholder="contoh@emel.com" required>
+        <label for="payorPhone">No Telefon:</label>
+        <input type="tel" id="payorPhone" placeholder="0101234567" required>
+        <h3>Peserta</h3>
+        <div id="participants">
+          <div class="participant">
+            <input type="text" name="participantName" placeholder="Nama peserta" required>
+            <input type="email" name="participantEmail" placeholder="Emel peserta" required>
+            <input type="text" name="participantCompany" placeholder="Nama syarikat" required>
+          </div>
+        </div>
+        <button type="button" onclick="addParticipant()">Tambah Peserta</button>
+        <p id="totalPrice">Jumlah RM50</p>
+        <button type="submit">Daftar & Bayar</button>
+      </form>
+    </div>
+    <script>
+      const pricePerPax = 50; // Harga per peserta (RM)
+      function addParticipant() {
+        const container = document.getElementById('participants');
+        const div = document.createElement('div');
+        div.className = 'participant';
+        div.innerHTML = `
+          <input type="text" name="participantName" placeholder="Nama peserta" required>
+          <input type="email" name="participantEmail" placeholder="Emel peserta" required>
+          <input type="text" name="participantCompany" placeholder="Nama syarikat" required>
+        `;
+        container.appendChild(div);
+        updateTotal();
+      }
+      function updateTotal() {
+        const count = document.querySelectorAll('#participants .participant').length;
+        document.getElementById('totalPrice').textContent = 'Jumlah RM' + (count * pricePerPax);
+      }
+      // Kemas kini jumlah pada permulaan
+      updateTotal();
+      document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const payorName  = document.getElementById('payorName').value;
+        const payorEmail = document.getElementById('payorEmail').value;
+        const payorPhone = document.getElementById('payorPhone').value;
+        const participantNodes = document.querySelectorAll('#participants .participant');
+        const participants = [];
+        participantNodes.forEach(node => {
+          participants.push({
+            name: node.querySelector('input[name="participantName"]').value,
+            email: node.querySelector('input[name="participantEmail"]').value,
+            company: node.querySelector('input[name="participantCompany"]').value
+          });
+        });
+        // Panggil fungsi backend untuk buat bil (tukar URL ini kepada fungsi Netlify anda)
+        try {
+          const response = await fetch('/.netlify/functions/createBill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payorName, payorEmail, payorPhone, participants })
+          });
+          const data = await response.json();
+          const paymentUrl = data.paymentUrl;
+          window.location.href = paymentUrl; // Alihkan ke halaman pembayaran ToyyibPay
+        } catch (error) {
+          alert('Ralat semasa memproses pendaftaran.');
+        }
+      });
+    </script>
+  </body>
+</html>

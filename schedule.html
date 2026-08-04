@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Training Schedule | EasyLatih</title>
+
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .container{max-width:1100px;margin:auto;padding:2rem}
+    .calendar-subtitle{color:#6b7280;font-size:.95rem}
+    .calendar-filters-card{background:#fff;border-radius:16px;padding:18px;margin:20px 0;border:1px solid #e5e7eb;box-shadow:0 8px 20px rgba(0,0,0,.06)}
+    .calendar-filters-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .calendar-filter-group label{display:block;font-size:.78rem;text-transform:uppercase;color:#6b7280;margin-bottom:4px}
+    .calendar-filter-group select,.calendar-filter-group input{width:100%;padding:9px 12px;border-radius:999px;border:1px solid #e5e7eb;background:#f9fafb}
+    .calendar-months-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .calendar-month-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+    .calendar-month-header{display:flex;justify-content:space-between;margin-bottom:10px}
+    .calendar-month-name{font-weight:700;color:#0b3d91}
+    .calendar-month-count{font-size:.75rem;color:#6b7280}
+    .calendar-state-block{background:#f9fafb;border-radius:12px;padding:10px;margin-bottom:10px}
+    .calendar-state-header{display:flex;justify-content:space-between;font-weight:700;font-size:.8rem;color:#374151;margin-bottom:8px}
+    .calendar-session{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px}
+    .calendar-session-date{font-weight:700;color:#0b3d91}
+    .calendar-session-title{font-weight:700;margin:4px 0}
+    .calendar-session-meta{font-size:.75rem;color:#6b7280;margin-top:4px}
+    .calendar-badge{display:inline-block;color:#fff;border-radius:999px;padding:3px 8px;font-size:.7rem;margin-top:5px}
+    .calendar-badge.hr{background:#4f46e5}
+    .calendar-badge.ops{background:#0369a1}
+    .calendar-badge.finance{background:#0f766e}
+    .calendar-badge.sales{background:#c2410c}
+    .calendar-badge.soft{background:#0ea5e9}
+    .calendar-badge.quality{background:#dc2626}
+    .calendar-badge.it{background:#b45309}
+    .calendar-badge.customer{background:#16a34a}
+    .calendar-badge.senior{background:#7c3aed}
+    .calendar-badge.entrep{background:#f97316}
+    .calendar-badge.esg{background:#047857}
+    .calendar-badge.safety{background:#15803d}
+    .calendar-session-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .calendar-btn{display:inline-block;padding:6px 10px;border-radius:999px;font-size:.75rem;font-weight:600;text-decoration:none}
+    .calendar-btn-primary{background:#0d6efd;color:#fff}
+    .calendar-btn-outline{background:#fff;color:#111827;border:1px solid #e5e7eb}
+    .calendar-empty-state{text-align:center;color:#6b7280;padding:2rem}
+    .calendar-reset-btn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 14px;cursor:pointer}
+    .calendar-filter-extra{display:flex;justify-content:flex-end;margin-top:12px}
+    @media(max-width:900px){.calendar-filters-grid,.calendar-months-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:640px){.calendar-filters-grid,.calendar-months-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="nav-container" style="display:flex;align-items:center;justify-content:space-between;">
+    <div class="logo-group" style="display:flex;align-items:center;">
+      <a href="index.html" class="logo">
+        <img src="assets/logo.png" alt="EasyLatih logo" style="height:50px;margin-right:10px;">
+      </a>
+      <div class="hrdcorp-logos" style="display:flex;align-items:center;gap:10px;">
+        <img src="assets/Logo Training Provider_Logo Registered Training Provider.png" alt="HRD Corp Registered" style="height:40px;">
+        <img src="assets/HRD Corp - Claimable Logo.png" alt="HRD Corp Claimable" style="height:40px;">
+      </div>
+    </div>
+
+    <nav>
+      <div class="nav-toggle" id="navToggle"><span></span><span></span><span></span></div>
+      <ul id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="courses.html">Course Catalogue</a></li>
+        <li><a href="room-rental.html">Training Venue</a></li>
+        <li><a href="schedule.html">Training Schedule</a></li>
+        <li><a href="blog.html">Blog</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<section class="container">
+  <h2 class="section-title">Training Schedule</h2>
+  <p class="calendar-subtitle">
+    View upcoming scheduled training programmes by EasyLatih. Access course content,
+    trainer profile and registration link for each programme.
+  </p>
+
+  <div class="calendar-filters-card">
+    <div class="calendar-filters-grid">
+
+      <div class="calendar-filter-group">
+        <label>Month</label>
+        <select id="calendar-filter-month">
+          <option value="all">All months</option>
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6">June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+      </div>
+
+      <div class="calendar-filter-group">
+        <label>State</label>
+        <select id="calendar-filter-state">
+          <option value="all">All states</option>
+          <option value="Kuala Lumpur">Kuala Lumpur</option>
+          <option value="Pahang">Pahang</option>
+          <option value="Terengganu">Terengganu</option>
+          <option value="Kelantan">Kelantan</option>
+        </select>
+      </div>
+
+      <div class="calendar-filter-group">
+        <label>Category</label>
+        <select id="calendar-filter-category">
+          <option value="all">All categories</option>
+          <option value="Human Resource Management">Human Resource Management</option>
+          <option value="Administration & Operations">Administration & Operations</option>
+          <option value="Accounting & Finance">Accounting & Finance</option>
+          <option value="Sales & Marketing">Sales & Marketing</option>
+          <option value="Communication & Soft Skills">Communication & Soft Skills</option>
+          <option value="Compliance & Quality">Compliance & Quality</option>
+          <option value="Information Technology & Digital Skills">Information Technology & Digital Skills</option>
+          <option value="Customer Service">Customer Service</option>
+          <option value="Leadership & Management">Leadership & Management</option>
+          <option value="Entrepreneurship & Business Growth">Entrepreneurship & Business Growth</option>
+        </select>
+      </div>
+
+      <div class="calendar-filter-group">
+        <label>Search</label>
+        <input id="calendar-filter-search" type="text" placeholder="e.g. HR, Excel, Tax">
+      </div>
+
+    </div>
+
+    <div class="calendar-filter-extra">
+      <button type="button" class="calendar-reset-btn" id="calendar-reset-filters">
+        Reset filters
+      </button>
+    </div>
+  </div>
+
+  <section id="calendar-months-container">
+    <div class="calendar-empty-state">Loading training schedule...</div>
+  </section>
+</section>
+
+<footer>
+  <div class="footer-container">
+    <div>
+      <h4>Contact Us</h4>
+      <p>B62, Tingkat 1, Jalan IM 7/1<br>Bandar Indera Mahkota 6, 25200<br>Kuantan, Pahang, Malaysia</p>
+      <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
+      <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
+      <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank">+60 10 920 2811</a></p>
+    </div>
+
+    <div>
+      <h4>Quick Links</h4>
+      <a href="index.html">Home</a>
+      <a href="courses.html">Course Catalogue</a>
+      <a href="room-rental.html">Training Venue</a>
+      <a href="schedule.html">Training Schedule</a>
+      <a href="blog.html">Blog</a>
+    </div>
+
+    <div>
+      <h4>Follow Us</h4>
+      <div class="socials">
+        <a href="https://www.facebook.com/EasyLatih/"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://www.instagram.com/easylatih/"><i class="fab fa-instagram"></i></a>
+        <a href="https://my.linkedin.com/company/easylatih"><i class="fab fa-linkedin-in"></i></a>
+        <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w"><i class="fab fa-youtube"></i></a>
+        <a href="https://www.tiktok.com/@easylatih"><i class="fab fa-tiktok"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center" style="margin-top:2rem;">
+    EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br>
+    &copy; 2025 EasyLatih. All rights reserved.
+  </div>
+</footer>
+
+<script>
+const WEBAPP = "https://script.google.com/macros/s/AKfycbxIVZoZuF2yRicdhLoXMEdOYhTQd8PETTBYGRbUJKo_FAEn52B6C6tDB8zGmnvYjnnO/exec";
+
+let events2026 = [];
+
+const monthsContainer = document.getElementById("calendar-months-container");
+const monthFilter = document.getElementById("calendar-filter-month");
+const stateFilter = document.getElementById("calendar-filter-state");
+const categoryFilter = document.getElementById("calendar-filter-category");
+const searchFilter = document.getElementById("calendar-filter-search");
+const resetBtn = document.getElementById("calendar-reset-filters");
+
+const monthNames = [
+  "", "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+function loadPublishedPrograms() {
+  const callbackName = "publishedProgramsCallback_" + Date.now();
+
+window[callbackName] = function(data) {
+  events2026 = data || [];
+  populateStateFilter();
+  renderCalendar();
+};
+
+  const script = document.createElement("script");
+  script.src = WEBAPP + "?action=getPublishedPrograms&callback=" + callbackName;
+  document.body.appendChild(script);
+}
+function populateStateFilter() {
+  const states = [
+    ...new Set(
+      events2026
+        .map(ev => ev.state)
+        .filter(Boolean)
+    )
+  ].sort();
+
+  stateFilter.innerHTML =
+    '<option value="all">All states</option>';
+
+  states.forEach(state => {
+    stateFilter.innerHTML += `
+      <option value="${state}">
+        ${state}
+      </option>
+    `;
+  });
+}
+
+function categoryToClass(cat) {
+  const c = String(cat || "").toLowerCase();
+
+  if (c.includes("human") || c.includes("hr")) return "hr";
+  if (c.includes("admin") || c.includes("operation")) return "ops";
+  if (c.includes("account") || c.includes("finance")) return "finance";
+  if (c.includes("sales") || c.includes("marketing")) return "sales";
+  if (c.includes("communication") || c.includes("soft")) return "soft";
+  if (c.includes("compliance") || c.includes("quality")) return "quality";
+  if (c.includes("information") || c.includes("digital") || c.includes("it")) return "it";
+  if (c.includes("customer")) return "customer";
+  if (c.includes("leadership") || c.includes("management")) return "senior";
+  if (c.includes("entrepreneur")) return "entrep";
+  if (c.includes("esg")) return "esg";
+  if (c.includes("safety")) return "safety";
+
+  return "ops";
+}
+
+function getEventDate(ev) {
+  return new Date(ev.startDateRaw || ev.startDate || ev.programDate);
+}
+
+function getFilteredEvents() {
+  const monthVal = monthFilter.value;
+  const stateVal = stateFilter.value;
+  const categoryVal = categoryFilter.value;
+  const searchVal = searchFilter.value.trim().toLowerCase();
+  const params = new URLSearchParams(window.location.search);
+const selectedCourse = params.get("course");
+
+  return events2026.filter(ev => {
+    const d = getEventDate(ev);
+    const evMonth = d.getMonth() + 1;
+
+    if (selectedCourse && ev.courseId !== selectedCourse) return false;
+
+    if (monthVal !== "all" && evMonth !== Number(monthVal)) return false;
+    if (stateVal !== "all" && ev.state !== stateVal) return false;
+    if (categoryVal !== "all" && ev.category !== categoryVal) return false;
+    if (searchVal && !String(ev.programName || "").toLowerCase().includes(searchVal)) return false;
+
+    return true;
+  });
+}
+
+function renderCalendar() {
+  const events = getFilteredEvents();
+  const map = {};
+
+  events.forEach(ev => {
+    const d = getEventDate(ev);
+    const month = d.getMonth() + 1;
+    const state = ev.state || "Others";
+
+    if (!map[month]) map[month] = {};
+    if (!map[month][state]) map[month][state] = [];
+
+    map[month][state].push(ev);
+  });
+
+  monthsContainer.innerHTML = "";
+
+  const months = Object.keys(map).sort((a,b) => Number(a) - Number(b));
+
+  if (months.length === 0) {
+    monthsContainer.innerHTML = `<div class="calendar-empty-state">No scheduled training found.</div>`;
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "calendar-months-grid";
+
+  months.forEach(monthKey => {
+    const monthIndex = Number(monthKey);
+    const stateEvents = map[monthKey];
+
+    const monthCard = document.createElement("article");
+    monthCard.className = "calendar-month-card";
+
+    monthCard.innerHTML = `
+      <div class="calendar-month-header">
+        <div class="calendar-month-name">${monthNames[monthIndex]}</div>
+        <div class="calendar-month-count">
+          ${Object.values(stateEvents).reduce((sum, arr) => sum + arr.length, 0)} programme(s)
+        </div>
+      </div>
+    `;
+
+    Object.keys(stateEvents).forEach(state => {
+      const stateBlock = document.createElement("div");
+      stateBlock.className = "calendar-state-block";
+
+      stateBlock.innerHTML = `
+        <div class="calendar-state-header">
+          <span>${state}</span>
+          <span>${stateEvents[state].length} programme(s)</span>
+        </div>
+      `;
+
+      stateEvents[state].forEach(ev => {
+        const d = getEventDate(ev);
+        const day = String(d.getDate()).padStart(2, "0");
+        const badgeClass = categoryToClass(ev.category);
+
+        const contentBtn = ev.courseContentUrl
+          ? `<a href="${ev.courseContentUrl}" target="_blank" class="calendar-btn calendar-btn-outline">📄 Course Content</a>`
+          : "";
+
+        const trainerBtn = ev.trainerProfileUrl
+          ? `<a href="${ev.trainerProfileUrl}" target="_blank" class="calendar-btn calendar-btn-outline">👨‍🏫 Trainer Profile</a>`
+          : "";
+
+        const registerBtn = ev.registrationLink
+          ? `<a href="${ev.registrationLink}" target="_blank" class="calendar-btn calendar-btn-primary">Register Now</a>`
+          : "";
+
+        const shareUrl =
+  "https://www.easylatih.my/schedule.html?course=" +
+  encodeURIComponent(ev.courseId);
+
+const shareText =
+  `EasyLatih Scheduled Training\n\n` +
+  `${ev.programName}\n` +
+  `${ev.programDate || ev.startDate || ""}\n` +
+  `${ev.venue || ""}\n\n` +
+  `View details/register:\n${shareUrl}`;
+
+const whatsappBtn = `
+  <a href="https://wa.me/?text=${encodeURIComponent(shareText)}"
+     target="_blank"
+     class="calendar-btn calendar-btn-outline">
+    WhatsApp
+  </a>
+`;
+
+const emailBtn = `
+  <a href="mailto:?subject=${encodeURIComponent(ev.programName)}&body=${encodeURIComponent(shareText)}"
+     class="calendar-btn calendar-btn-outline">
+    Email
+  </a>
+`;
+
+const copyBtn = `
+  <button class="calendar-btn calendar-btn-outline"
+          onclick="copyShareLink('${shareUrl}')">
+    Copy Link
+  </button>
+`;
+
+        stateBlock.innerHTML += `
+          <div class="calendar-session">
+            <div class="calendar-session-date">${day}</div>
+            <div class="calendar-session-title">${ev.programName}</div>
+
+            <div class="calendar-session-meta">
+              <span class="calendar-badge ${badgeClass}">${ev.category || "Training"}</span>
+            </div>
+
+            <div class="calendar-session-meta">${ev.programDate || ev.startDate || ""}</div>
+            <div class="calendar-session-meta">${ev.venue || ""}</div>
+
+            <div class="calendar-session-actions">
+${contentBtn}
+${trainerBtn}
+${registerBtn}
+${whatsappBtn}
+${emailBtn}
+${copyBtn}
+            </div>
+          </div>
+        `;
+      });
+
+      monthCard.appendChild(stateBlock);
+    });
+
+    grid.appendChild(monthCard);
+  });
+
+  monthsContainer.appendChild(grid);
+}
+
+monthFilter.addEventListener("change", renderCalendar);
+stateFilter.addEventListener("change", renderCalendar);
+categoryFilter.addEventListener("change", renderCalendar);
+searchFilter.addEventListener("input", renderCalendar);
+
+resetBtn.addEventListener("click", () => {
+  monthFilter.value = "all";
+  stateFilter.value = "all";
+  categoryFilter.value = "all";
+  searchFilter.value = "";
+  renderCalendar();
+});
+
+  function copyShareLink(url) {
+  navigator.clipboard.writeText(url);
+  alert("Share link copied.");
+}
+  
+loadPublishedPrograms();
+</script>
+
+<script src="script.js"></script>
+
+</body>
+</html>

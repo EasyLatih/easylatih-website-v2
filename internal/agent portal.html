@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent SOP | EasyLatih</title>
+
+  <!-- ✅ absolute paths (works inside /internal/) -->
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="/style.css" />
+
+  <!-- Semi-private -->
+  <meta name="robots" content="noindex, nofollow" />
+
+  <style>
+    .container { max-width: 1100px; margin: auto; padding: 2rem; }
+
+    /* SOP UI */
+    .sop-wrap { margin-top: 1rem; }
+    .sop-card {
+      border: 1px solid #e6e8ef;
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.6rem;
+      margin-bottom: 1rem;
+    }
+    .sop-muted { color: #555; font-size: 0.95rem; line-height: 1.65; }
+    .sop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+    .sop-btn {
+      width: 100%;
+      text-align: left;
+      border: 1px solid #ccc;
+      background: #fff;
+      padding: 1.1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .sop-btn:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+
+    .sop-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+    .sop-pill {
+      border: 1px solid #ccc;
+      background: #fff;
+      padding: 0.45rem 0.75rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+
+    .sop-hidden { display: none; }
+
+    .sop-note {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 10px;
+      padding: 1.05rem;
+      margin: 0.95rem 0;
+      line-height: 1.7;
+    }
+    .sop-ok {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 10px;
+      padding: 1.05rem;
+      margin: 0.95rem 0;
+      line-height: 1.7;
+    }
+
+    /* Clean spacing */
+    .sop-card p { line-height: 1.75; margin: 0.6rem 0; }
+    .sop-card h2 { margin: 0 0 0.8rem; }
+    .sop-card h3 { margin: 1.3rem 0 0.6rem; }
+    .sop-card ol, .sop-card ul { padding-left: 1.3rem; margin: 0.6rem 0; }
+    .sop-card li { margin: 0.55rem 0; line-height: 1.7; }
+    .sop-card li ul { margin-top: 0.45rem; }
+
+    /* FAQ accordion */
+    .faq-item { border: 1px solid #ccc; border-radius: 10px; overflow: hidden; margin: 0.75rem 0; }
+    .faq-q {
+      width: 100%;
+      text-align: left;
+      background: #fff;
+      border: 0;
+      padding: 1rem 1.05rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    .faq-q:hover { background: #f8fafc; }
+    .faq-a { display: none; padding: 0 1.05rem 1.05rem; color: #222; line-height: 1.75; }
+    .faq-item.open .faq-a { display: block; }
+
+    .sop-card a { font-weight: 600; }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="nav-container" style="display: flex; align-items: center; justify-content: space-between;">
+    <!-- Company + HRD Corp Logos -->
+    <div class="logo-group" style="display: flex; align-items: center;">
+      <a href="/index.html" class="logo">
+        <img src="/assets/logo.png" alt="EasyLatih logo" style="height: 50px; margin-right: 10px;">
+      </a>
+      <div class="hrdcorp-logos" style="display: flex; align-items: center; gap: 10px;">
+        <img src="/assets/Logo Training Provider_Logo Registered Training Provider.png" alt="HRD Corp Registered" style="height: 40px;">
+        <img src="/assets/HRD Corp - Claimable Logo.png" alt="HRD Corp Claimable" style="height: 40px;">
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+      <div class="nav-toggle" id="navToggle">
+        <span></span><span></span><span></span>
+      </div>
+      <ul id="navMenu">
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/courses.html">Courses</a></li>
+        <li><a href="/room-rental.html">Training Room</a></li>
+        <li><a href="/schedule.html">Public Training</a></li>
+        <li><a href="/blog.html">Blog</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<section class="container">
+  <h2 class="section-title">Agent SOP (Internal)</h2>
+  <p class="sop-muted">
+    Dokumen dalaman ini bertujuan memastikan proses kerja ejen dilaksanakan secara profesional, konsisten dan tersusun.
+    (Semi-private: halaman ini tidak di-index oleh enjin carian.)
+  </p>
+
+  <div class="sop-wrap">
+
+    <!-- TOP NAV -->
+    <div class="sop-card">
+      <strong>Navigasi:</strong>
+      <div class="sop-nav">
+        <span class="sop-pill" onclick="go('menu')">🏠 Menu</span>
+        <span class="sop-pill" onclick="go('registration')">📋 Pendaftaran</span>
+        <span class="sop-pill" onclick="go('prospecting')">🎯 Prospecting</span>
+        <span class="sop-pill" onclick="go('faq')">❓ FAQ</span>
+      </div>
+    </div>
+
+    <!-- MENU -->
+    <div id="menu" class="sop-card">
+      <h2>Mula di sini</h2>
+      <div class="sop-grid">
+        <button class="sop-btn" onclick="go('registration')">
+          📋 SOP Pendaftaran Peserta<br>
+          <span class="sop-muted">Invoice & HRD Corp (step-by-step)</span>
+        </button>
+
+        <button class="sop-btn" onclick="go('prospecting')">
+          🎯 Prospecting Flow & Insentif<br>
+          <span class="sop-muted">Ownership prospek, rekod, semakan & ganjaran</span>
+        </button>
+
+        <button class="sop-btn" onclick="go('faq')">
+          ❓ FAQ + Tanya Admin<br>
+          <span class="sop-muted">Soalan lazim & rujukan</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- REGISTRATION -->
+    <div id="registration" class="sop-card sop-hidden">
+      <h2>📋 SOP Pendaftaran Peserta + Invoice/HRD Corp</h2>
+
+      <h3>Langkah 1: Pengesahan Minat</h3>
+      <ol>
+        <li>Ejen hendaklah <strong>pre-filled</strong> Borang Pendaftaran (hardcopy) berdasarkan maklumat program & peserta yang tersedia.</li>
+        <li>Borang tersebut diserahkan kepada syarikat untuk <strong>COP & SIGN</strong>.</li>
+      </ol>
+
+      <div class="sop-ok">
+        <strong>Link Borang Pendaftaran (hardcopy):</strong><br>
+        <a href="https://drive.google.com/file/d/1qoLFwDOrP8RkiP6DyiHnYx906TUHNMRx/view?usp=drive_link" target="_blank" rel="noopener noreferrer">
+          Klik untuk buka borang
+        </a>
+      </div>
+
+      <h3>Langkah 2: Makluman kepada EasyLatih</h3>
+      <p>Ejen perlu memaklumkan kepada admin maklumat syarikat untuk tujuan:</p>
+      <ul>
+        <li>Pengeluaran <strong>Invoice</strong>; atau</li>
+        <li>Panduan langkah demi langkah permohonan geran <strong>HRD Corp</strong> (jika claim).</li>
+      </ul>
+
+      <h3>Langkah 3: Dokumen Sokongan (Keperluan Minimum)</h3>
+      <div class="sop-note">
+        Pengisian Google Form hanya boleh dibuat selepas lengkap:
+        <ul>
+          <li>(1) Borang Pendaftaran <strong>COP & SIGN</strong>; dan</li>
+          <li>(2A) <strong>Bukti pembayaran</strong> atau (2B) <strong>No. permohonan geran HRD Corp</strong>.</li>
+        </ul>
+      </div>
+
+      <h3>Langkah 4: Pengisian Google Form (Format Wajib)</h3>
+      <ul>
+        <li>Semua nama & maklumat diisi dalam <strong>ALL CAPS</strong></li>
+        <li>IC/ROC/apa-apa nombor: <strong>tanpa dash “-”</strong></li>
+        <li>No telefon: mesti bermula dengan <strong>6</strong> (contoh: 6011xxxxxxx)</li>
+      </ul>
+
+      <div class="sop-note">
+        <strong>Link Google Form Pendaftaran:</strong><br>
+        <a href="https://forms.gle/Z9LhcJcBq9eTipwX6" target="_blank" rel="noopener noreferrer">Klik untuk isi</a>
+      </div>
+
+      <h3>Langkah 5: Selepas Submit</h3>
+      <p>Admin EasyLatih akan memproses:</p>
+      <ul>
+        <li>Pengesahan pendaftaran</li>
+        <li>Invoice / resit</li>
+        <li>Semakan HRD Corp (jika claim)</li>
+      </ul>
+
+      <div class="sop-nav">
+        <span class="sop-pill" onclick="go('menu')">⬅️ Kembali ke Menu</span>
+      </div>
+    </div>
+
+    <!-- PROSPECTING -->
+    <div id="prospecting" class="sop-card sop-hidden">
+      <h2>🎯 Prospecting Flow, Ownership & Insentif</h2>
+
+      <div class="sop-note">
+        <strong>Prinsip Tadbir Urus:</strong><br>
+        Setiap prospek yang direkodkan adalah di bawah tanggungjawab ejen yang membuat perekodan.
+        Ejen lain tidak dibenarkan menghubungi atau mengurus prospek yang sama sepanjang tempoh kempen,
+        tertakluk kepada pengecualian yang diluluskan pengurusan.
+      </div>
+
+      <h3>Skop Maklumat Prospek (Wajib Lengkap)</h3>
+      <div class="sop-ok">
+        <ol>
+          <li>Nama ejen (owner)</li>
+          <li>Nama wakil syarikat yang dihubungi</li>
+          <li>Email</li>
+          <li>Phone 1 (contoh: 6011xxxxxxx)</li>
+          <li>Phone 2 (jika ada)</li>
+          <li>Negeri</li>
+          <li>Daerah</li>
+          <li>Nama syarikat</li>
+          <li>Jawatan</li>
+          <li>Catatan (contoh: training diminta / follow up bila)</li>
+          <li>Status Levy HRD Corp (YA/TIDAK)</li>
+        </ol>
+        <p class="sop-muted">Rekod tidak lengkap/meragukan tidak akan diambil kira untuk insentif.</p>
+      </div>
+
+      <h3>Flow Prospecting</h3>
+      <ol>
+        <li>Ejen menghubungi prospek (call/WhatsApp/office line).</li>
+        <li>Ejen <strong>merekod prospek</strong> melalui Google Form sebaik sahaja panggilan dibuat.</li>
+        <li>Setelah direkodkan, prospek dianggap “dikunci” kepada ejen tersebut untuk tujuan pengurusan follow up.</li>
+      </ol>
+
+      <h3>Pengecualian Ownership</h3>
+      <div class="sop-note">
+        Sekiranya prospek secara jelas menyatakan hasrat untuk berhubung dengan ejen tertentu,
+        pihak <strong>Easy Latih</strong> berhak mempertimbangkan dan membenarkan pertukaran ejen bagi prospek tersebut.
+        Sebarang pertukaran adalah tertakluk kepada <strong>pengesahan dan kelulusan pengurusan Easy Latih</strong>,
+        demi menjaga profesionalisme, keadilan dan kepentingan semua pihak.
+      </div>
+
+      <h3>Insentif Prospecting (Sehingga Akhir Februari)</h3>
+      <ul>
+        <li><strong>RM1</strong> – Prospek kategori <strong>Pencarum Levy HRD Corp</strong></li>
+        <li><strong>RM0.50</strong> – Prospek kategori <strong>Tidak Carum Levy HRD Corp</strong></li>
+      </ul>
+
+      <div class="sop-ok">
+        Insentif dikira berdasarkan rekod prospek yang lengkap dan sah di Google Form/Sheet, tertakluk kepada semakan rekod dan pengesahan pengurusan.
+      </div>
+
+      <h3>Rekod Prospek (Google Form)</h3>
+      <div class="sop-note">
+        <strong>📝 Rekod Prospek:</strong><br>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLScT995NNIDq5d4IB7UWCyl2MO9gYjIy5ypeSTZ8Bdn_TFUzKw/viewform?usp=sharing&ouid=107763892087876464663"
+           target="_blank" rel="noopener noreferrer">
+          Klik untuk isi Google Form Prospek
+        </a>
+      </div>
+
+      <!-- =========================
+           SEMAKAN PROSPEK (PRIVATE)
+           ========================= -->
+      <div class="sop-ok" id="prospect-check">
+        <h3>🔎 Semakan Prospek (Private Sheet)</h3>
+        <p class="sop-muted">
+          Taip separa (nama syarikat / email / no telefon). Sistem hanya paparkan ringkasan:
+          <strong>Nama Ejen</strong>, <strong>Negeri</strong>, <strong>Nama Syarikat</strong> dan <strong>Timestamp</strong>.
+        </p>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <input
+            id="prospectQuery"
+            type="text"
+            placeholder="Contoh: EAST / KUANTAN / 6011 / GMAIL"
+            style="flex:1; padding:0.75rem; border:1px solid #ccc; border-radius:8px; min-width:260px;"
+            autocomplete="off"
+          />
+        </div>
+
+        <div id="prospectResult" style="margin-top:12px;"></div>
+
+        <div class="sop-note">
+          <strong>Nota:</strong> Jika rekod wujud, <strong>elakkan duplicate call</strong>. Rujuk ejen (owner) yang tertera untuk follow up.
+        </div>
+      </div>
+
+      <div class="sop-nav">
+        <span class="sop-pill" onclick="go('menu')">⬅️ Kembali ke Menu</span>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div id="faq" class="sop-card sop-hidden">
+      <h2>❓ FAQ & Tanya Admin</h2>
+      <p class="sop-muted">Klik soalan untuk lihat jawapan.</p>
+
+      <div class="faq-item">
+        <button class="faq-q" type="button">Apa itu HRD Corp?</button>
+        <div class="faq-a">
+          <p>
+            <strong>HRD Corp</strong> (Human Resource Development Corporation) ialah agensi di Malaysia yang mengurus
+            sistem levi latihan dan geran latihan. Syarikat yang layak boleh memohon geran untuk menyertai latihan
+            di penyedia latihan berdaftar seperti <strong>Easy Latih Consultancy</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" type="button">Syarikat mana yang perlu bayar Levi HRD Corp?</button>
+        <div class="faq-a">
+          <p>
+            Secara umum, syarikat yang mempunyai <strong>10 pekerja warganegara Malaysia dan ke atas</strong> adalah
+            tertakluk kepada Akta Pembangunan Sumber Manusia 2001 <strong>KECUALI</strong> Badan Kerajaan dan Badan Berkanun.
+            Jika syarikat tidak pasti status, ejen <strong>TIDAK PERLU</strong> minta wakil syarikat semak status caruman/akaun 
+            HRD Corp bagi mengelakkan dari berlaku salah faham.
+          </p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" type="button">Bagaimana aliran syarikat claim geran HRD Corp untuk training dengan EasyLatih?</button>
+        <div class="faq-a">
+          <p><strong>Flow ringkas (Claimable Course):</strong></p>
+          <ol>
+            <li>
+              <strong>Pendaftaran minat / tempahan slot</strong><br>
+              Syarikat daftar untuk join program dengan EasyLatih.
+            </li>
+            <li>
+              <strong>Dokumen sokongan dari EasyLatih</strong><br>
+              EasyLatih akan sediakan dokumen berkaitan untuk permohonan geran, termasuk:
+              <ul>
+                <li>Quotation / brochure (yuran)</li>
+                <li>Trainer profile</li>
+                <li>Course content / outline</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Permohonan geran HRD Corp</strong><br>
+              Wakil syarikat memohon geran bagi kursus <em>HRD Corp Claimable Course</em>. Pada peringkat ini, ejen akan
+              <strong>forward guideline</strong> permohonan kepada wakil syarikat.
+              <div class="sop-note">
+                Kebiasaannya keputusan boleh diperoleh dalam <strong>±24 jam</strong>. Jika permohonan tidak lulus /
+                ada isu, wakil syarikat perlu <strong>maklumkan admin</strong> untuk tindakan lanjut.
+              </div>
+            </li>
+            <li>
+              <strong>Kehadiran latihan</strong><br>
+              Syarikat hadir latihan mengikut jadual. (Untuk kes claim, bayaran yuran akan diurus melalui proses tuntutan.)
+            </li>
+            <li>
+              <strong>Dokumen tuntutan (JD1)</strong><br>
+              EasyLatih akan sediakan <strong>Borang JD1</strong> untuk ditandatangani dan dicop oleh syarikat bagi tujuan
+              tuntutan yuran kepada HRD Corp.
+            </li>
+            <li>
+              <strong>Tuntutan elaun pelatih (sekiranya layak)</strong><br>
+              Selepas tuntutan diluluskan, syarikat boleh menuntut elaun pelatih tertakluk kepada polisi jarak:
+              <ul>
+                <li><strong>RM250 / peserta</strong> jika lokasi latihan <strong>&lt; 100km sehala</strong> dari alamat syarikat</li>
+                <li><strong>RM500 / peserta</strong> jika lokasi latihan <strong>≥ 100km sehala</strong></li>
+                <li>Tambahan <strong>RM500</strong> untuk <strong>1 hari tambahan perjalanan</strong> bagi program <strong>1 hari dan ke atas</strong></li>
+              </ul>
+              <p class="sop-muted">
+                Definisi durasi latihan: <strong>1 hari = 7 jam latihan</strong>, <strong>separuh hari = 4 jam</strong>.
+                Bagi program separuh hari, elaun dibayar <strong>separuh kadar</strong> (tertakluk kepada terma semasa).
+              </p>
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" type="button">Boleh isi Google Form pendaftaran jika belum ada bukti bayaran / no HRD?</button>
+        <div class="faq-a">
+          <p><strong>Tidak.</strong> Pengisian hanya dibenarkan selepas lengkap Borang COP & SIGN serta (Bukti Bayaran atau No. Permohonan HRD Corp).</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" type="button">Siapa pemilik prospek jika berlaku pertindihan?</button>
+        <div class="faq-a">
+          <p>Secara prinsip, prospek di bawah tanggungjawab ejen yang merekodkan. Jika berlaku pertindihan, rujuk rekod terawal dan pengesahan pengurusan.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" type="button">Bila prospek boleh tukar ejen?</button>
+        <div class="faq-a">
+          <p>Apabila prospek secara jelas menyatakan pilihan untuk berhubung dengan ejen tertentu, tertakluk kepada pengesahan dan kelulusan pengurusan Easy Latih.</p>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #eee;margin:1rem 0;">
+
+      <h3>💬 Tanya Admin</h3>
+      <div class="sop-note">
+        <strong>Hantar soalan (WhatsApp):</strong><br>
+        <a href="https://www.wasap.my/60126256013/FAQ" target="_blank" rel="noopener noreferrer">
+          Klik untuk tanya admin
+        </a>
+        <p class="sop-muted" style="margin-top:0.5rem;">
+          Admin akan jawab melalui saluran rasmi, dan jawapan yang sesuai akan dimasukkan ke FAQ sebagai rujukan.
+        </p>
+      </div>
+
+      <div class="sop-nav">
+        <span class="sop-pill" onclick="go('menu')">⬅️ Kembali ke Menu</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-container">
+    <div>
+      <h4>Contact Us</h4>
+      <p>B62, Tingkat 1, Jalan IM 7/1<br />Bandar Indera Mahkota 6, 25200<br />Kuantan, Pahang, Malaysia</p>
+      <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
+      <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
+      <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank">+60 10 920 2811</a></p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <a href="/index.html">Home</a>
+      <a href="/courses.html">Courses</a>
+      <a href="/room-rental.html">Training Room</a>
+      <a href="/schedule.html">Public Training</a>
+      <a href="/blog.html">Blog</a>
+    </div>
+    <div>
+      <h4>Follow Us</h4>
+      <div class="socials">
+        <a href="https://www.facebook.com/EasyLatih/"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://www.instagram.com/easylatih/"><i class="fab fa-instagram"></i></a>
+        <a href="https://my.linkedin.com/company/easylatih"><i class="fab fa-linkedin-in"></i></a>
+        <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w"><i class="fab fa-youtube"></i></a>
+        <a href="https://www.tiktok.com/@easylatih"><i class="fab fa-tiktok"></i></a>
+      </div>
+    </div>
+  </div>
+  <div class="text-center" style="margin-top: 2rem;">
+    EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br />
+    &copy; 2025 EasyLatih. All rights reserved.
+  </div>
+</footer>
+
+<script>
+  // Section navigation
+  const sections = ["menu","registration","prospecting","faq"];
+  function go(id){
+    sections.forEach(s => document.getElementById(s).classList.add("sop-hidden"));
+    document.getElementById(id).classList.remove("sop-hidden");
+    window.scrollTo({top:0, behavior:"smooth"});
+    history.replaceState(null, "", "#" + id);
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    const hash = (location.hash || "").replace("#", "");
+    if(hash && sections.includes(hash)) go(hash);
+  });
+
+  // FAQ accordion
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".faq-q");
+    if(!btn) return;
+    btn.closest(".faq-item").classList.toggle("open");
+  });
+
+  // Mobile nav toggle (if style.css uses .active)
+  document.addEventListener("DOMContentLoaded", () => {
+    const navToggle = document.getElementById("navToggle");
+    const navMenu = document.getElementById("navMenu");
+    if(navToggle && navMenu){
+      navToggle.addEventListener("click", () => navMenu.classList.toggle("active"));
+    }
+  });
+
+  /* =========================
+     SEMAKAN PROSPEK (PRIVATE)
+     ========================= */
+  // ✅ Tukar 2 value ini
+const PROSPECT_API_URL =
+  "https://script.google.com/macros/s/AKfycbxYVBkSdssNBNx44QBYcXEKkNETTjW8QN26dBTRIBjw3NMPremxp5f2emNVKDPGavRe/exec";
+const PROSPECT_API_KEY = "EASYLATIH_2026_7fK9pQ2xLm8Vt0ZrA13nG5hW";
+
+  let typingTimer = null;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("prospectQuery");
+    if (!input) return;
+
+    // Auto semak bila menaip (debounce)
+    input.addEventListener("input", () => {
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(searchProspect, 500);
+    });
+
+    // Tekan Enter untuk semak
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        searchProspect();
+      }
+    });
+  });
+
+  async function searchProspect() {
+    const input = document.getElementById("prospectQuery");
+    const box = document.getElementById("prospectResult");
+    if(!input || !box) return;
+
+    const q = (input.value || "").trim();
+    if (q.length < 2) {
+      box.innerHTML = "<div class='sop-note'>Taip sekurang-kurangnya 2 aksara untuk semakan.</div>";
+      return;
+    }
+
+    box.innerHTML = "Menyemak...";
+    const url = `${PROSPECT_API_URL}?key=${encodeURIComponent(PROSPECT_API_KEY)}&q=${encodeURIComponent(q)}`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.ok) {
+        box.innerHTML = `<div class='sop-note'>Ralat: ${escapeHtml(data.error || "Unknown error")}</div>`;
+        return;
+      }
+
+      if (!data.exists || !data.results || data.results.length === 0) {
+        box.innerHTML = "<div class='sop-note'>Tiada rekod prospek ditemui.</div>";
+        return;
+      }
+
+      const rows = data.results.map(r => `
+        <tr>
+          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.agent || "—")}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.state || "—")}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.company || "—")}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.timestamp || "—")}</td>
+        </tr>
+      `).join("");
+
+      box.innerHTML = `
+        <div class="sop-ok">
+          <strong>Rekod ditemui (maksimum 5 dipaparkan)</strong>
+          <div style="overflow:auto; margin-top:10px;">
+            <table style="width:100%; border-collapse:collapse; min-width:720px;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Nama Ejen</th>
+                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Negeri</th>
+                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Nama Syarikat</th>
+                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      box.innerHTML = "<div class='sop-note'>Tidak dapat akses sistem semakan. Sila cuba lagi.</div>";
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[m]));
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EasyLatih Registration</title>
+<meta name="robots" content="noindex,nofollow">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  font-family:'Poppins',Arial,sans-serif;
+  background:#f8fafc;
+  margin:0;
+  color:#111827;
+}
+
+.portal-header{
+  background:#0d3b66;
+  color:white;
+  padding:1rem 1.5rem;
+}
+
+.portal-header-inner{
+  max-width:1100px;
+  margin:auto;
+}
+
+.portal-header h2{
+  margin:0;
+  font-size:1.5rem;
+}
+
+.portal-header small{
+  color:#facc15;
+  font-weight:600;
+}
+
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:2rem;
+}
+
+.card{
+  background:white;
+  padding:1.5rem;
+  border-radius:12px;
+  margin-bottom:1rem;
+  border:1px solid #e6e8ef;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+
+input, select, textarea{
+  width:100%;
+  padding:.75rem;
+  border:1px solid #ccc;
+  border-radius:8px;
+  font-family:inherit;
+  margin-bottom:1rem;
+  box-sizing:border-box;
+}
+
+button{
+  background:#0d3b66;
+  color:white;
+  border:none;
+  padding:.75rem 1rem;
+  border-radius:8px;
+  cursor:pointer;
+  font-family:inherit;
+  font-weight:600;
+}
+
+.secondary-btn{
+  background:white;
+  color:#0d3b66;
+  border:1px solid #0d3b66;
+}
+
+.success{
+  color:#047857;
+  font-weight:600;
+}
+
+.error{
+  color:#b91c1c;
+  font-weight:600;
+}
+
+.price{
+  font-size:1.6rem;
+  font-weight:700;
+  color:#047857;
+}
+
+.muted{
+  color:#666;
+  font-size:.92rem;
+}
+
+.participant-card{
+  border:1px solid #e6e8ef;
+  border-radius:12px;
+  padding:1rem;
+  margin-bottom:1rem;
+  background:#f8fafc;
+}
+
+.status-note{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  padding:1rem;
+  border-radius:10px;
+  margin-bottom:1rem;
+  line-height:1.6;
+}
+
+@media(max-width:600px){
+  .container{padding:1rem}
+  .card{padding:1rem}
+  button{width:100%;margin-bottom:.5rem}
+}
+</style>
+</head>
+
+<body>
+
+<header class="portal-header">
+  <div class="portal-header-inner">
+    <h2>EasyLatih Programme Registration</h2>
+    <small>Easy Learning, Real Results!</small>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="card" id="programCard">
+    <p class="muted">Loading programme...</p>
+  </div>
+
+  <div class="card" id="registrationForm" style="display:none;">
+    <h2>Company / Contact Person Details</h2>
+
+    <label>Company Name</label>
+    <input id="companyName">
+
+    <label>Company Address</label>
+    <textarea id="companyAddress"></textarea>
+
+    <label>PIC Name</label>
+    <input id="picName">
+
+    <label>PIC Position</label>
+    <input id="picPosition">
+
+    <label>PIC Email</label>
+    <input id="picEmail">
+
+    <label>PIC Phone</label>
+    <input id="picPhone">
+
+    <h2>Participant Details</h2>
+    <div id="participants"></div>
+
+    <button type="button" onclick="addParticipant()">+ Add Participant</button>
+
+    <div class="status-note" style="margin-top:1rem;">
+  <strong>REGISTRATION, CANCELLATION & HRD CORP TERMS</strong><br><br>
+
+  <strong>1. Registration Confirmation</strong><br>
+  Registration is subject to seat availability and confirmation by Easy Latih Consultancy.<br><br>
+
+  <strong>2. HRD Corp Grant Application</strong><br>
+  For HRD Corp claimable registrations, Easy Latih Consultancy will provide the necessary supporting documents and guidance to assist employers in submitting their HRD Corp grant applications.<br><br>
+
+  However, the employer remains responsible for ensuring that the grant application is submitted within the timeline stipulated by HRD Corp and for obtaining the necessary approval before the programme commencement date.<br><br>
+
+  Where grant approval is not obtained before the programme commencement date, the registration may be converted to a self-sponsored registration and the applicable self-sponsored fee may become payable by the employer.<br><br>
+
+  <strong>3. Participant Replacement</strong><br>
+  Participant replacement is allowed at no additional charge provided written notification is received at least one (1) working day before the programme commencement date.<br><br>
+
+  <strong>4. Attendance Requirement</strong><br>
+  Certificates of Attendance will only be issued to participants who attend at least seventy-five percent (75%) of the programme duration.<br><br>
+
+  <strong>5. Photography and Recording</strong><br>
+  Easy Latih Consultancy reserves the right to take photographs and videos during the programme for training, marketing and documentation purposes unless otherwise requested in writing by the participant or employer.<br><br>
+
+  <strong>6. Accuracy of Information</strong><br>
+  The employer is responsible for ensuring that all information submitted during registration is accurate and complete. Easy Latih Consultancy shall not be responsible for errors arising from incorrect information provided.<br><br>
+
+  <strong>7. Outstanding Payment</strong><br>
+  Certificates, training materials and related documents may be withheld until full payment has been received, where applicable.<br><br>
+
+  <strong>8. Programme Changes and Cancellation</strong><br>
+  Easy Latih Consultancy reserves the right to postpone, reschedule, change the trainer, venue or delivery method due to unforeseen circumstances. Registered participants will be informed accordingly.<br><br>
+
+  For cancellations initiated by the employer, participant or registered attendee:<br><br>
+
+  a) Cancellation made more than seven (7) working days before the programme date will not incur any cancellation charge.<br><br>
+
+  b) Cancellation made between three (3) and seven (7) working days before the programme date will incur a cancellation charge equivalent to fifty percent (50%) of the programme fee.<br><br>
+
+  c) Cancellation made less than three (3) working days before the programme date or no-show participants will incur a cancellation charge equivalent to one hundred percent (100%) of the programme fee.<br><br>
+
+  Participant replacement is allowed in accordance with Clause 3 and will not be treated as a cancellation.<br><br>
+
+  Where Easy Latih Consultancy postpones or cancels a programme, registered participants may choose either a replacement programme date or a full refund of any fees paid.
+</div>
+
+    <label>
+      <input type="checkbox" id="agreeTerms" style="width:auto;">
+      I have read and agree to the terms above.
+    </label>
+
+    <br><br>
+
+    <button type="button" onclick="submitRegistration()">Submit Registration</button>
+
+    <div id="submitResult" style="margin-top:1rem;"></div>
+  </div>
+
+</div>
+
+<script>
+const WEBAPP =
+"https://script.google.com/macros/s/AKfycbxIVZoZuF2yRicdhLoXMEdOYhTQd8PETTBYGRbUJKo_FAEn52B6C6tDB8zGmnvYjnnO/exec";
+
+const params = new URLSearchParams(window.location.search);
+const courseId = params.get("course");
+
+let currentProgram = null;
+let promoDiscount = 0;
+let promoAgentId = "";
+let promoAgentName = "";
+let promoCodeApplied = "";
+let participantCount = 0;
+
+if (!courseId) {
+  document.getElementById("programCard").innerHTML = `
+    <h2>No programme selected</h2>
+    <p>Please use a valid registration link.</p>
+  `;
+} else {
+  loadProgramme();
+}
+
+function loadProgramme() {
+  const callbackName = "easyLatihCallback_" + new Date().getTime();
+
+  window[callbackName] = function(data) {
+    if (!data || data.error) {
+      document.getElementById("programCard").innerHTML = `
+        <h2>Programme not found</h2>
+        <p>Please check your registration link.</p>
+      `;
+      return;
+    }
+
+    currentProgram = data;
+
+    document.getElementById("programCard").innerHTML = `
+      <h2>${data.programName}</h2>
+
+      <p>📅 ${data.programDate}</p>
+      <p>📍 ${data.venue}</p>
+
+      <hr>
+
+      <p class="muted">Duration</p>
+      <strong>${data.duration} (${data.totalTime})</strong>
+
+      <hr>
+
+      <p>HRD Fee</p>
+      <div class="price">RM ${Number(data.hrdFee).toLocaleString()}</div>
+
+      <p>Self Payment Fee</p>
+      <div class="price">RM ${Number(data.selfFee).toLocaleString()}</div>
+
+      <hr>
+
+      <h3>Discount Code</h3>
+      <input type="text" id="promoCode" placeholder="Enter promo code">
+
+      <button type="button" onclick="applyPromoCode()">Apply Promo Code</button>
+
+      <div id="promoResult" style="margin-top:1rem;"></div>
+
+      <hr>
+
+      <h3>Payment Method</h3>
+      <select id="paymentMethod" onchange="updateFinalFee()">
+        <option value="HRD">HRD Corp Grant</option>
+        <option value="SELF">Self Payment</option>
+      </select>
+
+      <p>Final Fee</p>
+      <div class="price" id="finalPrice">
+        RM ${Number(data.hrdFee).toLocaleString()}
+      </div>
+
+      <br>
+
+      <button type="button" onclick="showRegistrationForm()">
+        Continue Registration
+      </button>
+    `;
+  };
+
+  const script = document.createElement("script");
+  script.src =
+    WEBAPP +
+    "?action=getProgramDetails" +
+    "&course=" + encodeURIComponent(courseId) +
+    "&callback=" + callbackName;
+
+  document.body.appendChild(script);
+}
+
+function applyPromoCode() {
+  const promoCode = document.getElementById("promoCode").value.trim();
+
+  if (!promoCode) {
+    alert("Please enter promo code.");
+    return;
+  }
+
+  const callbackName = "promoCallback_" + new Date().getTime();
+
+  window[callbackName] = function(data) {
+    if (!data.valid) {
+      document.getElementById("promoResult").innerHTML =
+        `<div class="error">${data.message}</div>`;
+      return;
+    }
+
+    promoDiscount = Number(data.discountAmount || 0);
+    promoAgentId = data.agentId || "";
+    promoAgentName = data.agentName || "";
+    promoCodeApplied = data.promoCode || "";
+
+    document.getElementById("promoResult").innerHTML = `
+      <div class="success">
+        ✓ Promo Code Applied<br>
+        Discount: RM ${promoDiscount.toLocaleString()}<br>
+        Agent: ${promoAgentName}
+      </div>
+    `;
+
+    updateFinalFee();
+  };
+
+  const script = document.createElement("script");
+  script.src =
+    WEBAPP +
+    "?action=validatePromoCode" +
+    "&course=" + encodeURIComponent(courseId) +
+    "&promoCode=" + encodeURIComponent(promoCode) +
+    "&callback=" + callbackName;
+
+  document.body.appendChild(script);
+}
+
+function updateFinalFee() {
+  if (!currentProgram) return;
+
+  const paymentMethod = document.getElementById("paymentMethod").value;
+
+  const baseFee = paymentMethod === "HRD"
+    ? Number(currentProgram.hrdFee || 0)
+    : Number(currentProgram.selfFee || 0);
+
+  const finalFee = Math.max(0, baseFee - promoDiscount);
+
+  document.getElementById("finalPrice").innerHTML =
+    "RM " + finalFee.toLocaleString();
+}
+
+function showRegistrationForm() {
+  document.getElementById("registrationForm").style.display = "block";
+
+  if (participantCount === 0) {
+    addParticipant();
+  }
+
+  document.getElementById("registrationForm").scrollIntoView({
+    behavior: "smooth"
+  });
+}
+
+function addParticipant() {
+  participantCount++;
+
+  const box = document.getElementById("participants");
+
+  const div = document.createElement("div");
+
+  div.className = "participant-card";
+
+  div.innerHTML = `
+    <h3>Participant ${participantCount}</h3>
+
+    <label>Name</label>
+    <input id="pName${participantCount}">
+
+    <label>IC No</label>
+    <input id="pIC${participantCount}">
+
+    <label>Email</label>
+    <input id="pEmail${participantCount}">
+
+    <label>Phone</label>
+    <input id="pPhone${participantCount}">
+  `;
+
+  box.appendChild(div);
+}
+
+function submitRegistration() {
+  if (!document.getElementById("agreeTerms").checked) {
+    alert("Please agree to the terms and conditions.");
+    return;
+  }
+
+  const participants = [];
+
+  for (let i = 1; i <= participantCount; i++) {
+    const name = document.getElementById("pName" + i).value;
+
+    if (!name) continue;
+
+    participants.push({
+      name: name,
+      icNo: document.getElementById("pIC" + i).value,
+      email: document.getElementById("pEmail" + i).value,
+      phone: document.getElementById("pPhone" + i).value
+    });
+  }
+
+  if (participants.length === 0) {
+    alert("Please add at least one participant.");
+    return;
+  }
+
+  const formData = new FormData();
+
+  formData.append("courseId", courseId);
+  formData.append("companyName", document.getElementById("companyName").value);
+  formData.append("companyAddress", document.getElementById("companyAddress").value);
+  formData.append("picName", document.getElementById("picName").value);
+  formData.append("picPosition", document.getElementById("picPosition").value);
+  formData.append("picEmail", document.getElementById("picEmail").value);
+  formData.append("picPhone", document.getElementById("picPhone").value);
+  formData.append("paymentMethod", document.getElementById("paymentMethod").value);
+  formData.append("requestedPax", participants.length);
+  formData.append("discountCode", promoCodeApplied);
+  formData.append("discountAmount", promoDiscount);
+  formData.append("participantsJson", JSON.stringify(participants));
+
+  document.getElementById("submitResult").innerHTML =
+    "Submitting registration...";
+
+  fetch(WEBAPP, {
+    method: "POST",
+    body: formData
+  })
+  .then(res => res.text())
+  .then(text => {
+    document.getElementById("submitResult").innerHTML =
+      `<div class="success">${text}</div>`;
+  })
+  .catch(err => {
+    document.getElementById("submitResult").innerHTML =
+      `<div class="error">Error: ${err.message}</div>`;
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,416 @@
+/*
+ * Stylesheet for EasyLatih training provider website
+ *
+ * This file defines a modern, responsive layout using a simple flexbox
+ * and grid system. Colors are derived from the company logo—deep blue
+ * and vibrant orange—while neutral backgrounds ensure good contrast
+ * and readability. Sections are spaced generously for a clean look on
+ * both desktop and mobile devices.
+ */
+
+/* CSS variables for brand colours and basic sizing */
+:root {
+  --primary-color: #003e6f;   /* deep navy blue for headers and accents */
+  --secondary-color: #f95f01; /* energetic orange for highlights */
+  --light-color: #f5f5f5;     /* light grey background */
+  --dark-text: #333333;       /* dark text for paragraphs */
+  --light-text: #ffffff;      /* white text for dark backgrounds */
+  --max-width: 1200px;        /* maximum content width */
+  --card-gap: 1.5rem;         /* gap between cards */
+  --border-radius: 8px;       /* rounded corners for cards and buttons */
+  --transition-speed: 0.3s;   /* transitions for hover effects */
+}
+
+/* Global reset and typography */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  background-color: var(--light-color);
+  color: var(--dark-text);
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Navigation styles */
+header {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.nav-container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo img {
+  height: 50px;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+}
+
+nav a {
+  color: var(--light-text);
+  font-weight: 600;
+  transition: color var(--transition-speed);
+}
+
+nav a:hover {
+  color: var(--secondary-color);
+}
+
+/* Mobile navigation */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.nav-toggle span {
+  height: 3px;
+  width: 25px;
+  background-color: var(--light-text);
+  margin-bottom: 4px;
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+  nav ul {
+    position: absolute;
+    top: 60px;
+    right: 0;
+    background-color: var(--primary-color);
+    flex-direction: column;
+    width: 200px;
+    display: none;
+    padding: 1rem;
+    border-bottom-left-radius: var(--border-radius);
+  }
+  nav ul.show {
+    display: flex;
+  }
+  .nav-toggle {
+    display: flex;
+  }
+}
+
+/* Hero section */
+.hero {
+  background-image: url('assets/hero_image.png');
+  background-size: cover;
+  background-position: center;
+  color: var(--light-text);
+  text-align: center;
+  padding: 6rem 1rem;
+  position: relative;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 62, 111, 0.6);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.hero h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.btn {
+  display: inline-block;
+  background-color: var(--secondary-color);
+  color: var(--light-text);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius);
+  transition: background-color var(--transition-speed), transform var(--transition-speed);
+  font-weight: 600;
+}
+
+.btn:hover {
+  background-color: #e75300;
+  transform: translateY(-3px);
+}
+
+/* Utility classes */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.section-title {
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+  color: var(--primary-color);
+}
+
+/* Cards layout for homepage services */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--card-gap);
+}
+
+.card {
+  background-color: #ffffff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  text-align: center;
+  transition: transform var(--transition-speed);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card h3 {
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+.card p {
+  margin-bottom: 1rem;
+}
+
+/* Courses page styles */
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--card-gap);
+}
+
+.course-card {
+  background-color: #ffffff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.course-card h4 {
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.course-card .details {
+  font-size: 0.9rem;
+  color: #555555;
+  margin-bottom: 1rem;
+}
+
+.course-card .duration {
+  font-weight: 600;
+  color: var(--secondary-color);
+}
+
+/* Room rental page */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--card-gap);
+  margin-top: 2rem;
+}
+
+.feature {
+  background-color: #ffffff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 1rem;
+  text-align: center;
+}
+
+.feature i {
+  font-size: 2rem;
+  color: var(--secondary-color);
+  margin-bottom: 0.5rem;
+}
+
+/* Schedule page */
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2rem;
+}
+
+.schedule-table th,
+.schedule-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+}
+
+.schedule-table th {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+}
+
+.schedule-table tbody tr:hover {
+  background-color: #f0f8ff;
+}
+
+/* Footer styles */
+footer {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  padding: 2rem 1rem;
+}
+
+footer .footer-container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+footer h4 {
+  margin-bottom: 0.5rem;
+  color: var(--secondary-color);
+}
+
+footer a {
+  color: var(--light-text);
+  display: block;
+  margin-bottom: 0.5rem;
+  transition: color var(--transition-speed);
+}
+
+footer a:hover {
+  color: var(--secondary-color);
+}
+
+footer p {
+  margin-bottom: 0.5rem;
+}
+
+footer .socials a {
+  margin-right: 1rem;
+}
+
+/* Utility spacing */
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+.mb-4 {
+  margin-bottom: 1rem;
+}
+.text-center {
+  text-align: center;
+}
+
+/* Responsive typography adjustments */
+@media (max-width: 600px) {
+  .hero h1 {
+    font-size: 2rem;
+  }
+  .hero p {
+    font-size: 1rem;
+  }
+}
+
+/* Inquiry cart styles */
+.inquiry-cart {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  padding: 12px 16px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
+}
+
+.inquiry-cart button {
+  background-color: var(--secondary-color);
+  color: var(--light-text);
+  border: none;
+  padding: 8px 12px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.course-card .inquire-button {
+  display: inline-block;
+  margin-top: 0.5rem;
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  border: none;
+  padding: 6px 10px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+}
+
+.course-card .inquire-button:hover {
+  background-color: #042f52;
+}
+
+/* List within the inquiry cart showing selected courses */
+.cart-summary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+
+.cart-summary li {
+  margin-bottom: 4px;
+}
