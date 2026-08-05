@@ -159,16 +159,70 @@ function renderCourses() {
         ${hrdBadge}
       </div>
 
-      ${
-        course.bigWhy
-          ? `
-            <p class="details">
-              <strong>Why this course?</strong><br>
-              ${escapeHtml(course.bigWhy)}
-            </p>
-          `
-          : ""
-      }
+           <button
+        type="button"
+        class="course-details-toggle"
+        onclick="toggleCourseDetails(this)"
+        aria-expanded="false"
+      >
+        View Course Details
+      </button>
+
+      <div class="course-expanded-details">
+
+        ${
+          course.courseOverview
+            ? `
+              <div class="course-detail-section">
+                <h4>Course Overview</h4>
+                <p>
+                  ${formatMultiline(course.courseOverview)}
+                </p>
+              </div>
+            `
+            : ""
+        }
+
+        ${
+          course.bigWhy
+            ? `
+              <div class="course-detail-section">
+                <h4>Why This Course?</h4>
+                <p>
+                  ${formatMultiline(course.bigWhy)}
+                </p>
+              </div>
+            `
+            : ""
+        }
+
+        ${
+          course.learningOutcomes
+            ? `
+              <div class="course-detail-section">
+                <h4>Learning Outcomes</h4>
+                <p>
+                  ${formatMultiline(course.learningOutcomes)}
+                </p>
+              </div>
+            `
+            : ""
+        }
+
+        ${
+          course.courseContent
+            ? `
+              <div class="course-detail-section">
+                <h4>Course Content</h4>
+                <p>
+                  ${formatMultiline(course.courseContent)}
+                </p>
+              </div>
+            `
+            : ""
+        }
+
+      </div>
 
       <a
         class="inquire-button"
@@ -213,7 +267,37 @@ if (inquiryCart) {
 }
 
 loadPublishedCourses();
+function formatMultiline(text) {
+  return escapeHtml(text || "")
+    .replace(/\r?\n/g, "<br>");
+}
 
+function toggleCourseDetails(button) {
+  const details =
+    button.nextElementSibling;
+
+  if (
+    !details ||
+    !details.classList.contains(
+      "course-expanded-details"
+    )
+  ) {
+    return;
+  }
+
+  const isOpen =
+    details.classList.toggle("open");
+
+  button.textContent =
+    isOpen
+      ? "Hide Course Details"
+      : "View Course Details";
+
+  button.setAttribute(
+    "aria-expanded",
+    String(isOpen)
+  );
+}
 function truncateText(text, maxLength = 130) {
   const cleanText = String(text || "").trim();
 
