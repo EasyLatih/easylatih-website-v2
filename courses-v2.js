@@ -214,3 +214,17 @@ if (inquiryCart) {
 }
 
 loadPublishedCourses();
+
+function truncateText(text, maxLength = 130) {
+  const cleanText = String(text || "").trim();
+
+  if (!cleanText) {
+    return "Course details are available upon enquiry.";
+  }
+
+  if (cleanText.length <= maxLength) {
+    return cleanText;
+  }
+
+  return cleanText.substring(0, maxLength).trim() + "...";
+}
