@@ -131,12 +131,11 @@ function renderCourses() {
     card.innerHTML = `
       <h3>${escapeHtml(course.courseTitle)}</h3>
 
-      <p class="details">
-        ${escapeHtml(
-          course.courseOverview ||
-          "Course details are available upon enquiry."
-        )}
-      </p>
+      <p class="course-summary">
+  ${escapeHtml(
+    truncateText(course.courseOverview, 130)
+  )}
+</p>
 
       <div class="course-meta">
         ${
