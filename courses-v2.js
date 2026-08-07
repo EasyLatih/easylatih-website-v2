@@ -1,4 +1,7 @@
 const COURSES_API_URL =
+  "https://script.google.com/macros/s/AKfycbwp9TPceQ4TllKPJUPzmTt_COiNTnzeYmj8bx559HV57dybksFXQe9O0FSX_Eo9VZ8/exec";
+
+const COURSE_ENQUIRY_URL =
   "https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
 
 let publishedCourses = [];
@@ -359,7 +362,7 @@ function renderCourses() {
       <a
         class="inquire-button"
         href="${escapeHtml(
-          COURSES_API_URL +
+          COURSE_ENQUIRY_URL +
           "?page=course-enquiry&course=" +
           encodeURIComponent(course.masterCourseId || "") +
           "&title=" +
