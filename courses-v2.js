@@ -358,12 +358,12 @@ function renderCourses() {
 
       <a
         class="inquire-button"
-        href="https://wa.me/60109202811?text=${encodeURIComponent(
-          "Hi EasyLatih, I would like to enquire about the in-house course: " +
-          course.courseTitle +
-          " (" +
-          course.masterCourseId +
-          ")"
+        href="${escapeHtml(
+          COURSES_API_URL +
+          "?page=course-enquiry&course=" +
+          encodeURIComponent(course.masterCourseId || "") +
+          "&title=" +
+          encodeURIComponent(course.courseTitle || "")
         )}"
         target="_blank"
         rel="noopener noreferrer"
@@ -487,7 +487,7 @@ if (levelFilter) {
 
 /*
   Hide the old inquiry cart because each
-  course now has its own WhatsApp enquiry.
+  course now has its own enquiry form.
 */
 const inquiryCart =
   document.getElementById("inquiryCart");
