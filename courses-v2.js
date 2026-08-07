@@ -3,11 +3,21 @@ const COURSES_API_URL =
 
 let publishedCourses = [];
 
-const coursesContainer = document.getElementById("coursesContainer");
-const searchInput = document.getElementById("searchInput");
-const categoryFilter = document.getElementById("categoryFilter");
-const levelFilter = document.getElementById("levelFilter");
-const noResultsMessage = document.getElementById("noResultsMessage");
+const coursesContainer =
+  document.getElementById("coursesContainer");
+
+const searchInput =
+  document.getElementById("searchInput");
+
+const categoryFilter =
+  document.getElementById("categoryFilter");
+
+const levelFilter =
+  document.getElementById("levelFilter");
+
+const noResultsMessage =
+  document.getElementById("noResultsMessage");
+
 
 function escapeHtml(value) {
   return String(value || "")
@@ -18,16 +28,20 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+
 function loadPublishedCourses() {
-  coursesContainer.innerHTML = "<p>Loading course catalogue...</p>";
+  coursesContainer.innerHTML =
+    "<p>Loading course catalogue...</p>";
 
   const callbackName =
     "publishedCoursesCallback_" + Date.now();
 
-  const script = document.createElement("script");
+  const script =
+    document.createElement("script");
 
   window[callbackName] = function (data) {
-    publishedCourses = Array.isArray(data) ? data : [];
+    publishedCourses =
+      Array.isArray(data) ? data : [];
 
     populateCategoryFilter();
     renderCourses();
@@ -52,11 +66,14 @@ function loadPublishedCourses() {
   document.body.appendChild(script);
 }
 
+
 function populateCategoryFilter() {
   const categories = [
     ...new Set(
       publishedCourses
-        .map(course => course.category)
+        .map(function (course) {
+          return course.category;
+        })
         .filter(Boolean)
     )
   ].sort();
@@ -64,102 +81,225 @@ function populateCategoryFilter() {
   categoryFilter.innerHTML =
     '<option value="">All Categories</option>';
 
-  categories.forEach(category => {
-    const option = document.createElement("option");
+  categories.forEach(function (category) {
+    const option =
+      document.createElement("option");
+
     option.value = category;
     option.textContent = category;
+
     categoryFilter.appendChild(option);
   });
 }
 
-function getFilteredCourses() {
-  const searchValue =
-    String(searchInput.value || "").trim().toLowerCase();
 
-  const selectedCategory = categoryFilter.value;
-
-  return publishedCourses.filter(course => {
-    const searchableText = [
-      course.courseTitle,
-      course.category,
-      course.courseOverview,
-      course.bigWhy,
-      course.learningOutcomes,
-      course.courseContent
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    if (
-      selectedCategory &&
-      course.category !== selectedCategory
-    ) {
-      return false;
-    }
-
-    if (
-      searchValue &&
-      !searchableText.includes(searchValue)
-    ) {
-      return false;
-    }
-
-    return true;
-  });
+function getCourseSummary(course) {
+  return String(
+    course.publicCourseSummary ||
+    course.courseOverview ||
+    course.shortCourseOverview ||
+    ""
+  ).trim();
 }
 
+
+function getCourseOverview(course) {
+  return String(
+    course.shortCourseOverview ||
+    course.courseOverview ||
+    ""
+  ).trim();
+}
+
+
+function getLearningOutcomes(course) {
+  const outcomes = [
+    course.learningOutcome1,
+    course.learningOutcome2,
+    course.learningOutcome3
+  ]
+    .map(function (value) {
+      return String(value || "").trim();
+    })
+    .filter(Boolean);
+
+  if (outcomes.length > 0) {
+    return outcomes;
+  }
+
+  return splitLegacyText(
+    course.learningOutcomes || ""
+  );
+}
+
+
+function getKeyTopics(course) {
+  const topics = [
+    course.keyTopic1,
+    course.keyTopic2,
+    course.keyTopic3,
+    course.keyTopic4
+  ]
+    .map(function (value) {
+      return String(value || "").trim();
+    })
+    .filter(Boolean);
+
+  if (topics.length > 0) {
+    return topics;
+  }
+
+  return splitLegacyText(
+    course.courseContent || ""
+  );
+}
+
+
+function splitLegacyText(value) {
+  const text =
+    String(value || "").trim();
+
+  if (!text) {
+    return [];
+  }
+
+  const lines = text
+    .split(/\r?\n/)
+    .map(function (line) {
+      return line
+        .replace(/^[\s•\-–—\d.)]+/, "")
+        .trim();
+    })
+    .filter(Boolean);
+
+  return lines.length > 0
+    ? lines
+    : [text];
+}
+
+
+function getFilteredCourses() {
+  const searchValue =
+    String(searchInput.value || "")
+      .trim()
+      .toLowerCase();
+
+  const selectedCategory =
+    categoryFilter.value;
+
+  return publishedCourses.filter(
+    function (course) {
+      const searchableText = [
+        course.courseTitle,
+        course.category,
+        getCourseSummary(course),
+        getCourseOverview(course),
+        getLearningOutcomes(course).join(" "),
+        getKeyTopics(course).join(" ")
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      if (
+        selectedCategory &&
+        course.category !== selectedCategory
+      ) {
+        return false;
+      }
+
+      if (
+        searchValue &&
+        !searchableText.includes(searchValue)
+      ) {
+        return false;
+      }
+
+      return true;
+    }
+  );
+}
+
+
 function renderCourses() {
-  const courses = getFilteredCourses();
+  const courses =
+    getFilteredCourses();
 
   coursesContainer.innerHTML = "";
 
   if (courses.length === 0) {
-    noResultsMessage.style.display = "block";
+    noResultsMessage.style.display =
+      "block";
+
     return;
   }
 
-  noResultsMessage.style.display = "none";
+  noResultsMessage.style.display =
+    "none";
 
-  courses.forEach(course => {
-    const card = document.createElement("article");
-    card.className = "course-card";
+  courses.forEach(function (course) {
+    const card =
+      document.createElement("article");
 
-    const hrdBadge = course.isHRDClaimable
-      ? "<span>HRD Corp Claimable</span>"
-      : "";
+    card.className =
+      "course-card";
+
+    const courseSummary =
+      getCourseSummary(course);
+
+    const courseOverview =
+      getCourseOverview(course);
+
+    const learningOutcomes =
+      getLearningOutcomes(course);
+
+    const keyTopics =
+      getKeyTopics(course);
+
+    const hrdBadge =
+      course.isHRDClaimable
+        ? "<span>HRD Corp Claimable</span>"
+        : "";
 
     card.innerHTML = `
-      <h3>${escapeHtml(course.courseTitle)}</h3>
+      <h3>
+        ${escapeHtml(course.courseTitle)}
+      </h3>
 
       <p class="course-summary">
-  ${escapeHtml(
-    truncateText(course.courseOverview, 130)
-  )}
-</p>
+        ${escapeHtml(
+          truncateText(courseSummary, 130)
+        )}
+      </p>
 
       <div class="course-meta">
         ${
           course.category
-            ? `<span>${escapeHtml(course.category)}</span>`
+            ? `<span>${escapeHtml(
+                course.category
+              )}</span>`
             : ""
         }
 
         ${
           course.duration
-            ? `<span>${escapeHtml(course.duration)}</span>`
+            ? `<span>${escapeHtml(
+                course.duration
+              )}</span>`
             : ""
         }
 
         ${
           course.deliveryMode
-            ? `<span>${escapeHtml(course.deliveryMode)}</span>`
+            ? `<span>${escapeHtml(
+                course.deliveryMode
+              )}</span>`
             : ""
         }
 
         ${hrdBadge}
       </div>
 
-           <button
+      <button
         type="button"
         class="course-details-toggle"
         onclick="toggleCourseDetails(this)"
@@ -171,12 +311,15 @@ function renderCourses() {
       <div class="course-expanded-details">
 
         ${
-          course.courseOverview
+          courseOverview
             ? `
               <div class="course-detail-section">
-                <h4>Course Overview</h4>
+                <h4>Short Course Overview</h4>
+
                 <p>
-                  ${formatMultiline(course.courseOverview)}
+                  ${formatMultiline(
+                    courseOverview
+                  )}
                 </p>
               </div>
             `
@@ -184,39 +327,28 @@ function renderCourses() {
         }
 
         ${
-          course.bigWhy
+          learningOutcomes.length > 0
             ? `
               <div class="course-detail-section">
-                <h4>Why This Course?</h4>
-                <p>
-                  ${formatMultiline(course.bigWhy)}
-                </p>
+                <h4>Key Learning Outcomes</h4>
+
+                ${renderDetailList(
+                  learningOutcomes
+                )}
               </div>
             `
             : ""
         }
 
         ${
-          course.learningOutcomes
+          keyTopics.length > 0
             ? `
               <div class="course-detail-section">
-                <h4>Learning Outcomes</h4>
-                <p>
-                  ${formatMultiline(course.learningOutcomes)}
-                </p>
-              </div>
-            `
-            : ""
-        }
+                <h4>Key Topics</h4>
 
-        ${
-          course.courseContent
-            ? `
-              <div class="course-detail-section">
-                <h4>Course Content</h4>
-                <p>
-                  ${formatMultiline(course.courseContent)}
-                </p>
+                ${renderDetailList(
+                  keyTopics
+                )}
               </div>
             `
             : ""
@@ -245,32 +377,39 @@ function renderCourses() {
   });
 }
 
-searchInput.addEventListener("input", renderCourses);
-categoryFilter.addEventListener("change", renderCourses);
 
-/*
-  Level is not included in the current Courses sheet.
-  Hide this filter temporarily to prevent confusion.
-*/
-if (levelFilter) {
-  levelFilter.style.display = "none";
+function renderDetailList(items) {
+  return `
+    <ul style="
+      margin:0;
+      padding-left:20px;
+      color:#374151;
+      font-size:14px;
+      line-height:1.65;
+    ">
+      ${items
+        .map(function (item) {
+          return `
+            <li style="
+              margin-bottom:5px;
+              overflow-wrap:anywhere;
+              word-break:break-word;
+            ">
+              ${escapeHtml(item)}
+            </li>
+          `;
+        })
+        .join("")}
+    </ul>
+  `;
 }
 
-/*
-  Existing HTML still contains an inquiry-cart button.
-  Hide it during the first dynamic catalogue test.
-*/
-const inquiryCart = document.getElementById("inquiryCart");
 
-if (inquiryCart) {
-  inquiryCart.style.display = "none";
-}
-
-loadPublishedCourses();
 function formatMultiline(text) {
   return escapeHtml(text || "")
     .replace(/\r?\n/g, "<br>");
 }
+
 
 function toggleCourseDetails(button) {
   const details =
@@ -298,16 +437,64 @@ function toggleCourseDetails(button) {
     String(isOpen)
   );
 }
-function truncateText(text, maxLength = 130) {
-  const cleanText = String(text || "").trim();
+
+
+function truncateText(
+  text,
+  maxLength = 130
+) {
+  const cleanText =
+    String(text || "").trim();
 
   if (!cleanText) {
-    return "Course details are available upon enquiry.";
+    return (
+      "Course details are available upon enquiry."
+    );
   }
 
   if (cleanText.length <= maxLength) {
     return cleanText;
   }
 
-  return cleanText.substring(0, maxLength).trim() + "...";
+  return (
+    cleanText
+      .substring(0, maxLength)
+      .trim() +
+    "..."
+  );
 }
+
+
+searchInput.addEventListener(
+  "input",
+  renderCourses
+);
+
+categoryFilter.addEventListener(
+  "change",
+  renderCourses
+);
+
+
+/*
+  Level is not included in the current
+  Courses sheet, so hide this filter.
+*/
+if (levelFilter) {
+  levelFilter.style.display = "none";
+}
+
+
+/*
+  Hide the old inquiry cart because each
+  course now has its own WhatsApp enquiry.
+*/
+const inquiryCart =
+  document.getElementById("inquiryCart");
+
+if (inquiryCart) {
+  inquiryCart.style.display = "none";
+}
+
+
+loadPublishedCourses();
