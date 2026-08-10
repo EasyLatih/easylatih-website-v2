@@ -45,6 +45,14 @@
     .calendar-btn{display:inline-block;padding:6px 10px;border-radius:999px;font-size:.75rem;font-weight:600;text-decoration:none}
     .calendar-btn-primary{background:#0d6efd;color:#fff}
     .calendar-btn-outline{background:#fff;color:#111827;border:1px solid #e5e7eb}
+    .calendar-btn-disabled{background:#e5e7eb;color:#6b7280;cursor:not-allowed;pointer-events:none}
+    .calendar-status-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:7px}
+    .calendar-status{display:inline-block;border-radius:999px;padding:4px 9px;font-size:.7rem;font-weight:700}
+    .calendar-status.confirmed{background:#dcfce7;color:#166534}
+    .calendar-status.tentative{background:#fef3c7;color:#92400e}
+    .calendar-status.active{background:#dbeafe;color:#1d4ed8}
+    .calendar-status.closed{background:#fee2e2;color:#991b1b}
+    .calendar-availability{font-size:.75rem;font-weight:600;color:#374151}
     .calendar-empty-state{text-align:center;color:#6b7280;padding:2rem}
     .calendar-reset-btn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 14px;cursor:pointer}
     .calendar-filter-extra{display:flex;justify-content:flex-end;margin-top:12px}
@@ -194,7 +202,7 @@
 </footer>
 
 <script>
-const WEBAPP = "https://script.google.com/macros/s/AKfycbwp9TPceQ4TllKPJUPzmTt_COiNTnzeYmj8bx559HV57dybksFXQe9O0FSX_Eo9VZ8/exec";
+const WEBAPP = "https://script.google.com/a/macros/easylatih.my/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
 
 let events2026 = [];
 
@@ -290,6 +298,87 @@ const selectedCourse = params.get("course");
   });
 }
 
+function getProgrammeAvailabilityUI(ev) {
+  const status = String(ev.programmeStatus || "").toUpperCase();
+
+  let statusLabel = status || "SCHEDULED";
+  let statusClass = "active";
+
+  if (status === "CONFIRMED") {
+    statusClass = "confirmed";
+  } else if (status === "TENTATIVE") {
+    statusClass = "tentative";
+  }
+
+  if (ev.programmeStarted) {
+    return {
+      statusHtml:
+        '<span class="calendar-status closed">PROGRAMME ENDED</span>',
+      availabilityHtml:
+        '<span class="calendar-availability">Registration closed</span>',
+      registerHtml:
+        '<span class="calendar-btn calendar-btn-disabled">Registration Closed</span>'
+    };
+  }
+
+  if (ev.isFull) {
+    return {
+      statusHtml:
+        '<span class="calendar-status ' + statusClass + '">' +
+        statusLabel +
+        '</span>',
+      availabilityHtml:
+        '<span class="calendar-availability">FULL</span>',
+      registerHtml:
+        '<span class="calendar-btn calendar-btn-disabled">Registration Full</span>'
+    };
+  }
+
+  if (ev.registrationClosed) {
+    return {
+      statusHtml:
+        '<span class="calendar-status ' + statusClass + '">' +
+        statusLabel +
+        '</span>',
+      availabilityHtml:
+        '<span class="calendar-availability">Registration closed</span>',
+      registerHtml:
+        '<span class="calendar-btn calendar-btn-disabled">Registration Closed</span>'
+    };
+  }
+
+  if (ev.registrationOpen) {
+    const seatText =
+      ev.maxPax > 0 && ev.remainingSeats !== ""
+        ? ev.remainingSeats + " seat(s) remaining"
+        : "Registration open";
+
+    return {
+      statusHtml:
+        '<span class="calendar-status ' + statusClass + '">' +
+        statusLabel +
+        '</span>',
+      availabilityHtml:
+        '<span class="calendar-availability">' +
+        seatText +
+        '</span>',
+      registerHtml:
+        ev.registrationLink
+          ? '<a href="' + ev.registrationLink + '" target="_blank" class="calendar-btn calendar-btn-primary">Register Now</a>'
+          : '<span class="calendar-btn calendar-btn-disabled">Registration Unavailable</span>'
+    };
+  }
+
+  return {
+    statusHtml:
+      '<span class="calendar-status closed">REGISTRATION UNAVAILABLE</span>',
+    availabilityHtml:
+      '<span class="calendar-availability">Registration unavailable</span>',
+    registerHtml:
+      '<span class="calendar-btn calendar-btn-disabled">Registration Unavailable</span>'
+  };
+}
+
 function renderCalendar() {
   const events = getFilteredEvents();
   const map = {};
@@ -357,9 +446,11 @@ function renderCalendar() {
           ? `<a href="${ev.trainerProfileUrl}" target="_blank" class="calendar-btn calendar-btn-outline">👨‍🏫 Trainer Profile</a>`
           : "";
 
-        const registerBtn = ev.registrationLink
-          ? `<a href="${ev.registrationLink}" target="_blank" class="calendar-btn calendar-btn-primary">Register Now</a>`
-          : "";
+        const availabilityUI =
+          getProgrammeAvailabilityUI(ev);
+
+        const registerBtn =
+          availabilityUI.registerHtml;
 
         const shareUrl =
   "https://www.easylatih.my/schedule.html?course=" +
@@ -405,6 +496,11 @@ const copyBtn = `
 
             <div class="calendar-session-meta">${ev.programDate || ev.startDate || ""}</div>
             <div class="calendar-session-meta">${ev.venue || ""}</div>
+
+            <div class="calendar-status-row">
+              ${availabilityUI.statusHtml}
+              ${availabilityUI.availabilityHtml}
+            </div>
 
             <div class="calendar-session-actions">
 ${contentBtn}
