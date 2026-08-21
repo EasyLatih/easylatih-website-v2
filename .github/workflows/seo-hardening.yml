@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'index.html'
+      - 'courses.html'
+      - 'room-rental.html'
+      - 'schedule.html'
+      - 'blog.html'
       - 'scripts/seo-hardening.mjs'
       - '.github/workflows/seo-hardening.yml'
 
@@ -12,6 +17,7 @@ permissions:
 
 jobs:
   harden-seo:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
