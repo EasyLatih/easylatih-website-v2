@@ -1,0 +1,38 @@
+name: EasyLatih SEO Hardening
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/seo-hardening.mjs'
+      - '.github/workflows/seo-hardening.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden-seo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Apply SEO metadata and sitemap
+        run: node scripts/seo-hardening.mjs
+
+      - name: Commit SEO updates
+        run: |
+          if [ -z "$(git status --porcelain -- index.html courses.html room-rental.html schedule.html blog.html robots.txt sitemap.xml)" ]; then
+            echo "No SEO changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html courses.html room-rental.html schedule.html blog.html robots.txt sitemap.xml
+          git commit -m "harden EasyLatih technical SEO"
+          git push
