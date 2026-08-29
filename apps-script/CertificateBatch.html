@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manual Certificate Batch | EasyLatih</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --navy:#0d3b66;
+      --navy-dark:#082a49;
+      --bg:#f6f8fb;
+      --text:#172033;
+      --muted:#667085;
+      --line:#e4e7ec;
+      --green:#067647;
+      --green-bg:#ecfdf3;
+      --amber:#b54708;
+      --amber-bg:#fffaeb;
+      --red:#b42318;
+      --red-bg:#fef3f2;
+      --blue-bg:#eff8ff;
+      --radius:14px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,Helvetica,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    header{
+      background:var(--navy);
+      color:#fff;
+      padding:18px 22px;
+    }
+
+    header .inner{
+      max-width:1180px;
+      margin:auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    h1{font-size:22px;margin:0}
+    h2{font-size:18px;margin:0 0 8px}
+    h3{font-size:15px;margin:0}
+    p{line-height:1.55}
+
+    .container{
+      max-width:1180px;
+      margin:auto;
+      padding:24px;
+    }
+
+    .notice{
+      border-radius:12px;
+      padding:13px 15px;
+      margin-bottom:18px;
+      border:1px solid #b2ddff;
+      background:var(--blue-bg);
+      color:#175cd3;
+      line-height:1.5;
+    }
+
+    .notice.staging{
+      border-color:#fedf89;
+      background:var(--amber-bg);
+      color:#93370d;
+    }
+
+    .card{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:20px;
+      margin-bottom:18px;
+      box-shadow:0 2px 8px rgba(16,24,40,.04);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:14px;
+    }
+
+    .grid-4{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+    }
+
+    label{
+      display:block;
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:6px;
+    }
+
+    input,textarea{
+      width:100%;
+      border:1px solid #d0d5dd;
+      border-radius:9px;
+      padding:11px 12px;
+      font:inherit;
+      color:var(--text);
+      background:#fff;
+    }
+
+    input:focus,textarea:focus{
+      outline:2px solid #b2ddff;
+      border-color:#53b1fd;
+    }
+
+    textarea{
+      min-height:140px;
+      resize:vertical;
+    }
+
+    .help{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:5px;
+      line-height:1.45;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+
+    button{
+      border:0;
+      border-radius:9px;
+      padding:11px 15px;
+      font-weight:700;
+      cursor:pointer;
+      font:inherit;
+    }
+
+    button.primary{background:var(--navy);color:#fff}
+    button.primary:hover{background:var(--navy-dark)}
+    button.secondary{background:#fff;color:var(--navy);border:1px solid var(--navy)}
+    button.success{background:#067647;color:#fff}
+    button.danger{background:#b42318;color:#fff}
+    button:disabled{opacity:.45;cursor:not-allowed}
+
+    .upload-box{
+      border:2px dashed #b8c3d1;
+      border-radius:12px;
+      padding:22px;
+      text-align:center;
+      background:#fbfcfe;
+    }
+
+    .upload-box input{max-width:500px;margin:auto}
+
+    .tabs{
+      display:flex;
+      gap:8px;
+      border-bottom:1px solid var(--line);
+      margin-bottom:16px;
+    }
+
+    .tab{
+      padding:10px 12px;
+      background:transparent;
+      color:var(--muted);
+      border-radius:8px 8px 0 0;
+    }
+
+    .tab.active{
+      color:var(--navy);
+      border-bottom:3px solid var(--navy);
+    }
+
+    .hidden{display:none!important}
+
+    .table-wrap{
+      width:100%;
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:10px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:940px;
+    }
+
+    th,td{
+      padding:9px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      vertical-align:middle;
+      font-size:13px;
+    }
+
+    th{
+      position:sticky;
+      top:0;
+      background:#f9fafb;
+      z-index:1;
+      color:#344054;
+    }
+
+    td input{
+      min-width:150px;
+      padding:8px;
+      font-size:13px;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      padding:4px 8px;
+      font-size:11px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .badge.good{background:var(--green-bg);color:var(--green)}
+    .badge.warn{background:var(--amber-bg);color:var(--amber)}
+    .badge.bad{background:var(--red-bg);color:var(--red)}
+    .badge.neutral{background:#f2f4f7;color:#475467}
+
+    .metric{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:14px;
+    }
+
+    .metric .label{font-size:12px;color:var(--muted);font-weight:700}
+    .metric .value{font-size:24px;font-weight:800;color:var(--navy);margin-top:4px}
+
+    .progress{
+      height:9px;
+      border-radius:999px;
+      background:#eaecf0;
+      overflow:hidden;
+      margin:12px 0;
+    }
+
+    .progress > div{
+      width:0;
+      height:100%;
+      background:var(--navy);
+      transition:width .25s ease;
+    }
+
+    .status-line{
+      font-size:13px;
+      color:var(--muted);
+      min-height:20px;
+      margin-top:8px;
+    }
+
+    .section-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+
+    .mini-note{
+      font-size:12px;
+      color:var(--muted);
+      max-width:680px;
+      line-height:1.5;
+    }
+
+    @media(max-width:760px){
+      .container{padding:14px}
+      .grid,.grid-4{grid-template-columns:1fr}
+      .card{padding:15px}
+      button{width:100%}
+      .actions{display:grid;grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="inner">
+    <div>
+      <h1>EasyLatih V2 · Manual Certificate Batch</h1>
+      <div style="opacity:.82;font-size:13px;margin-top:4px">Upload participant list → preview → generate PDF certificates → email participant + CC HR</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div id="environmentNotice" class="notice hidden"></div>
+
+  <div class="card" id="programCard">
+    <div class="section-head">
+      <div>
+        <h2>1. Program Details</h2>
+        <div class="mini-note">Use this for programmes that are not already scheduled in EasyLatih V2. The programme name is typed manually.</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label for="programName">Program Name *</label>
+        <input id="programName" placeholder="e.g. Supply Chain and Inventory Management for Refurbished Mobile Phone Operations">
+      </div>
+      <div>
+        <label for="venue">Venue</label>
+        <input id="venue" placeholder="e.g. Kuantan, Pahang">
+      </div>
+      <div>
+        <label for="programStartDate">Start Date *</label>
+        <input id="programStartDate" type="date">
+      </div>
+      <div>
+        <label for="programEndDate">End Date</label>
+        <input id="programEndDate" type="date">
+        <div class="help">Leave blank for a one-day programme.</div>
+      </div>
+      <div>
+        <label for="defaultHrEmail">Default HR Email</label>
+        <input id="defaultHrEmail" type="email" placeholder="hr@company.com">
+        <div class="help">Optional. Used only when a participant row has no HR Email.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="participantCard">
+    <div class="section-head">
+      <div>
+        <h2>2. Participant List</h2>
+        <div class="mini-note">Upload Excel/CSV or paste directly from Excel/Google Sheets. Supported columns: Participant Name, Email, HR Email, IC/Passport.</div>
+      </div>
+      <button class="secondary" onclick="downloadTemplate()">Download CSV Template</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabUpload" onclick="switchTab('upload')">Upload Excel / CSV</button>
+      <button class="tab" id="tabPaste" onclick="switchTab('paste')">Paste from Sheet</button>
+    </div>
+
+    <div id="uploadPanel">
+      <div class="upload-box">
+        <strong>Select .xlsx, .xls or .csv</strong>
+        <p class="help">The first worksheet will be used. Column names are matched automatically.</p>
+        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])">
+      </div>
+    </div>
+
+    <div id="pastePanel" class="hidden">
+      <label for="pasteData">Paste rows here</label>
+      <textarea id="pasteData" placeholder="Participant Name&#9;Email&#9;HR Email&#9;IC/Passport&#10;Ahmad Ali&#9;ahmad@example.com&#9;hr@example.com&#9;900101-01-1234"></textarea>
+      <div class="actions">
+        <button class="secondary" onclick="parsePastedData()">Preview Pasted Data</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" onclick="addBlankRow()">+ Add Participant Manually</button>
+      <button class="secondary" onclick="clearParticipants()">Clear List</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="previewCard">
+    <div class="section-head">
+      <div>
+        <h2>3. Preview & Validate</h2>
+        <div id="previewSummary" class="mini-note"></div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Participant Name *</th>
+            <th>Email *</th>
+            <th>HR Email</th>
+            <th>IC / Passport</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="saveBatchBtn" onclick="saveBatch()">Save Manual Batch</button>
+    </div>
+    <div id="saveStatus" class="status-line"></div>
+  </div>
+
+  <div class="card hidden" id="processCard">
+    <div class="section-head">
+      <div>
+        <h2>4. Generate & Send</h2>
+        <div id="batchDescription" class="mini-note"></div>
+      </div>
+      <span id="batchBadge" class="badge neutral"></span>
+    </div>
+
+    <div class="grid-4">
+      <div class="metric"><div class="label">Participants</div><div class="value" id="mTotal">0</div></div>
+      <div class="metric"><div class="label">Certificates Generated</div><div class="value" id="mGenerated">0</div></div>
+      <div class="metric"><div class="label">Emails Sent</div><div class="value" id="mSent">0</div></div>
+      <div class="metric"><div class="label">Missing Email</div><div class="value" id="mMissing">0</div></div>
+    </div>
+
+    <div class="progress"><div id="progressBar"></div></div>
+    <div id="processStatus" class="status-line"></div>
+
+    <div class="actions">
+      <button class="primary" id="generateBtn" onclick="generateCertificates()">Generate Certificates</button>
+      <button class="success" id="sendBtn" onclick="sendCertificates()" disabled>Send Certificates by Email</button>
+      <button class="secondary" onclick="refreshBatchStatus()">Refresh Status</button>
+    </div>
+
+    <div style="margin-top:18px" class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Participant</th>
+            <th>Email</th>
+            <th>HR CC</th>
+            <th>Certificate</th>
+            <th>Email</th>
+            <th>PDF</th>
+          </tr>
+        </thead>
+        <tbody id="batchBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let participants = [];
+  let batchId = "";
+  let config = { isStaging:false, stagingEmail:"", generateChunkSize:40, emailChunkSize:30 };
+  let batchStatus = null;
+
+  document.addEventListener("DOMContentLoaded", async function(){
+    try{
+      config = await serverCall("getManualCertificateConfig");
+      showEnvironment();
+    }catch(error){
+      showError("Cannot load certificate module configuration: " + error.message);
+    }
+  });
+
+  function serverCall(functionName, ...args){
+    return new Promise((resolve,reject) => {
+      const runner = google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error(err && err.message ? err.message : String(err))));
+      runner[functionName](...args);
+    });
+  }
+
+  function showEnvironment(){
+    const box = document.getElementById("environmentNotice");
+    box.classList.remove("hidden");
+    if(config.isStaging){
+      box.className = "notice staging";
+      box.innerHTML = `<strong>STAGING MODE</strong><br>Email will be redirected to <strong>${escapeHtml(config.stagingEmail || "staging recipient")}</strong> and HR CC will be suppressed. No participant will receive a real email from this staging deployment.`;
+    }else{
+      box.className = "notice";
+      box.innerHTML = `<strong>PRODUCTION MODE</strong><br>When you click Send Certificates, email will go to each participant and HR Email will be added as CC where provided.`;
+    }
+  }
+
+  function switchTab(tab){
+    const upload = tab === "upload";
+    document.getElementById("uploadPanel").classList.toggle("hidden", !upload);
+    document.getElementById("pastePanel").classList.toggle("hidden", upload);
+    document.getElementById("tabUpload").classList.toggle("active", upload);
+    document.getElementById("tabPaste").classList.toggle("active", !upload);
+  }
+
+  async function handleFile(file){
+    if(!file) return;
+    try{
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, {type:"array"});
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:"", raw:false});
+      participants = rowsToParticipants(rows);
+      applyDefaultHrEmail();
+      renderPreview();
+    }catch(error){
+      showError("Cannot read file: " + error.message);
+    }
+  }
+
+  function parsePastedData(){
+    const text = document.getElementById("pasteData").value.trim();
+    if(!text){
+      showError("Paste participant data first.");
+      return;
+    }
+
+    const rows = text.split(/\r?\n/).filter(Boolean).map(line => line.split("\t"));
+    participants = rowsToParticipants(rows);
+    applyDefaultHrEmail();
+    renderPreview();
+  }
+
+  function rowsToParticipants(rows){
+    if(!rows || !rows.length) return [];
+
+    const first = rows[0].map(v => normalizeKey(v));
+    const nameIndex = findHeaderIndex(first, ["participantname","name","fullname","namapeserta","nama"]);
+    const emailIndex = findHeaderIndex(first, ["email","participantemail","emailpeserta"]);
+    const hrIndex = findHeaderIndex(first, ["hremail","emailhr","hremailaddress","hr"]);
+    const icIndex = findHeaderIndex(first, ["icno","ic","nric","passport","icpassport","mykad"]);
+    const hasHeader = nameIndex >= 0 || emailIndex >= 0 || hrIndex >= 0 || icIndex >= 0;
+
+    if(!hasHeader){
+      return rows
+        .filter(row => String(row[0] || "").trim())
+        .map(row => ({
+          participantName:String(row[0] || "").trim(),
+          email:String(row[1] || "").trim(),
+          hrEmail:String(row[2] || "").trim(),
+          icNo:String(row[3] || "").trim()
+        }));
+    }
+
+    return rows.slice(1)
+      .filter(row => row.some(v => String(v || "").trim()))
+      .map(row => ({
+        participantName:nameIndex >= 0 ? String(row[nameIndex] || "").trim() : "",
+        email:emailIndex >= 0 ? String(row[emailIndex] || "").trim() : "",
+        hrEmail:hrIndex >= 0 ? String(row[hrIndex] || "").trim() : "",
+        icNo:icIndex >= 0 ? String(row[icIndex] || "").trim() : ""
+      }));
+  }
+
+  function normalizeKey(value){
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+  function findHeaderIndex(headers, aliases){
+    for(const alias of aliases){
+      const index = headers.indexOf(alias);
+      if(index >= 0) return index;
+    }
+    return -1;
+  }
+
+  function applyDefaultHrEmail(){
+    const defaultHr = document.getElementById("defaultHrEmail").value.trim();
+    if(!defaultHr) return;
+    participants = participants.map(p => ({...p, hrEmail:p.hrEmail || defaultHr}));
+  }
+
+  function addBlankRow(){
+    participants.push({participantName:"",email:"",hrEmail:document.getElementById("defaultHrEmail").value.trim(),icNo:""});
+    renderPreview();
+  }
+
+  function clearParticipants(){
+    participants = [];
+    batchId = "";
+    batchStatus = null;
+    document.getElementById("fileInput").value = "";
+    document.getElementById("pasteData").value = "";
+    document.getElementById("previewCard").classList.add("hidden");
+    document.getElementById("processCard").classList.add("hidden");
+  }
+
+  function renderPreview(){
+    const card = document.getElementById("previewCard");
+    card.classList.remove("hidden");
+    const body = document.getElementById("previewBody");
+
+    if(!participants.length){
+      body.innerHTML = `<tr><td colspan="7">No participant rows found.</td></tr>`;
+      document.getElementById("previewSummary").textContent = "0 participants";
+      return;
+    }
+
+    body.innerHTML = participants.map((p,index) => {
+      const validName = Boolean(String(p.participantName || "").trim());
+      const validEmail = isValidEmail(p.email);
+      const status = !validName
+        ? `<span class="badge bad">Missing name</span>`
+        : !p.email
+          ? `<span class="badge warn">Missing email</span>`
+          : !validEmail
+            ? `<span class="badge bad">Invalid email</span>`
+            : `<span class="badge good">Ready</span>`;
+
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td><input value="${escapeAttr(p.participantName)}" oninput="editParticipant(${index},'participantName',this.value)"></td>
+          <td><input value="${escapeAttr(p.email)}" oninput="editParticipant(${index},'email',this.value)"></td>
+          <td><input value="${escapeAttr(p.hrEmail)}" oninput="editParticipant(${index},'hrEmail',this.value)"></td>
+          <td><input value="${escapeAttr(p.icNo)}" oninput="editParticipant(${index},'icNo',this.value)"></td>
+          <td id="rowStatus${index}">${status}</td>
+          <td><button class="danger" style="padding:7px 10px" onclick="removeParticipant(${index})">Remove</button></td>
+        </tr>`;
+    }).join("");
+
+    updatePreviewSummary();
+  }
+
+  function editParticipant(index,field,value){
+    participants[index][field] = value;
+    const p = participants[index];
+    const cell = document.getElementById(`rowStatus${index}`);
+    if(!cell) return;
+
+    if(!String(p.participantName || "").trim()){
+      cell.innerHTML = `<span class="badge bad">Missing name</span>`;
+    }else if(!String(p.email || "").trim()){
+      cell.innerHTML = `<span class="badge warn">Missing email</span>`;
+    }else if(!isValidEmail(p.email)){
+      cell.innerHTML = `<span class="badge bad">Invalid email</span>`;
+    }else{
+      cell.innerHTML = `<span class="badge good">Ready</span>`;
+    }
+    updatePreviewSummary();
+  }
+
+  function removeParticipant(index){
+    participants.splice(index,1);
+    renderPreview();
+  }
+
+  function updatePreviewSummary(){
+    const validNames = participants.filter(p => String(p.participantName || "").trim()).length;
+    const validEmails = participants.filter(p => isValidEmail(p.email)).length;
+    const missingEmails = participants.filter(p => !String(p.email || "").trim()).length;
+    const invalidEmails = participants.filter(p => String(p.email || "").trim() && !isValidEmail(p.email)).length;
+
+    document.getElementById("previewSummary").innerHTML =
+      `<strong>${participants.length}</strong> rows · ` +
+      `<strong>${validNames}</strong> names · ` +
+      `<strong>${validEmails}</strong> valid participant emails · ` +
+      `<strong>${missingEmails}</strong> missing email · ` +
+      `<strong>${invalidEmails}</strong> invalid email`;
+  }
+
+  async function saveBatch(){
+    if(batchId){
+      showError("This list has already been saved as batch " + batchId + ". Clear the list to create another batch.");
+      return;
+    }
+
+    const programName = document.getElementById("programName").value.trim();
+    const venue = document.getElementById("venue").value.trim();
+    const programStartDate = document.getElementById("programStartDate").value;
+    const programEndDate = document.getElementById("programEndDate").value || programStartDate;
+    const defaultHrEmail = document.getElementById("defaultHrEmail").value.trim();
+
+    if(!programName){ showError("Program Name is required."); return; }
+    if(!programStartDate){ showError("Start Date is required."); return; }
+    if(!participants.length){ showError("Add at least one participant."); return; }
+
+    applyDefaultHrEmail();
+
+    const cleanRows = participants
+      .filter(p => String(p.participantName || "").trim())
+      .map(p => ({
+        participantName:String(p.participantName || "").trim(),
+        email:String(p.email || "").trim(),
+        hrEmail:String(p.hrEmail || defaultHrEmail || "").trim(),
+        icNo:String(p.icNo || "").trim()
+      }));
+
+    if(!cleanRows.length){ showError("No participant with a valid name was found."); return; }
+
+    setBusy("saveBatchBtn", true, "Saving...");
+    document.getElementById("saveStatus").textContent = "Saving participant batch to EasyLatih V2...";
+
+    try{
+      const result = await serverCall("importManualCertificateBatch", {
+        programName,
+        venue,
+        programStartDate,
+        programEndDate,
+        participants:cleanRows
+      });
+
+      batchId = result.batchId;
+      batchStatus = result.status;
+      document.getElementById("processCard").classList.remove("hidden");
+      document.getElementById("saveStatus").innerHTML = `<span class="badge good">Saved</span> ${result.imported} participant(s) imported. Batch: <strong>${escapeHtml(batchId)}</strong>`;
+      renderBatchStatus(result.status);
+      document.getElementById("processCard").scrollIntoView({behavior:"smooth",block:"start"});
+    }catch(error){
+      document.getElementById("saveStatus").textContent = "";
+      showError("Cannot save batch: " + error.message);
+    }finally{
+      setBusy("saveBatchBtn", false, "Save Manual Batch");
+    }
+  }
+
+  async function generateCertificates(){
+    if(!batchId){ showError("Save the batch first."); return; }
+
+    setBusy("generateBtn", true, "Generating...");
+    document.getElementById("sendBtn").disabled = true;
+    document.getElementById("processStatus").textContent = "Generating certificate PDFs from the existing EasyLatih Google Slides template...";
+
+    try{
+      let loops = 0;
+      while(loops < 30){
+        loops++;
+        const result = await serverCall("generateManualCertificateBatch", batchId, config.generateChunkSize || 40);
+        batchStatus = result.status;
+        renderBatchStatus(result.status);
+        document.getElementById("processStatus").textContent =
+          `Generated this round: ${result.generated}. Failed: ${result.failed}. Remaining: ${result.remaining}.`;
+        if(!result.remaining) break;
+      }
+
+      await refreshBatchStatus();
+      document.getElementById("processStatus").innerHTML = `<span class="badge good">Generation complete</span> Review the rows below before sending email.`;
+    }catch(error){
+      showError("Certificate generation failed: " + error.message);
+    }finally{
+      setBusy("generateBtn", false, "Generate Certificates");
+      updateActionState();
+    }
+  }
+
+  async function sendCertificates(){
+    if(!batchId){ showError("Save the batch first."); return; }
+
+    const total = batchStatus && batchStatus.counts ? batchStatus.counts.total : 0;
+    const message = config.isStaging
+      ? `Send staging test emails for this batch? They will be redirected to ${config.stagingEmail || "the staging recipient"}.`
+      : `Send certificate emails to up to ${total} participant(s)? HR will be CC'd where HR Email is available.`;
+
+    if(!confirm(message)) return;
+
+    setBusy("sendBtn", true, "Sending...");
+    document.getElementById("generateBtn").disabled = true;
+    document.getElementById("processStatus").textContent = "Sending certificate emails with PDF attachments...";
+
+    try{
+      let loops = 0;
+      while(loops < 40){
+        loops++;
+        const result = await serverCall("sendManualCertificateBatch", batchId, config.emailChunkSize || 30);
+        batchStatus = result.status;
+        renderBatchStatus(result.status);
+        document.getElementById("processStatus").textContent =
+          `Sent this round: ${result.sent}. Failed: ${result.failed}. Missing email: ${result.missingEmail}. Remaining: ${result.remaining}.`;
+        if(!result.remaining) break;
+      }
+
+      await refreshBatchStatus();
+      document.getElementById("processStatus").innerHTML = `<span class="badge good">Email process complete</span> Check individual status below.`;
+    }catch(error){
+      showError("Email sending failed: " + error.message);
+    }finally{
+      document.getElementById("generateBtn").disabled = false;
+      setBusy("sendBtn", false, "Send Certificates by Email");
+      updateActionState();
+    }
+  }
+
+  async function refreshBatchStatus(){
+    if(!batchId) return;
+    try{
+      const status = await serverCall("getManualCertificateBatchStatus", batchId);
+      batchStatus = status;
+      renderBatchStatus(status);
+      return status;
+    }catch(error){
+      showError("Cannot refresh batch: " + error.message);
+    }
+  }
+
+  function renderBatchStatus(status){
+    if(!status || !status.counts) return;
+    const c = status.counts;
+    const p = status.programme || {};
+
+    document.getElementById("mTotal").textContent = c.total || 0;
+    document.getElementById("mGenerated").textContent = c.generated || 0;
+    document.getElementById("mSent").textContent = c.sent || 0;
+    document.getElementById("mMissing").textContent = c.missingEmail || 0;
+    document.getElementById("batchBadge").textContent = batchId;
+    document.getElementById("batchDescription").innerHTML =
+      `<strong>${escapeHtml(p.programName || "")}</strong> · ${escapeHtml(p.programDate || "")} · ${escapeHtml(p.venue || "")}`;
+
+    const generatedPct = c.total ? Math.round((c.generated / c.total) * 100) : 0;
+    document.getElementById("progressBar").style.width = generatedPct + "%";
+
+    const rows = status.rows || [];
+    document.getElementById("batchBody").innerHTML = rows.length ? rows.map(row => {
+      const certBadge = row.certificateStatus === "GENERATED"
+        ? `<span class="badge good">GENERATED</span>`
+        : `<span class="badge neutral">${escapeHtml(row.certificateStatus || "PENDING")}</span>`;
+
+      let emailBadge = `<span class="badge neutral">${escapeHtml(row.emailStatus || "PENDING")}</span>`;
+      if(row.emailStatus === "SENT") emailBadge = `<span class="badge good">SENT</span>`;
+      if(row.emailStatus === "MISSING_EMAIL") emailBadge = `<span class="badge warn">MISSING EMAIL</span>`;
+      if(row.emailStatus === "FAILED") emailBadge = `<span class="badge bad">FAILED</span>`;
+
+      const pdf = row.certificateUrl
+        ? `<a href="${escapeAttr(row.certificateUrl)}" target="_blank">Open PDF</a>`
+        : "-";
+
+      return `<tr>
+        <td>${escapeHtml(row.participantName || "")}</td>
+        <td>${escapeHtml(row.email || "-")}</td>
+        <td>${escapeHtml(row.hrEmail || "-")}</td>
+        <td>${certBadge}<br><small>${escapeHtml(row.certificateNo || "")}</small></td>
+        <td>${emailBadge}</td>
+        <td>${pdf}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="6">No rows found for this batch.</td></tr>`;
+
+    updateActionState();
+  }
+
+  function updateActionState(){
+    if(!batchStatus || !batchStatus.counts){
+      document.getElementById("sendBtn").disabled = true;
+      return;
+    }
+    const c = batchStatus.counts;
+    const allGenerated = c.total > 0 && c.generated === c.total;
+    document.getElementById("sendBtn").disabled = !allGenerated;
+  }
+
+  function setBusy(id,busy,label){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.disabled = busy;
+    el.textContent = label;
+  }
+
+  function isValidEmail(value){
+    const email = String(value || "").trim();
+    if(!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function downloadTemplate(){
+    const csv = [
+      ["Participant Name","Email","HR Email","IC/Passport"],
+      ["Ahmad Ali","ahmad@example.com","hr@example.com","900101-01-1234"],
+      ["Siti Aminah","siti@example.com","hr@example.com",""]
+    ].map(row => row.map(csvCell).join(",")).join("\r\n");
+
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "easylatih-certificate-participants-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function csvCell(value){
+    return `"${String(value || "").replace(/"/g,'""')}"`;
+  }
+
+  function showError(message){
+    alert(message);
+  }
+
+  function escapeHtml(value){
+    return String(value == null ? "" : value)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+
+  function escapeAttr(value){
+    return escapeHtml(value);
+  }
+</script>
+</body>
+</html>
