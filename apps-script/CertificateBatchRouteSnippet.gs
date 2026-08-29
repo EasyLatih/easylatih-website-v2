@@ -1,13 +1,22 @@
 /**
- * Add this block inside the existing EasyLatih V2 doGet(e),
- * after requestedPage/page has been resolved and before the default Index return.
+ * Paste this block INSIDE the existing EasyLatih V2 doGet(e),
+ * before the final/default Index return.
  *
  * Preferred URL:
  *   .../exec?page=certificate-batch
+ *
+ * This version does not depend on an existing `page` or `requestedPage`
+ * variable, so it is safe with the current EasyLatih V2 doGet structure.
  */
 
 // START: Manual Certificate Batch route
-if (requestedPage === "certificate-batch" || page === "certificate-batch") {
+const certificateBatchPage = String(
+  e && e.parameter && e.parameter.page
+    ? e.parameter.page
+    : ""
+).trim();
+
+if (certificateBatchPage === "certificate-batch") {
   try {
     assertTrainerAdminAccess_();
 
