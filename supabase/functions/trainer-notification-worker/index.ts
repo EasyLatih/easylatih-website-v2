@@ -17,13 +17,27 @@ function emailBody(row:any){
   const portal='https://www.easylatih.my/trainer/';
   const type=clean(row.notification_type);
   const title=clean(row.payload?.title);
-  const heading=type==='NEW_TRAINING_OPPORTUNITY'?'New Training Opportunity':'Trainer Portal Update';
-  const detail=type==='NEW_TRAINING_OPPORTUNITY'
-    ? `A new training opportunity${title?` (${title})`:''} matching your EasyLatih trainer profile is available.`
-    : 'There is a new update in your EasyLatih Trainer Portal.';
+  const label=title?` (${title})`:'';
+  let heading='Trainer Portal Update';
+  let detail='There is a new update in your EasyLatih Trainer Portal.';
+
+  if(type==='NEW_TRAINING_OPPORTUNITY'){
+    heading='New Training Opportunity';
+    detail=`A new training opportunity${label} matching your EasyLatih trainer profile is available.`;
+  }else if(type==='OPPORTUNITY_AWARDED'){
+    heading='Training Opportunity Awarded';
+    detail=`Congratulations. EasyLatih has selected you for the training opportunity${label}. Please log in to the portal for the current status and next steps.`;
+  }else if(type==='OPPORTUNITY_CANCELLED'){
+    heading='Training Opportunity Cancelled';
+    detail=`The training opportunity${label} has been cancelled. No further response is required.`;
+  }else if(type==='OPPORTUNITY_CLOSED'){
+    heading='Training Opportunity Closed';
+    detail=`The training opportunity${label} is now closed. Thank you for your response and interest.`;
+  }
+
   return {
-    text:`${heading}\n\n${detail}\n\nPlease log in to your EasyLatih Trainer Portal to view the details and respond.\n\n${portal}\n\nEasyLatih`,
-    html:`<!doctype html><html><body style="margin:0;background:#f5f7fa"><div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:32px"><div style="background:#0d3b66;color:white;padding:18px 22px;border-radius:12px 12px 0 0"><strong style="font-size:22px">EasyLatih</strong></div><div style="background:white;padding:26px 22px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 12px 12px"><h2 style="color:#0d3b66;margin-top:0">${heading}</h2><p>${detail.replace(/[<>]/g,'')}</p><p>Log in to your Trainer Portal to view the full details and respond.</p><p><a href="${portal}" style="display:inline-block;background:#f95f01;color:white;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Open Trainer Portal</a></p><p style="font-size:12px;color:#6b7280;margin-top:26px">Sensitive client information is not included in notification emails. Please refer to the portal for authorised details.</p></div></div></body></html>`
+    text:`${heading}\n\n${detail}\n\nPlease log in to your EasyLatih Trainer Portal for authorised details.\n\n${portal}\n\nEasyLatih`,
+    html:`<!doctype html><html><body style="margin:0;background:#f5f7fa"><div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:32px"><div style="background:#0d3b66;color:white;padding:18px 22px;border-radius:12px 12px 0 0"><strong style="font-size:22px">EasyLatih</strong></div><div style="background:white;padding:26px 22px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 12px 12px"><h2 style="color:#0d3b66;margin-top:0">${heading}</h2><p>${detail.replace(/[<>]/g,'')}</p><p>Log in to your Trainer Portal for the authorised details.</p><p><a href="${portal}" style="display:inline-block;background:#f95f01;color:white;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Open Trainer Portal</a></p><p style="font-size:12px;color:#6b7280;margin-top:26px">Sensitive client information is not included in notification emails. Please refer to the portal for authorised details.</p></div></div></body></html>`
   };
 }
 
