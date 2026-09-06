@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Trainer Collaboration Admin | EasyLatih</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../trainer/portal.css">
+</head>
+<body>
+<header class="portal-topbar">
+  <div class="portal-topbar-inner">
+    <a href="../index.html" class="portal-brand"><img src="../assets/logo.png" alt="EasyLatih"><div>Trainer Collaboration Admin<small id="adminEmail">EasyLatih</small></div></a>
+    <div class="top-actions"><button id="refreshAdmin" class="btn btn-outline">Refresh</button><button id="adminLogout" class="btn btn-outline">Log Out</button></div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="alert alert-warning hidden" data-needs-backend><strong>Development environment:</strong> This admin module is ready but inactive until the EasyLatih Supabase project is connected and an admin account is assigned through secure app metadata.</div>
+
+  <section class="hero-card">
+    <h1>Trainer Management</h1>
+    <p>Screen programme ideas, manage collaborator status, record internal notes and broadcast training opportunities to matching approved trainers.</p>
+  </section>
+
+  <section class="kpi-grid">
+    <div class="kpi-card"><strong id="registered_trainers">0</strong><span>Registered trainers</span></div>
+    <div class="kpi-card"><strong id="approved_collaborators">0</strong><span>Approved collaborators</span></div>
+    <div class="kpi-card"><strong id="active_trainers">0</strong><span>Active trainers</span></div>
+    <div class="kpi-card"><strong id="proposals_under_review">0</strong><span>Proposals under review</span></div>
+    <div class="kpi-card"><strong id="published_programmes">0</strong><span>Published programmes</span></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>Programme Screening Queue</h2><div class="muted">Review concise programme ideas first. Full trainer onboarding and full course details are only requested after “Approve to Collaborate”.</div></div></div>
+    <div class="alert alert-info">Internal Notes are hidden from trainers. “Request Clarification” and rejection comments are visible in the trainer portal.</div>
+    <div id="adminProposalList" class="list"><div class="empty">Loading proposals…</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>Create Training Opportunity</h2><div class="muted">Matching recipients are seeded by training category and trainer preferences. Location and expertise tags can be used for further filtering as we refine the matching engine.</div></div></div>
+    <div id="opportunityMessage" class="hidden"></div>
+    <form id="createOpportunityForm" class="form-card">
+      <div class="form-grid">
+        <div class="field full"><label>Opportunity / Training Title</label><input name="title" required maxlength="180" placeholder="e.g. In-House Payroll Compliance Training"></div>
+        <div class="field"><label>Training Type</label><select name="training_type" required><option value="INHOUSE">In-House Training</option><option value="PUBLIC">Public Training</option></select></div>
+        <div class="field"><label>Category</label><select name="category" required><option value="">Select</option><option>Human Resource</option><option>Finance & Accounting</option><option>Leadership</option><option>Sales & Marketing</option><option>Digital & AI</option><option>Customer Service</option><option>Quality & Productivity</option><option>Safety & Technical</option><option>Administration</option><option>Communication</option><option>Entrepreneurship</option><option>Other</option></select></div>
+        <div class="field full"><label>Specific Expertise Tags</label><input name="expertise_tags" placeholder="Payroll, Employment Act, HR Operations"></div>
+        <div class="field"><label>Client Industry</label><input name="client_industry" maxlength="140" placeholder="Manufacturing, SME, Government..."></div>
+        <div class="field"><label>Location</label><input name="location" maxlength="140" placeholder="Kuantan, Pahang"></div>
+        <div class="field"><label>Training Date</label><input name="training_date" type="date"></div>
+        <div class="field"><label>Duration</label><input name="duration" maxlength="80" placeholder="1 Day"></div>
+        <div class="field full"><label>Target Audience</label><input name="target_audience" maxlength="250" placeholder="HR Executives / Supervisors / Managers..."></div>
+        <div class="field"><label>Estimated Pax</label><input name="estimated_pax" type="number" min="1"></div>
+        <div class="field"><label>Response Deadline</label><input name="response_deadline" type="datetime-local" required></div>
+        <div class="field"><label>Trainer Fee Min (RM)</label><input name="trainer_fee_min" type="number" min="0" step="50"></div>
+        <div class="field"><label>Trainer Fee Max (RM)</label><input name="trainer_fee_max" type="number" min="0" step="50"></div>
+        <div class="field full"><label>Special Requirements</label><textarea name="special_requirements" maxlength="1200" placeholder="Certification, language, industry experience, customised outline, etc."></textarea></div>
+      </div>
+      <button class="btn btn-primary" type="submit" data-disable-without-backend>Publish Opportunity</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>Open & Recent Opportunities</h2><div class="muted">See interested trainers, proposed fee and remarks, then award the job from the same page.</div></div></div>
+    <div id="adminOpportunityList" class="list"><div class="empty">Loading opportunities…</div></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../trainer/config.js"></script>
+<script src="../trainer/app.js"></script>
+<script>EasyLatihPortal.initAdmin();</script>
+</body>
+</html>
