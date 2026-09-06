@@ -116,22 +116,65 @@
       </div>
 
       <div class="panel hidden" data-section="onboarding" data-onboarding>
-        <div class="panel-header"><div><h2>Approved Trainer Onboarding</h2><div class="muted">Only trainers approved to collaborate need to complete this section.</div></div></div>
-        <div class="alert alert-warning"><strong>Next backend step:</strong> this section will collect the professional profile photo, CV, TTT/professional documents and the full programme details required for EasyLatih review and eTRiS registration. Trainer photos will be used only according to the collaboration terms and recorded consent.</div>
+        <div class="panel-header"><div><h2>Approved Trainer Onboarding</h2><div class="muted">Only trainers approved to collaborate need to complete this section.</div></div><div id="onboardingStatus"></div></div>
+
         <div class="form-card">
-          <h3>Trainer Collaboration Terms</h3>
-          <p class="muted">Please review the current <a href="../trainer-collaboration-terms.html" target="_blank" style="color:#0d3b66;font-weight:600">Trainer Collaboration Terms</a> before continuing.</p>
+          <h3>1. Trainer Collaboration Terms</h3>
+          <p class="muted">Please review the current <a href="../trainer-collaboration-terms.html" target="_blank" style="color:#0d3b66;font-weight:600">Trainer Collaboration Terms</a>. Full onboarding can only be completed after acceptance.</p>
           <button id="acceptTermsButton" class="btn btn-primary" type="button">Accept Collaboration Terms</button>
         </div>
-        <div class="form-card" style="margin-top:1rem">
-          <h3>Onboarding checklist</h3>
-          <div class="list">
-            <div class="list-card">Professional trainer photo for website profile and approved marketing materials</div>
-            <div class="list-card">CV / trainer profile and TTT or relevant professional certificates</div>
-            <div class="list-card">Academic and professional qualifications, industry and training experience</div>
-            <div class="list-card">Full programme details for EasyLatih review and eTRiS registration</div>
-            <div class="list-card">Programme amendment and approval before website publication</div>
+
+        <form id="onboardingForm" class="form-card" style="margin-top:1rem">
+          <h3>2. Full Trainer Profile</h3>
+          <p class="muted">These details are collected only after EasyLatih has approved collaboration.</p>
+          <div id="onboardingMessage" class="hidden"></div>
+          <div class="profile-photo-grid">
+            <div id="photoPreview" class="photo-preview"><span>No photo uploaded</span></div>
+            <div>
+              <div class="field"><label>Professional Trainer Photo</label><input id="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="help">JPG, PNG or WebP, maximum 3 MB. Use a clear professional portrait suitable for website and programme marketing.</span></div>
+              <label class="checkbox-row"><input id="photoConsent" type="checkbox" name="photo_consent" value="1" required><span>I consent to EasyLatih using my submitted profile photo, name, professional biography and credentials for my trainer profile and marketing materials related to programmes promoted or delivered by EasyLatih.</span></label>
+            </div>
           </div>
+          <div class="form-grid" style="margin-top:1rem">
+            <div class="field full"><label>Academic Qualification</label><textarea id="onboarding_academic" name="academic_qualification" required placeholder="Highest qualification and relevant field(s)."></textarea></div>
+            <div class="field full"><label>Professional Certifications</label><textarea id="onboarding_certifications" name="professional_certifications" placeholder="Relevant professional certifications, licences or credentials."></textarea></div>
+            <div class="field full"><label>Working Experience</label><textarea id="onboarding_working" name="working_experience" required placeholder="Summarise relevant professional experience."></textarea></div>
+            <div class="field full"><label>Training Experience</label><textarea id="onboarding_training" name="training_experience" required placeholder="Summarise training/facilitation experience and typical audiences."></textarea></div>
+            <div class="field full"><label>Industry Experience</label><textarea id="onboarding_industry" name="industry_experience" placeholder="Industries or sectors you have worked with."></textarea></div>
+            <div class="field full"><label>HRD Corp TTT / Trainer Status</label><textarea id="onboarding_ttt" name="ttt_status" required placeholder="e.g. HRD Corp TTT Certified / Accredited Trainer / Exempted and relevant details."></textarea></div>
+          </div>
+          <div class="alert alert-info">CV, TTT certificate and supporting documents will be stored separately from the public trainer profile. EasyLatih will request/verify the required documents during onboarding.</div>
+          <button class="btn btn-primary" type="submit">Save Trainer Onboarding</button>
+        </form>
+
+        <div class="form-card" style="margin-top:1rem">
+          <h3>3. Full Programme Details</h3>
+          <p class="muted">Select an approved proposal and provide the complete details EasyLatih needs to review the programme before eTRiS registration and website publication.</p>
+          <div id="programmeFormMessage" class="hidden"></div>
+          <form id="fullProgrammeForm">
+            <div class="form-grid">
+              <div class="field full"><label>Approved Proposal</label><select id="programmeProposal" name="proposal_id" required><option value="">Select approved proposal</option></select></div>
+              <div class="field full"><label>Programme Title</label><input name="title" required maxlength="180"></div>
+              <div class="field"><label>Category</label><select name="category" required><option>Human Resource</option><option>Finance & Accounting</option><option>Leadership</option><option>Sales & Marketing</option><option>Digital & AI</option><option>Customer Service</option><option>Quality & Productivity</option><option>Safety & Technical</option><option>Administration</option><option>Communication</option><option>Entrepreneurship</option><option>Other</option></select></div>
+              <div class="field"><label>Training Type</label><select name="training_type" required><option value="BOTH">Public & In-House</option><option value="PUBLIC">Public Training</option><option value="INHOUSE">In-House Training</option></select></div>
+              <div class="field full"><label>Programme Overview</label><textarea name="programme_overview" required></textarea></div>
+              <div class="field full"><label>Learning Objectives</label><textarea name="learning_objectives" required placeholder="One objective per line"></textarea></div>
+              <div class="field full"><label>Learning Outcomes</label><textarea name="learning_outcomes" required placeholder="One outcome per line"></textarea></div>
+              <div class="field full"><label>Target Participants</label><textarea name="target_participants" required></textarea></div>
+              <div class="field full"><label>Prerequisites</label><textarea name="prerequisites" placeholder="Leave blank if none"></textarea></div>
+              <div class="field"><label>Duration</label><input name="duration" required placeholder="1 Day"></div>
+              <div class="field"><label>Total Contact Hours</label><input name="total_contact_hours" type="number" min="0" step="0.5"></div>
+              <div class="field"><label>Delivery Method</label><input name="delivery_method" required placeholder="Physical / Online / Both"></div>
+              <div class="field"><label>Maximum Participants</label><input name="maximum_participants" type="number" min="1"></div>
+              <div class="field full"><label>Training Methodology</label><textarea name="training_methodology" required placeholder="Lecture, case study, group activity, simulation, hands-on practice, etc."></textarea></div>
+              <div class="field full"><label>Course Modules / Content</label><textarea name="modules" required placeholder="One module/topic per line"></textarea><span class="help">Use concise module/topic titles. EasyLatih can request further detail through the comments thread if needed.</span></div>
+              <div class="field full"><label>Assessment Method</label><textarea name="assessment_method" placeholder="Pre/post assessment, practical exercise, quiz, presentation, etc."></textarea></div>
+              <div class="field full"><label>Venue / Equipment Requirements</label><textarea name="venue_requirements" placeholder="Computer lab, projector, software, participant laptop, special room setup, etc."></textarea></div>
+            </div>
+            <div class="btn-row"><button id="saveProgrammeDraft" type="button" class="btn btn-soft">Save Draft</button><button id="submitProgrammeReview" type="button" class="btn btn-primary">Submit for EasyLatih Review</button></div>
+          </form>
+          <div style="height:1rem"></div>
+          <div id="fullProgrammeList" class="list"><div class="empty">Approved programmes will appear here.</div></div>
         </div>
       </div>
     </section>
@@ -141,6 +184,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="onboarding.js"></script>
 <script>EasyLatihPortal.initDashboard();</script>
 </body>
 </html>
