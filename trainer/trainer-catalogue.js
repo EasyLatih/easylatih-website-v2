@@ -9,6 +9,7 @@
   };
 
   function esc(v){return String(v??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))}
+  function norm(v){return String(v||'').trim().toLowerCase().replace(/\s+/g,' ')}
 
   function enhanceTrainerCards(){
     if(!coursesContainer)return;
@@ -46,8 +47,15 @@
         isHRDClaimable:false,
         source:'trainer-portal'
       }));
-      const existingKeys=new Set(publishedCourses.map(c=>String(c.masterCourseId||c.courseTitle||'').toLowerCase()));
-      mapped.forEach(c=>{const key=String(c.masterCourseId||c.courseTitle||'').toLowerCase();if(!existingKeys.has(key)){publishedCourses.push(c);existingKeys.add(key)}});
+      const existingIds=new Set(publishedCourses.map(c=>norm(c.masterCourseId)).filter(Boolean));
+      const existingTitles=new Set(publishedCourses.map(c=>norm(c.courseTitle)).filter(Boolean));
+      mapped.forEach(c=>{
+        const id=norm(c.masterCourseId),title=norm(c.courseTitle);
+        if((id&&existingIds.has(id))||(title&&existingTitles.has(title)))return;
+        publishedCourses.push(c);
+        if(id)existingIds.add(id);
+        if(title)existingTitles.add(title);
+      });
       populateCategoryFilter();
       renderCourses();
     }catch(error){
