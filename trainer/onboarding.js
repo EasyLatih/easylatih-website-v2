@@ -23,11 +23,18 @@
     return data.user;
   }
 
+  async function refreshProfile(){
+    if(!user) user=await getUser();
+    if(!user)return null;
+    const {data,error}=await client.from('profiles').select('*').eq('id',user.id).single();
+    if(error)throw error;
+    profile=data;
+    return profile;
+  }
+
   async function loadOnboarding(){
     user=await getUser(); if(!user)return;
-    const {data:p,error:pe}=await client.from('profiles').select('*').eq('id',user.id).single();
-    if(pe)return;
-    profile=p;
+    try{await refreshProfile();}catch{return;}
     if(!['APPROVED_TO_COLLAB','ONBOARDING','ACTIVE'].includes(profile.collaboration_status)) return;
     const {data:o}=await client.from('trainer_onboarding').select('*').eq('trainer_id',user.id).maybeSingle();
     onboarding=o||null;
@@ -70,7 +77,8 @@
 
   async function saveOnboarding(e){
     e.preventDefault();
-    if(!user || !profile)return;
+    if(!user)return;
+    try{await refreshProfile();}catch(err){return msg('onboardingMessage',err.message||'Unable to refresh trainer status.','danger');}
     if(!['ONBOARDING','ACTIVE'].includes(profile.collaboration_status)){
       return msg('onboardingMessage','Please accept the Trainer Collaboration Terms before completing onboarding.','warning');
     }
@@ -79,8 +87,9 @@
     const photoFile=$('profilePhoto')?.files?.[0]||null;
     try{
       msg('onboardingMessage','Saving onboarding details…','info');
+      const oldPhotoPath=onboarding?.profile_photo_storage_path||null;
       let photoUrl=onboarding?.profile_photo_url||null;
-      let photoPath=onboarding?.profile_photo_storage_path||null;
+      let photoPath=oldPhotoPath;
       if(photoFile){
         const uploaded=await uploadPhoto(photoFile);
         photoUrl=uploaded.url; photoPath=uploaded.path;
@@ -105,7 +114,11 @@
       const {error}=await client.from('trainer_onboarding').upsert(row,{onConflict:'trainer_id'});
       if(error)throw error;
       if(!onboarding?.photo_consent_at){
-        await client.from('trainer_agreements').insert({trainer_id:user.id,agreement_type:'PHOTO_MARKETING_CONSENT',version:cfg.collaborationTermsVersion,accepted_at:row.photo_consent_at});
+        const agreement=await client.from('trainer_agreements').insert({trainer_id:user.id,agreement_type:'PHOTO_MARKETING_CONSENT',version:cfg.collaborationTermsVersion,accepted_at:row.photo_consent_at});
+        if(agreement.error)throw agreement.error;
+      }
+      if(photoFile&&oldPhotoPath&&oldPhotoPath!==photoPath){
+        await client.storage.from('trainer-profile-photos').remove([oldPhotoPath]);
       }
       msg('onboardingMessage',complete?'Onboarding saved and marked complete.':'Onboarding saved. Complete the remaining required fields to finish.','success');
       await loadOnboarding();
