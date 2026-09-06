@@ -7,6 +7,9 @@
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
   <link rel="stylesheet" href="../trainer/portal.css">
+  <style>
+    .review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;background:#f8fafc;border-radius:12px;padding:1rem;margin:.8rem 0;font-size:.86rem}.review-grid ul,.review-grid ol{margin:.4rem 0;padding-left:1.2rem}.review-grid p{margin:.4rem 0}.admin-photo{margin:.7rem 0}.admin-photo img{width:90px;height:115px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}@media(max-width:700px){.review-grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 <header class="portal-topbar">
@@ -17,11 +20,11 @@
 </header>
 
 <main class="page">
-  <div class="alert alert-warning hidden" data-needs-backend><strong>Development environment:</strong> This admin module is ready but inactive until the EasyLatih Supabase project is connected and an admin account is assigned through secure app metadata.</div>
+  <div class="alert alert-warning hidden" data-needs-backend><strong>Development environment:</strong> This admin module is inactive until the EasyLatih Supabase project is connected and an admin account is assigned through secure app metadata.</div>
 
   <section class="hero-card">
     <h1>Trainer Management</h1>
-    <p>Screen programme ideas, manage collaborator status, record internal notes and broadcast training opportunities to matching approved trainers.</p>
+    <p>Screen programme ideas, manage collaborator onboarding, review full programme details and broadcast training opportunities to matching active trainers.</p>
   </section>
 
   <section class="kpi-grid">
@@ -33,13 +36,24 @@
   </section>
 
   <section class="panel">
-    <div class="panel-header"><div><h2>Programme Screening Queue</h2><div class="muted">Review concise programme ideas first. Full trainer onboarding and full course details are only requested after “Approve to Collaborate”.</div></div></div>
+    <div class="panel-header"><div><h2>1. Programme Screening Queue</h2><div class="muted">Review concise programme ideas first. Full trainer onboarding and course details are only requested after “Approve to Collaborate”.</div></div></div>
     <div class="alert alert-info">Internal Notes are hidden from trainers. “Request Clarification” and rejection comments are visible in the trainer portal.</div>
     <div id="adminProposalList" class="list"><div class="empty">Loading proposals…</div></div>
   </section>
 
   <section class="panel">
-    <div class="panel-header"><div><h2>Create Training Opportunity</h2><div class="muted">Matching recipients are seeded by training category and trainer preferences. Location and expertise tags can be used for further filtering as we refine the matching engine.</div></div></div>
+    <div class="panel-header"><div><h2>2. Trainer Onboarding & Activation</h2><div class="muted">Once an approved collaborator accepts the T&C and completes onboarding, review the profile before activating the trainer for opportunity matching.</div></div></div>
+    <div class="alert alert-info">Only <strong>Active Trainers</strong> are included in automatic training opportunity matching. Registered applicants and incomplete onboarding records are excluded.</div>
+    <div id="adminTrainerList" class="list"><div class="empty">Loading trainers…</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>3. Full Programme Review & eTRiS</h2><div class="muted">Review trainer-submitted programme details, return amendments, approve for eTRiS, record eTRiS approval and publish when ready.</div></div></div>
+    <div id="adminProgrammeList" class="list"><div class="empty">Loading programme submissions…</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><h2>4. Create Training Opportunity</h2><div class="muted">Matching recipients are seeded from active trainers based on training category and Public/In-House preferences.</div></div></div>
     <div id="opportunityMessage" class="hidden"></div>
     <form id="createOpportunityForm" class="form-card">
       <div class="form-grid">
@@ -63,7 +77,7 @@
   </section>
 
   <section class="panel">
-    <div class="panel-header"><div><h2>Open & Recent Opportunities</h2><div class="muted">See interested trainers, proposed fee and remarks, then award the job from the same page.</div></div></div>
+    <div class="panel-header"><div><h2>5. Open & Recent Opportunities</h2><div class="muted">See interested trainers, proposed fee and remarks, then award the job from the same page.</div></div></div>
     <div id="adminOpportunityList" class="list"><div class="empty">Loading opportunities…</div></div>
   </section>
 </main>
@@ -71,6 +85,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../trainer/config.js"></script>
 <script src="../trainer/app.js"></script>
+<script src="trainer-admin-extra.js"></script>
 <script>EasyLatihPortal.initAdmin();</script>
 </body>
 </html>
