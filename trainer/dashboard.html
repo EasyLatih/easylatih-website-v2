@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Trainer Portal | EasyLatih</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body>
+<header class="portal-topbar">
+  <div class="portal-topbar-inner">
+    <a href="../index.html" class="portal-brand"><img src="../assets/logo.png" alt="EasyLatih"><div>Trainer Portal<small id="userEmail">EasyLatih</small></div></a>
+    <div class="top-actions"><span id="collabStatus"></span><button id="logoutButton" class="btn btn-outline">Log Out</button></div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="alert alert-warning hidden" data-needs-backend><strong>Development environment:</strong> Backend connection is not configured on this branch yet.</div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <button data-nav="overview" class="active">Overview</button>
+      <button data-nav="proposals">My Proposals</button>
+      <button data-nav="opportunities">Opportunities</button>
+      <button data-nav="programmes">My Programmes</button>
+      <button data-nav="comments">Comments</button>
+      <button data-nav="profile">Profile & Preferences</button>
+      <button data-nav="onboarding" data-onboarding class="hidden">Onboarding</button>
+    </aside>
+
+    <section>
+      <div class="panel" data-section="overview">
+        <div class="panel-header"><div><h2>Welcome, <span id="trainerName">Trainer</span></h2><div class="muted">Manage your EasyLatih collaboration from one place.</div></div></div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><strong id="activeProposalCount">0/5</strong><span>Active proposals</span></div>
+          <div class="kpi-card"><strong id="proposalSlots">5</strong><span>Proposal slots available</span></div>
+          <div class="kpi-card"><strong id="profileCompletion">0%</strong><span>Basic profile completion</span></div>
+        </div>
+        <div class="panel">
+          <h3>Profile completion</h3>
+          <div class="progress"><div id="profileProgressBar" style="width:0%"></div></div>
+          <p class="muted">Detailed onboarding is only unlocked after EasyLatih approves a programme for collaboration.</p>
+        </div>
+        <div id="onboardingLocked" class="alert alert-info">Your account is currently in the applicant stage. Submit programme ideas for review. Once EasyLatih approves collaboration, full onboarding, documents and collaboration terms will be unlocked.</div>
+        <div data-onboarding class="hidden alert alert-success"><strong>Collaboration approved.</strong> Please complete the onboarding section and accept the Trainer Collaboration Terms before full programme submission and publication.</div>
+      </div>
+
+      <div class="panel hidden" data-section="proposals">
+        <div class="panel-header"><div><h2>My Programme Proposals</h2><div class="muted">Maximum 5 active programme proposals at any one time.</div></div></div>
+        <div id="proposalMessage" class="hidden"></div>
+        <form id="proposalForm" class="form-card">
+          <h3>Submit a new programme idea</h3>
+          <p class="muted">Keep it concise. EasyLatih only needs enough information to assess market potential and fit at this stage.</p>
+          <div class="form-grid">
+            <div class="field full"><label>Training Title</label><input name="title" required maxlength="180" placeholder="e.g. Payroll Compliance for SME HR Executives"></div>
+            <div class="field"><label>Category</label><select name="category" required><option value="">Select</option><option>Human Resource</option><option>Finance & Accounting</option><option>Leadership</option><option>Sales & Marketing</option><option>Digital & AI</option><option>Customer Service</option><option>Quality & Productivity</option><option>Safety & Technical</option><option>Administration</option><option>Communication</option><option>Entrepreneurship</option><option>Other</option></select></div>
+            <div class="field"><label>Training Type</label><select name="training_type" required><option value="BOTH">Public & In-House</option><option value="PUBLIC">Public Training</option><option value="INHOUSE">In-House Training</option></select></div>
+            <div class="field full"><label>Specific Target Audience</label><input name="target_audience" required maxlength="250" placeholder="Be specific: HR Executives in SMEs, Site Supervisors, Finance Clerks..."></div>
+            <div class="field full"><label>Training Problem / Need</label><textarea name="problem_statement" required maxlength="700" placeholder="What practical problem does this programme solve?"></textarea></div>
+            <div class="field full"><label>Short Programme Description</label><textarea name="summary" required maxlength="700" placeholder="A short explanation that EasyLatih can scan quickly."></textarea></div>
+            <div class="field full"><label>Key Learning Points</label><textarea name="key_learning_points" required placeholder="One point per line, maximum 5 points"></textarea><span class="help">Maximum 5 points. Full course outline is only requested after approval.</span></div>
+            <div class="field"><label>Duration</label><select name="duration" required><option>Half Day</option><option>1 Day</option><option>2 Days</option><option>3 Days</option><option>Custom</option></select></div>
+            <div class="field"><label>Delivery Method</label><select name="delivery_method" required><option>Physical</option><option>Online</option><option>Both</option></select></div>
+            <div class="field"><label>Preferred Location <span class="muted">(optional)</span></label><input name="preferred_location" maxlength="120"></div>
+            <div class="field"><label>Expected Trainer Fee <span class="muted">(optional)</span></label><input name="expected_fee" type="number" min="0" step="50" placeholder="RM"></div>
+          </div>
+          <button id="proposalSubmitButton" class="btn btn-primary" type="submit">Submit Programme Idea</button>
+        </form>
+        <div style="height:1rem"></div>
+        <div id="proposalList" class="list"><div class="empty">Loading proposals…</div></div>
+      </div>
+
+      <div class="panel hidden" data-section="opportunities">
+        <div class="panel-header"><div><h2>Training Opportunities</h2><div class="muted">Relevant opportunities are matched based on your approved status, category, expertise, location and training preferences.</div></div></div>
+        <div class="alert alert-info">Opportunity details are shown inside the portal. Email notifications only alert you that a matching opportunity is available; sensitive client information does not need to be included in the email.</div>
+        <div id="opportunityList" class="list"><div class="empty">Loading opportunities…</div></div>
+      </div>
+
+      <div class="panel hidden" data-section="programmes">
+        <div class="panel-header"><div><h2>My Programmes</h2><div class="muted">Programmes that have progressed from proposal to full programme review, eTRiS and website publication.</div></div></div>
+        <div id="programmeList" class="list"><div class="empty">Loading programmes…</div></div>
+      </div>
+
+      <div class="panel hidden" data-section="comments">
+        <div class="panel-header"><div><h2>Proposal Comments</h2><div id="commentProposalTitle" class="muted">Choose a proposal to view its discussion.</div></div></div>
+        <div id="commentThread" class="comment-thread"><div class="empty">Open a proposal from “My Proposals” to view comments.</div></div>
+        <form id="commentForm" class="form-card" style="margin-top:1rem">
+          <input id="commentProposalId" name="proposal_id" type="hidden">
+          <div class="field"><label>Reply to EasyLatih</label><textarea name="body" required maxlength="1500" placeholder="Add clarification or reply to the review comment."></textarea></div>
+          <button class="btn" type="submit">Send Reply</button>
+        </form>
+      </div>
+
+      <div class="panel hidden" data-section="profile">
+        <div class="panel-header"><div><h2>Profile & Training Preferences</h2><div class="muted">Keep your availability and travel preferences up to date so EasyLatih only sends relevant opportunities.</div></div></div>
+        <div id="profileMessage" class="hidden"></div>
+        <form id="profileForm" class="form-card">
+          <div class="form-grid">
+            <div class="field full"><label>Full Name</label><input id="profile_full_name" name="full_name" required></div>
+            <div class="field"><label>WhatsApp / Phone</label><input id="profile_phone" name="phone" required></div>
+            <div class="field"><label>Base State</label><input id="profile_state" name="state" required></div>
+            <div class="field full"><label>Main Training Expertise</label><textarea id="profile_expertise_summary" name="expertise_summary" required></textarea></div>
+            <div class="field full"><label>LinkedIn / Professional Link</label><input id="profile_linkedin_url" name="linkedin_url" type="url"></div>
+            <div class="field full"><label>Professional Bio</label><textarea id="profile_bio" name="professional_bio" maxlength="1500" placeholder="This will later be used for your trainer profile and approved marketing materials."></textarea></div>
+            <div class="field"><label>Availability</label><select id="profile_availability" name="availability_status"><option value="AVAILABLE">Available</option><option value="LIMITED">Limited</option><option value="UNAVAILABLE">Unavailable</option></select></div>
+            <div class="field"><label>States Willing to Travel</label><input id="profile_travel_states" name="travel_states" placeholder="Pahang, Selangor, Kuala Lumpur"></div>
+            <div class="field full"><label>Specific Expertise Tags</label><input id="profile_expertise_tags" name="expertise_tags" placeholder="Payroll, Employment Act, Excel, Power BI"></div>
+          </div>
+          <label class="checkbox-row"><input id="pref_public" type="checkbox" name="accepts_public" value="1"><span>Interested in Public Training opportunities</span></label>
+          <label class="checkbox-row"><input id="pref_inhouse" type="checkbox" name="accepts_inhouse" value="1"><span>Interested in In-House Training opportunities</span></label>
+          <label class="checkbox-row"><input id="pref_online" type="checkbox" name="accepts_online" value="1"><span>Available for Online Training</span></label>
+          <button class="btn btn-primary" type="submit">Save Profile</button>
+        </form>
+      </div>
+
+      <div class="panel hidden" data-section="onboarding" data-onboarding>
+        <div class="panel-header"><div><h2>Approved Trainer Onboarding</h2><div class="muted">Only trainers approved to collaborate need to complete this section.</div></div></div>
+        <div class="alert alert-warning"><strong>Next backend step:</strong> this section will collect the professional profile photo, CV, TTT/professional documents and the full programme details required for EasyLatih review and eTRiS registration. Trainer photos will be used only according to the collaboration terms and recorded consent.</div>
+        <div class="form-card">
+          <h3>Trainer Collaboration Terms</h3>
+          <p class="muted">Please review the current <a href="../trainer-collaboration-terms.html" target="_blank" style="color:#0d3b66;font-weight:600">Trainer Collaboration Terms</a> before continuing.</p>
+          <button id="acceptTermsButton" class="btn btn-primary" type="button">Accept Collaboration Terms</button>
+        </div>
+        <div class="form-card" style="margin-top:1rem">
+          <h3>Onboarding checklist</h3>
+          <div class="list">
+            <div class="list-card">Professional trainer photo for website profile and approved marketing materials</div>
+            <div class="list-card">CV / trainer profile and TTT or relevant professional certificates</div>
+            <div class="list-card">Academic and professional qualifications, industry and training experience</div>
+            <div class="list-card">Full programme details for EasyLatih review and eTRiS registration</div>
+            <div class="list-card">Programme amendment and approval before website publication</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>EasyLatihPortal.initDashboard();</script>
+</body>
+</html>
