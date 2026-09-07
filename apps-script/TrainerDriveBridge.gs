@@ -71,6 +71,7 @@ function handleTrainerDocumentBridge_(e) {
     const action = String(e.parameter.action || '');
     if (action === 'trainerDocumentUpload') return handleTrainerDocumentUpload_(e);
     if (action === 'trainerDocumentDownload') return handleTrainerDocumentDownload_(e);
+    if (action === 'trainerDocumentCourseOutlineGenerate') return handleTrainerCourseOutlineGenerate_(e);
     return trainerDriveJson_({ ok: false, error: 'Unsupported action.' });
   } catch (error) {
     return trainerDriveJson_({
@@ -102,6 +103,180 @@ function handleTrainerDocumentUpload_(e) {
   const storedName = 'TR-' + shortId + ' - ' + documentType + ' - ' + originalName;
   const blob = Utilities.newBlob(bytes, mimeType, storedName);
   const file = target.createFile(blob);
+
+  return trainerDriveJson_({
+    ok: true,
+    fileId: file.getId(),
+    fileUrl: file.getUrl(),
+    fileName: file.getName(),
+    rootFolderId: folders.root.getId(),
+    tttFolderId: folders.ttt.getId(),
+    accreditedFolderId: folders.accredited.getId(),
+    resumeFolderId: folders.resume.getId(),
+    otherCertificatesFolderId: folders.other.getId(),
+    courseContentFolderId: folders.courseContent.getId()
+  });
+}
+
+function courseOutlineHeading_(body, number, title) {
+  const p = body.appendParagraph(number + '  ' + title);
+  p.setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  return p;
+}
+
+function courseOutlineText_(body, value) {
+  body.appendParagraph(String(value || '-'));
+}
+
+function courseOutlineList_(body, values) {
+  const list = Array.isArray(values) ? values : [];
+  if (!list.length) return courseOutlineText_(body, '-');
+  list.forEach(function(value) {
+    body.appendListItem(String(value || '')).setGlyphType(DocumentApp.GlyphType.BULLET);
+  });
+}
+
+function courseOutlineMinutes_(start, end) {
+  const s = String(start || '').split(':').map(Number);
+  const e = String(end || '').split(':').map(Number);
+  if (s.length < 2 || e.length < 2 || s.some(isNaN) || e.some(isNaN)) return 0;
+  return Math.max(0, (e[0] * 60 + e[1]) - (s[0] * 60 + s[1]));
+}
+
+function courseOutlineHours_(minutes) {
+  const h = Number(minutes || 0) / 60;
+  return Number.isInteger(h) ? String(h) : String(Math.round(h * 100) / 100);
+}
+
+function courseOutlineTypeLabel_(type) {
+  const labels = {
+    SESSION: 'Training Session',
+    MORNING_BREAK: 'Morning Break',
+    LUNCH: 'Lunch',
+    AFTERNOON_BREAK: 'Afternoon Break'
+  };
+  return labels[String(type || '').toUpperCase()] || String(type || '');
+}
+
+function styleCourseOutlineSummary_(table) {
+  for (let i = 0; i < table.getNumRows(); i++) {
+    const row = table.getRow(i);
+    if (row.getNumCells() > 0) row.getCell(0).editAsText().setBold(true);
+  }
+}
+
+function styleCourseOutlineHeader_(table) {
+  if (!table || table.getNumRows() < 1) return;
+  const row = table.getRow(0);
+  for (let i = 0; i < row.getNumCells(); i++) {
+    row.getCell(i).editAsText().setBold(true);
+  }
+}
+
+function handleTrainerCourseOutlineGenerate_(e) {
+  const trainerId = String(e.parameter.trainerId || '').trim();
+  const trainerName = String(e.parameter.trainerName || '').trim();
+  const programmeJson = String(e.parameter.programmeJson || '').trim();
+
+  if (!trainerId || !trainerName || !programmeJson) {
+    throw new Error('Incomplete course outline generation payload.');
+  }
+
+  let programme;
+  try {
+    programme = JSON.parse(programmeJson);
+  } catch (error) {
+    throw new Error('Invalid programme data for Course Outline generation.');
+  }
+
+  const folders = ensureTrainerDriveFolders_(trainerId, trainerName);
+  const shortProgrammeId = String(programme.id || '').replace(/-/g, '').substring(0, 8).toUpperCase();
+  const safeTitle = sanitiseFileName_(String(programme.title || 'Programme'));
+  const stamp = Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyyMMdd-HHmm');
+  const fileName = 'COURSE OUTLINE - ' + safeTitle + ' - ' + shortProgrammeId + ' - ' + stamp;
+
+  const doc = DocumentApp.create(fileName);
+  const file = DriveApp.getFileById(doc.getId());
+  file.moveTo(folders.courseContent);
+  const body = doc.getBody();
+  body.clear();
+
+  body.appendParagraph('COURSE OUTLINE').setHeading(DocumentApp.ParagraphHeading.TITLE);
+  body.appendParagraph('EasyLatih Consultancy').setHeading(DocumentApp.ParagraphHeading.SUBTITLE);
+
+  const summary = body.appendTable([
+    ['Course Title', String(programme.title || '-')],
+    ['Course Duration', String(programme.duration || '-')],
+    ['Target Level', String(programme.target_participants || '-')],
+    ['Total Contact Hours', String(programme.total_contact_hours || '-') + ' Hour(s)'],
+    ['Delivery Method', String(programme.delivery_method || '-')],
+    ['Prerequisite', String(programme.prerequisites || 'None')],
+    ['HRD Corp Claimable', 'Subject to EasyLatih review and applicable eTRiS/HRD Corp requirements']
+  ]);
+  styleCourseOutlineSummary_(summary);
+
+  courseOutlineHeading_(body, '01', 'Programme Overview');
+  courseOutlineText_(body, programme.programme_overview);
+
+  courseOutlineHeading_(body, '02', 'Learning Objectives');
+  courseOutlineList_(body, programme.learning_objectives);
+
+  courseOutlineHeading_(body, '03', 'Learning Outcomes');
+  courseOutlineList_(body, programme.learning_outcomes);
+
+  courseOutlineHeading_(body, '04', 'Target Participants');
+  courseOutlineText_(body, programme.target_participants);
+
+  courseOutlineHeading_(body, '05', 'Duration & Contact Hours');
+  courseOutlineText_(body, String(programme.duration || '-') + ' | Total Contact Hours: ' + String(programme.total_contact_hours || '-') + ' hour(s). Breaks and lunch are excluded from contact hours.');
+
+  courseOutlineHeading_(body, '06', 'Training Methodology');
+  courseOutlineText_(body, programme.training_methodology);
+
+  courseOutlineHeading_(body, '07', 'Prerequisite');
+  courseOutlineText_(body, programme.prerequisites || 'None');
+
+  courseOutlineHeading_(body, '08', 'Module Outline / Course Content');
+  const modules = Array.isArray(programme.modules) ? programme.modules : [];
+  if (modules.length) {
+    modules.forEach(function(module, index) {
+      const title = module && (module.title || module.name) ? (module.title || module.name) : String(module || '');
+      body.appendListItem('Module ' + (index + 1) + ': ' + title).setGlyphType(DocumentApp.GlyphType.NUMBER);
+    });
+  } else {
+    courseOutlineText_(body, '-');
+  }
+
+  body.appendParagraph('Training Schedule').setHeading(DocumentApp.ParagraphHeading.HEADING3);
+  body.appendParagraph('EasyLatih break allocation: Morning break 15 minutes once per training day; lunch 1 hour; afternoon break 15 minutes once per training day. Breaks and lunch are not counted as contact hours.');
+
+  const schedule = Array.isArray(programme.schedule) ? programme.schedule : [];
+  const scheduleRows = [['Day', 'Time', 'Type', 'Module / Topic', 'Detailed Content / Learning Activity', 'Contact Hours']];
+  schedule.forEach(function(row) {
+    const type = String(row.type || 'SESSION').toUpperCase();
+    const minutes = type === 'SESSION' ? courseOutlineMinutes_(row.start, row.end) : 0;
+    scheduleRows.push([
+      String(row.day || ''),
+      String(row.start || '') + ' - ' + String(row.end || ''),
+      courseOutlineTypeLabel_(type),
+      String(row.topic || ''),
+      String(row.content || ''),
+      courseOutlineHours_(minutes)
+    ]);
+  });
+  const scheduleTable = body.appendTable(scheduleRows);
+  styleCourseOutlineHeader_(scheduleTable);
+
+  courseOutlineHeading_(body, '09', 'Assessment Method');
+  courseOutlineText_(body, programme.assessment_method || 'To be confirmed during EasyLatih review.');
+
+  courseOutlineHeading_(body, '10', 'Trainer Profile');
+  courseOutlineText_(body, trainerName + '. Full trainer credentials and supporting documents are maintained separately in the EasyLatih Trainer Collaboration Portal.');
+
+  courseOutlineHeading_(body, '11', 'Administrative Notes');
+  courseOutlineText_(body, 'Generated automatically from the trainer submission. This Google Docs version is an editable working document for EasyLatih internal review, amendment, eTRiS preparation and finalisation.');
+
+  doc.saveAndClose();
 
   return trainerDriveJson_({
     ok: true,
