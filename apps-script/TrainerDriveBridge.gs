@@ -228,7 +228,7 @@ function handleTrainerCourseOutlineGenerate_(e) {
   courseOutlineText_(body, programme.target_participants);
 
   courseOutlineHeading_(body, '05', 'Duration & Contact Hours');
-  courseOutlineText_(body, String(programme.duration || '-') + ' | Total Contact Hours: ' + String(programme.total_contact_hours || '-') + ' hour(s). Breaks and lunch are excluded from contact hours.');
+  courseOutlineText_(body, String(programme.duration || '-') + ' | Total Contact Hours: ' + String(programme.total_contact_hours || '-') + ' hour(s). Only the 1-hour lunch break is excluded from contact hours. The 15-minute morning and afternoon breaks remain within contact hours.');
 
   courseOutlineHeading_(body, '06', 'Training Methodology');
   courseOutlineText_(body, programme.training_methodology);
@@ -248,13 +248,13 @@ function handleTrainerCourseOutlineGenerate_(e) {
   }
 
   body.appendParagraph('Training Schedule').setHeading(DocumentApp.ParagraphHeading.HEADING3);
-  body.appendParagraph('EasyLatih break allocation: Morning break 15 minutes once per training day; lunch 1 hour; afternoon break 15 minutes once per training day. Breaks and lunch are not counted as contact hours.');
+  body.appendParagraph('EasyLatih standard full-day programme: 9:00 AM - 5:00 PM. Morning break 15 minutes once per training day; lunch 1 hour; afternoon break 15 minutes once per training day. Only lunch is excluded from contact hours; morning and afternoon breaks are included.');
 
   const schedule = Array.isArray(programme.schedule) ? programme.schedule : [];
   const scheduleRows = [['Day', 'Time', 'Type', 'Module / Topic', 'Detailed Content / Learning Activity', 'Contact Hours']];
   schedule.forEach(function(row) {
     const type = String(row.type || 'SESSION').toUpperCase();
-    const minutes = type === 'SESSION' ? courseOutlineMinutes_(row.start, row.end) : 0;
+    const minutes = type === 'LUNCH' ? 0 : courseOutlineMinutes_(row.start, row.end);
     scheduleRows.push([
       String(row.day || ''),
       String(row.start || '') + ' - ' + String(row.end || ''),
