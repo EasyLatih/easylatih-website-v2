@@ -50,7 +50,8 @@ function ensureTrainerDriveFolders_(trainerId, trainerName) {
     ttt: getOrCreateTrainerChildFolder_(root, '01 TTT'),
     accredited: getOrCreateTrainerChildFolder_(root, '02 Accredited Trainer'),
     resume: getOrCreateTrainerChildFolder_(root, '03 Resume'),
-    other: getOrCreateTrainerChildFolder_(root, '04 Other Certificates')
+    other: getOrCreateTrainerChildFolder_(root, '04 Other Certificates'),
+    courseContent: getOrCreateTrainerChildFolder_(root, '05 Course Content')
   };
 }
 
@@ -60,6 +61,7 @@ function trainerDocumentFolderForType_(folders, documentType) {
   if (type === 'ACCREDITED_TRAINER_CERTIFICATE') return folders.accredited;
   if (type === 'RESUME_CV') return folders.resume;
   if (type === 'OTHER_RELEVANT_CERTIFICATE') return folders.other;
+  if (type === 'COURSE_CONTENT') return folders.courseContent;
   throw new Error('Unsupported trainer document type.');
 }
 
@@ -82,6 +84,8 @@ function handleTrainerDocumentUpload_(e) {
   const trainerId = String(e.parameter.trainerId || '').trim();
   const trainerName = String(e.parameter.trainerName || '').trim();
   const documentType = String(e.parameter.documentType || '').trim().toUpperCase();
+  const programmeId = String(e.parameter.programmeId || '').trim();
+  const programmeTitle = sanitiseFileName_(String(e.parameter.programmeTitle || '').trim());
   const originalName = sanitiseFileName_(String(e.parameter.fileName || 'document'));
   const mimeType = String(e.parameter.mimeType || 'application/octet-stream').trim();
   const base64 = String(e.parameter.base64 || '').trim();
@@ -90,14 +94,27 @@ function handleTrainerDocumentUpload_(e) {
     throw new Error('Incomplete trainer document upload payload.');
   }
 
+  if (documentType === 'COURSE_CONTENT' && (!programmeId || !programmeTitle)) {
+    throw new Error('Programme ID and title are required for course content upload.');
+  }
+
   const bytes = Utilities.base64Decode(base64);
   if (!bytes.length) throw new Error('Uploaded document is empty.');
   if (bytes.length > 10 * 1024 * 1024) throw new Error('Document exceeds 10 MB.');
 
   const folders = ensureTrainerDriveFolders_(trainerId, trainerName);
-  const target = trainerDocumentFolderForType_(folders, documentType);
+  let target = trainerDocumentFolderForType_(folders, documentType);
+
+  if (documentType === 'COURSE_CONTENT') {
+    const programmeShortId = String(programmeId).replace(/-/g, '').substring(0, 8).toUpperCase();
+    target = getOrCreateTrainerChildFolder_(target, 'PRG-' + programmeShortId + ' - ' + programmeTitle);
+  }
+
   const shortId = String(trainerId).replace(/-/g, '').substring(0, 8).toUpperCase();
-  const storedName = 'TR-' + shortId + ' - ' + documentType + ' - ' + originalName;
+  const programmePart = documentType === 'COURSE_CONTENT'
+    ? ' - PRG-' + String(programmeId).replace(/-/g, '').substring(0, 8).toUpperCase()
+    : '';
+  const storedName = 'TR-' + shortId + programmePart + ' - ' + documentType + ' - ' + originalName;
   const blob = Utilities.newBlob(bytes, mimeType, storedName);
   const file = target.createFile(blob);
 
@@ -110,7 +127,9 @@ function handleTrainerDocumentUpload_(e) {
     tttFolderId: folders.ttt.getId(),
     accreditedFolderId: folders.accredited.getId(),
     resumeFolderId: folders.resume.getId(),
-    otherCertificatesFolderId: folders.other.getId()
+    otherCertificatesFolderId: folders.other.getId(),
+    courseContentFolderId: folders.courseContent.getId(),
+    programmeFolderId: documentType === 'COURSE_CONTENT' ? target.getId() : null
   });
 }
 
