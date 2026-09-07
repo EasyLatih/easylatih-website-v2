@@ -5,7 +5,7 @@
   const ACTIVE_PROPOSAL_STATUSES = ['SUBMITTED','UNDER_REVIEW','CLARIFICATION_REQUIRED','SHORTLISTED','APPROVED_TO_COLLAB','ONBOARDING','FULL_DETAILS_SUBMITTED','APPROVED_FOR_ETRIS'];
 
   const $ = (id) => document.getElementById(id);
-  const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  const esc = (value) => String(value ?? '').replace(/[&<>'\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[ch]));
   const money = (value) => value === null || value === undefined || value === '' ? '-' : `RM${Number(value).toLocaleString('en-MY')}`;
   const fmtDate = (value) => value ? new Intl.DateTimeFormat('en-MY',{dateStyle:'medium'}).format(new Date(value)) : '-';
   const fmtDateTime = (value) => value ? new Intl.DateTimeFormat('en-MY',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value)) : '-';
@@ -93,8 +93,9 @@
 
     $('registerForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const formEl = e.currentTarget;
       if (!client) return showMessage('registerMessage','Backend belum disambungkan. Registration belum dibuka.','warning');
-      const form = new FormData(e.currentTarget);
+      const form = new FormData(formEl);
       if (!form.get('privacy_ack')) return showMessage('registerMessage','Please acknowledge the Privacy Notice to continue.','danger');
       const password = String(form.get('password') || '');
       if (password.length < 8) return showMessage('registerMessage','Password must be at least 8 characters.','danger');
@@ -119,7 +120,7 @@
         if (data.session) {
           location.href='./dashboard.html';
         } else {
-          e.currentTarget.reset();
+          formEl.reset();
           showMessage('registerMessage','Account created. Please check your email to verify your account, then log in.','success');
         }
       } catch (err) {
@@ -296,8 +297,8 @@
     $('userEmail').textContent=currentUser.email;
     document.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>switchSection(btn.dataset.nav)));
     $('logoutButton')?.addEventListener('click',async()=>{await client.auth.signOut();location.replace('./index.html');});
-    $('proposalForm')?.addEventListener('submit',async(e)=>{e.preventDefault();showMessage('proposalMessage','Submitting…','info');try{await submitProposal(e.currentTarget);e.currentTarget.reset();showMessage('proposalMessage','Programme proposal submitted for EasyLatih review.','success');await loadProposals();}catch(err){showMessage('proposalMessage',err.message,'danger');}});
-    $('commentForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const f=new FormData(e.currentTarget);const proposalId=String(f.get('proposal_id'));const body=String(f.get('body')).trim();if(!body)return;const{error}=await client.from('proposal_comments').insert({proposal_id:proposalId,author_id:currentUser.id,author_role:'TRAINER',visibility:'TRAINER',body});if(error)return alert(error.message);e.currentTarget.reset();$('commentProposalId').value=proposalId;loadProposalComments(proposalId);});
+    $('proposalForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;showMessage('proposalMessage','Submitting…','info');try{await submitProposal(formEl);formEl.reset();showMessage('proposalMessage','Programme proposal submitted for EasyLatih review.','success');await loadProposals();}catch(err){showMessage('proposalMessage',err.message,'danger');}});
+    $('commentForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;const f=new FormData(formEl);const proposalId=String(f.get('proposal_id'));const body=String(f.get('body')).trim();if(!body)return;const{error}=await client.from('proposal_comments').insert({proposal_id:proposalId,author_id:currentUser.id,author_role:'TRAINER',visibility:'TRAINER',body});if(error)return alert(error.message);formEl.reset();$('commentProposalId').value=proposalId;loadProposalComments(proposalId);});
     $('profileForm')?.addEventListener('submit',async(e)=>{try{await saveProfile(e);}catch(err){showMessage('profileMessage',err.message,'danger');}});
     $('acceptTermsButton')?.addEventListener('click',acceptCollaborationTerms);
     await Promise.all([loadProfile(),loadProposals(),loadOpportunities(),loadProgrammes()]);
@@ -354,10 +355,10 @@
   }
 
   async function createOpportunity(e){
-    e.preventDefault();const f=new FormData(e.currentTarget);
+    e.preventDefault();const formEl=e.currentTarget;const f=new FormData(formEl);
     const row={title:String(f.get('title')).trim(),training_type:String(f.get('training_type')),category:String(f.get('category')),expertise_tags:String(f.get('expertise_tags')||'').split(',').map(x=>x.trim()).filter(Boolean),client_industry:String(f.get('client_industry')||'').trim(),location:String(f.get('location')||'').trim(),training_date:f.get('training_date')||null,duration:String(f.get('duration')||'').trim(),target_audience:String(f.get('target_audience')||'').trim(),estimated_pax:Number(f.get('estimated_pax')||0)||null,trainer_fee_min:Number(f.get('trainer_fee_min')||0)||null,trainer_fee_max:Number(f.get('trainer_fee_max')||0)||null,special_requirements:String(f.get('special_requirements')||'').trim(),response_deadline:f.get('response_deadline')?new Date(String(f.get('response_deadline'))).toISOString():null,status:'OPEN'};
     const{error}=await client.from('opportunities').insert(row);if(error)return showMessage('opportunityMessage',error.message,'danger');
-    e.currentTarget.reset();showMessage('opportunityMessage','Opportunity published. Matching active trainers have been queued for notification.','success');await refreshAdmin();
+    formEl.reset();showMessage('opportunityMessage','Opportunity published. Matching active trainers have been queued for notification.','success');await refreshAdmin();
   }
 
   function renderAdminOpportunities(rows){
