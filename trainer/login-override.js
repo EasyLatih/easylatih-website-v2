@@ -1,4 +1,5 @@
 (() => {
+  // Git-linked preview sync: 2026-09-07
   const cfg = window.EASYLATIH_TRAINER_PORTAL || {};
   if (!window.supabase || !cfg.supabaseUrl || !cfg.supabasePublishableKey) return;
   const client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey);
