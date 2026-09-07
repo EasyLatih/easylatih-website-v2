@@ -32,6 +32,73 @@ function escapeHtml(value) {
 }
 
 
+function normaliseCourseKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+
+function mergeCourseSources(primary, supplemental) {
+  const merged = Array.isArray(primary)
+    ? primary.slice()
+    : [];
+
+  const ids = new Set(
+    merged
+      .map(function (course) {
+        return normaliseCourseKey(
+          course.masterCourseId
+        );
+      })
+      .filter(Boolean)
+  );
+
+  const titles = new Set(
+    merged
+      .map(function (course) {
+        return normaliseCourseKey(
+          course.courseTitle
+        );
+      })
+      .filter(Boolean)
+  );
+
+  (Array.isArray(supplemental)
+    ? supplemental
+    : []
+  ).forEach(function (course) {
+    const id = normaliseCourseKey(
+      course.masterCourseId
+    );
+
+    const title = normaliseCourseKey(
+      course.courseTitle
+    );
+
+    if (
+      (id && ids.has(id)) ||
+      (title && titles.has(title))
+    ) {
+      return;
+    }
+
+    merged.push(course);
+
+    if (id) {
+      ids.add(id);
+    }
+
+    if (title) {
+      titles.add(title);
+    }
+  });
+
+  return merged;
+}
+
+
 function loadPublishedCourses() {
   coursesContainer.innerHTML =
     "<p>Loading course catalogue...</p>";
@@ -43,8 +110,23 @@ function loadPublishedCourses() {
     document.createElement("script");
 
   window[callbackName] = function (data) {
-    publishedCourses =
-      Array.isArray(data) ? data : [];
+    /*
+      The legacy Google Apps Script catalogue and the
+      Trainer Portal catalogue load independently.
+      Preserve any Trainer Portal courses that may have
+      arrived first instead of overwriting them when the
+      legacy JSONP response completes.
+    */
+    const trainerPortalCourses =
+      publishedCourses.filter(function (course) {
+        return course &&
+          course.source === "trainer-portal";
+      });
+
+    publishedCourses = mergeCourseSources(
+      Array.isArray(data) ? data : [],
+      trainerPortalCourses
+    );
 
     populateCategoryFilter();
     renderCourses();
@@ -54,8 +136,13 @@ function loadPublishedCourses() {
   };
 
   script.onerror = function () {
-    coursesContainer.innerHTML =
-      "<p>Unable to load the course catalogue.</p>";
+    if (publishedCourses.length) {
+      populateCategoryFilter();
+      renderCourses();
+    } else {
+      coursesContainer.innerHTML =
+        "<p>Unable to load the course catalogue.</p>";
+    }
 
     delete window[callbackName];
     script.remove();
@@ -81,6 +168,9 @@ function populateCategoryFilter() {
     )
   ].sort();
 
+  const selected =
+    categoryFilter.value;
+
   categoryFilter.innerHTML =
     '<option value="">All Categories</option>';
 
@@ -93,6 +183,13 @@ function populateCategoryFilter() {
 
     categoryFilter.appendChild(option);
   });
+
+  if (
+    selected &&
+    categories.includes(selected)
+  ) {
+    categoryFilter.value = selected;
+  }
 }
 
 
