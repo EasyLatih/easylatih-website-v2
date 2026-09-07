@@ -13,10 +13,36 @@
     return data.user;
   }
 
+  async function authHeaders(extra={}){
+    const {data}=await client.auth.getSession();
+    const token=data.session?.access_token;
+    if(!token)throw new Error('Please log in again.');
+    return {Authorization:`Bearer ${token}`,apikey:cfg.supabasePublishableKey,...extra};
+  }
+
   function badge(status){
     const s=String(status||'').replaceAll('_',' ');
-    const c=['ACTIVE','APPROVED','PUBLISHED'].includes(status)?'green':['ONBOARDING','UNDER_REVIEW','READY','SUBMITTED'].includes(status)?'amber':['REJECTED','INACTIVE'].includes(status)?'red':'blue';
+    const c=['ACTIVE','APPROVED','PUBLISHED','VERIFIED'].includes(status)?'green':['ONBOARDING','UNDER_REVIEW','READY','SUBMITTED','PENDING'].includes(status)?'amber':['REJECTED','INACTIVE'].includes(status)?'red':'blue';
     return `<span class="badge ${c}">${esc(s)}</span>`;
+  }
+
+  async function viewDriveDocument(documentId){
+    try{
+      const response=await fetch(`${cfg.supabaseUrl}/functions/v1/trainer-drive-upload`,{
+        method:'POST',
+        headers:await authHeaders({'Content-Type':'application/json'}),
+        body:JSON.stringify({action:'download',document_id:documentId})
+      });
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok||!result.ok)throw new Error(result.error||'Unable to open document.');
+      const binary=atob(result.base64||'');
+      const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      const blob=new Blob([bytes],{type:result.mime_type||'application/octet-stream'});
+      const url=URL.createObjectURL(blob);
+      window.open(url,'_blank','noopener');
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(e){alert(e.message||'Unable to open document.')}
   }
 
   async function loadTrainers(){
@@ -42,12 +68,24 @@
 
   async function loadProgrammes(){
     const holder=$('adminProgrammeList');if(!holder)return;
-    const {data,error}=await client.from('programmes').select('*,profiles(full_name,email,phone),programme_proposals(id,title,status)').order('updated_at',{ascending:false}).limit(300);
+    const [{data,error},{data:courseDocs,error:docsError}]=await Promise.all([
+      client.from('programmes').select('*,profiles(full_name,email,phone),programme_proposals(id,title,status)').order('updated_at',{ascending:false}).limit(300),
+      client.from('trainer_documents').select('id,programme_id,file_name,verification_status,created_at').eq('document_type','COURSE_CONTENT').eq('provider','GOOGLE_DRIVE').order('created_at',{ascending:false}).limit(1000)
+    ]);
     if(error){holder.innerHTML=`<div class="alert alert-danger">${esc(error.message)}</div>`;return}
+    if(docsError){holder.innerHTML=`<div class="alert alert-danger">${esc(docsError.message)}</div>`;return}
+    const latestCourseDoc={};
+    (courseDocs||[]).forEach(d=>{if(d.programme_id&&!latestCourseDoc[d.programme_id])latestCourseDoc[d.programme_id]=d});
+
     holder.innerHTML=(data||[]).length?(data||[]).map(p=>{
       const modules=(p.modules||[]).map(m=>m.title||m.name||String(m));
-      return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><span>${esc(p.profiles?.full_name||'Trainer')}</span><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span></div></div>${badge(p.publish_status)}</div><p><strong>Target:</strong> ${esc(p.target_participants||'-')}</p><p class="muted">${esc(p.programme_overview||'-')}</p><div class="review-grid"><div><strong>Objectives</strong><ul>${(p.learning_objectives||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><strong>Outcomes</strong><ul>${(p.learning_outcomes||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><strong>Modules</strong><ol>${modules.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div><div><strong>Methodology</strong><p>${esc(p.training_methodology||'-')}</p><strong>Assessment</strong><p>${esc(p.assessment_method||'-')}</p></div></div><div class="meta"><span>Duration: ${esc(p.duration||'-')}</span><span>Contact Hours: ${esc(p.total_contact_hours||'-')}</span><span>eTRiS: ${esc(p.etris_status)}</span><span>Ref: ${esc(p.etris_reference||'-')}</span></div><div class="btn-row">${p.publish_status==='UNDER_REVIEW'?`<button class="btn btn-primary" data-approve-etris="${p.id}">Approve for eTRiS</button><button class="btn btn-outline" data-amend="${p.id}">Return for Amendment</button>`:''}${p.etris_status==='READY'?`<button class="btn btn-primary" data-etris-approved="${p.id}">Mark eTRiS Approved</button>`:''}${p.etris_status==='APPROVED'&&p.publish_status!=='PUBLISHED'?`<button class="btn btn-primary" data-publish="${p.id}">Publish Programme</button>`:''}${p.publish_status==='PUBLISHED'?`<button class="btn btn-outline" data-unpublish="${p.id}">Unpublish</button>`:''}</div></div>`;
+      const doc=latestCourseDoc[p.id]||null;
+      const docBlock=doc
+        ? `<div class="alert alert-info" style="margin-top:.75rem"><strong>Full Course Content:</strong> ${esc(doc.file_name)} ${badge(doc.verification_status)}<div class="btn-row" style="margin-top:.5rem"><button type="button" class="btn btn-soft" data-view-course-content="${doc.id}">View Full Course Content</button></div></div>`
+        : `<div class="alert alert-warning" style="margin-top:.75rem"><strong>Full Course Content:</strong> Not uploaded yet.</div>`;
+      return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><span>${esc(p.profiles?.full_name||'Trainer')}</span><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span></div></div>${badge(p.publish_status)}</div><p><strong>Target:</strong> ${esc(p.target_participants||'-')}</p><p class="muted">${esc(p.programme_overview||'-')}</p><div class="review-grid"><div><strong>Objectives</strong><ul>${(p.learning_objectives||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><strong>Outcomes</strong><ul>${(p.learning_outcomes||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><strong>Modules</strong><ol>${modules.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div><div><strong>Methodology</strong><p>${esc(p.training_methodology||'-')}</p><strong>Assessment</strong><p>${esc(p.assessment_method||'-')}</p></div></div><div class="meta"><span>Duration: ${esc(p.duration||'-')}</span><span>Contact Hours: ${esc(p.total_contact_hours||'-')}</span><span>eTRiS: ${esc(p.etris_status)}</span><span>Ref: ${esc(p.etris_reference||'-')}</span></div>${docBlock}<div class="btn-row">${p.publish_status==='UNDER_REVIEW'?`<button class="btn btn-primary" data-approve-etris="${p.id}">Approve for eTRiS</button><button class="btn btn-outline" data-amend="${p.id}">Return for Amendment</button>`:''}${p.etris_status==='READY'?`<button class="btn btn-primary" data-etris-approved="${p.id}">Mark eTRiS Approved</button>`:''}${p.etris_status==='APPROVED'&&p.publish_status!=='PUBLISHED'?`<button class="btn btn-primary" data-publish="${p.id}">Publish Programme</button>`:''}${p.publish_status==='PUBLISHED'?`<button class="btn btn-outline" data-unpublish="${p.id}">Unpublish</button>`:''}</div></div>`;
     }).join(''):'<div class="empty">No full programme submissions yet.</div>';
+    holder.querySelectorAll('[data-view-course-content]').forEach(b=>b.addEventListener('click',()=>viewDriveDocument(b.dataset.viewCourseContent)));
     holder.querySelectorAll('[data-approve-etris]').forEach(b=>b.addEventListener('click',()=>approveForEtris(b.dataset.approveEtris)));
     holder.querySelectorAll('[data-amend]').forEach(b=>b.addEventListener('click',()=>returnAmendment(b.dataset.amend)));
     holder.querySelectorAll('[data-etris-approved]').forEach(b=>b.addEventListener('click',()=>markEtrisApproved(b.dataset.etrisApproved)));
