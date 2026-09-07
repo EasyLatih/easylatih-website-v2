@@ -60,10 +60,11 @@
     const id=currentProgrammeId();
     const titleField=$('fullProgrammeForm')?.elements?.title;
     const locked=Boolean(titleField?.disabled);
+    const shouldDisable=!id||locked;
     const uploadBtn=$('uploadCourseContent');
-    if(uploadBtn)uploadBtn.disabled=!id||locked;
+    if(uploadBtn&&uploadBtn.disabled!==shouldDisable)uploadBtn.disabled=shouldDisable;
     const file=$('courseContentFile');
-    if(file)file.disabled=!id||locked;
+    if(file&&file.disabled!==shouldDisable)file.disabled=shouldDisable;
     if(!id){
       const holder=$('courseContentList');
       if(holder)holder.innerHTML='<div class="empty">Save the programme draft first, then upload the full Course Content / Course Outline.</div>';
@@ -166,8 +167,10 @@
 
     const form=$('fullProgrammeForm');
     if(form){
-      const observer=new MutationObserver(()=>{updateControlState();});
-      observer.observe(form,{attributes:true,subtree:true,attributeFilter:['disabled','data-programme-id']});
+      const observer=new MutationObserver(()=>updateControlState());
+      observer.observe(form,{attributes:true,attributeFilter:['data-programme-id']});
+      const titleField=form.elements?.title;
+      if(titleField)observer.observe(titleField,{attributes:true,attributeFilter:['disabled']});
     }
   }
 
