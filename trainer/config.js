@@ -10,5 +10,5 @@ window.EASYLATIH_TRAINER_PORTAL = {
 };
 
 if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
-  document.write('<script src="etris-supporting-documents.js"><\/script>');
+  document.write('<script src="etris-drive-documents.js"><\/script>');
 }
