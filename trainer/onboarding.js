@@ -5,6 +5,15 @@
   const $ = id => document.getElementById(id);
   const splitLines = value => String(value || '').split('\n').map(x => x.trim()).filter(Boolean);
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  const formatIdentityNo = value => {
+    const raw=String(value||'').trim();
+    if(/[A-Za-z]/.test(raw)) return raw.toUpperCase().replace(/\s+/g,'');
+    const digits=raw.replace(/\D/g,'').slice(0,12);
+    if(digits.length<=6) return digits;
+    if(digits.length<=8) return `${digits.slice(0,6)}-${digits.slice(6)}`;
+    return `${digits.slice(0,6)}-${digits.slice(6,8)}-${digits.slice(8)}`;
+  };
+  const isNumericIdentity = value => !/[A-Za-z]/.test(String(value||''));
   let user = null;
   let profile = null;
   let onboarding = null;
@@ -48,7 +57,7 @@
         <h4 style="margin:.25rem 0 .75rem">Personal Details</h4>
         <div class="form-grid">
           <div class="field full"><label>Full Name (as per IC/Passport)</label><input id="etris_full_name" required maxlength="180" autocomplete="name"></div>
-          <div class="field"><label>IC No. / Passport No.</label><input id="etris_identity_no" required maxlength="40" autocomplete="off"></div>
+          <div class="field"><label>IC No. / Passport No.</label><input id="etris_identity_no" required maxlength="40" autocomplete="off" placeholder="030303-03-3333"><span class="help">Malaysian IC numbers are formatted automatically as YYMMDD-PB-####. Passport numbers remain alphanumeric.</span></div>
           <div class="field"><label>Race</label><input id="etris_race" required maxlength="80" autocomplete="off"></div>
           <div class="field"><label>Mobile No.</label><input id="etris_mobile" required maxlength="40" autocomplete="tel"></div>
           <div class="field"><label>Email Address</label><input id="etris_email" type="email" readonly></div>
@@ -81,6 +90,7 @@
         <div class="field"><label>HRD Corp TTT / Trainer Status</label><textarea id="onboarding_ttt" name="ttt_status" required placeholder="e.g. HRD Corp TTT Certified / Accredited Trainer / Exempted and relevant details."></textarea></div>
       </div>`;
 
+    $('etris_identity_no')?.addEventListener('input',e=>{e.target.value=formatIdentityNo(e.target.value)});
     $('addAcademicQualification')?.addEventListener('click',()=>appendRepeatRow('academicQualificationRows','academic',{}));
     $('addProfessionalCertification')?.addEventListener('click',()=>appendRepeatRow('professionalCertificationRows','certification',{}));
     $('addCareerExperience')?.addEventListener('click',()=>appendRepeatRow('careerExperienceRows','career',{}));
@@ -158,7 +168,7 @@
     etrisProfile=e||null;
 
     if($('etris_full_name')) $('etris_full_name').value=profile.full_name||'';
-    if($('etris_identity_no')) $('etris_identity_no').value=e?.identity_no||'';
+    if($('etris_identity_no')) $('etris_identity_no').value=formatIdentityNo(e?.identity_no||'');
     if($('etris_race')) $('etris_race').value=e?.race||'';
     if($('etris_mobile')) $('etris_mobile').value=profile.phone||'';
     if($('etris_email')) $('etris_email').value=profile.email||user.email||'';
@@ -208,7 +218,7 @@
     if(!f.get('photo_consent')) return msg('onboardingMessage','Photo and marketing consent is required for an approved EasyLatih trainer profile.','danger');
 
     const fullName=String($('etris_full_name')?.value||'').trim();
-    const identityNo=String($('etris_identity_no')?.value||'').trim();
+    const identityNo=formatIdentityNo($('etris_identity_no')?.value||'');
     const race=String($('etris_race')?.value||'').trim();
     const mobile=String($('etris_mobile')?.value||'').trim();
     const email=String($('etris_email')?.value||profile.email||user.email||'').trim();
@@ -220,6 +230,7 @@
 
     try{
       if(!fullName||!identityNo||!race||!mobile||!email) throw new Error('Please complete all Personal Details required for eTRiS.');
+      if(isNumericIdentity(identityNo) && !/^\d{6}-\d{2}-\d{4}$/.test(identityNo)) throw new Error('Malaysian IC number must contain 12 digits and will be saved in the format 030303-03-3333.');
       validateCompleteRows(academic,['qualification','year_awarded','institution'],'academic qualification');
       if(certifications.some(row=>['certification','certification_body','year_awarded'].some(field=>!row[field]))) throw new Error('Please complete all fields for each professional certification, or remove the incomplete entry.');
       validateCompleteRows(career,['year_from','year_to','position','company_organization'],'career experience');
