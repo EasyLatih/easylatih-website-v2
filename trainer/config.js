@@ -11,5 +11,5 @@ window.EASYLATIH_TRAINER_PORTAL = {
 
 if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="etris-drive-documents.js"><\/script>');
-  document.write('<script src="programme-course-content.js"><\/script>');
+  document.write('<script src="programme-course-outline.js"><\/script>');
 }
