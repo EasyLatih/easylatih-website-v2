@@ -23,7 +23,8 @@
     const holder=$('adminTrainerList');if(!holder)return;
     const {data,error}=await client.from('profiles').select('*,trainer_onboarding(*)').order('created_at',{ascending:false}).limit(300);
     if(error){holder.innerHTML=`<div class="alert alert-danger">${esc(error.message)}</div>`;return}
-    holder.innerHTML=(data||[]).length?(data||[]).map(t=>{
+    const trainers=(data||[]).filter(t=>t.id!==admin?.id);
+    holder.innerHTML=trainers.length?trainers.map(t=>{
       const o=Array.isArray(t.trainer_onboarding)?t.trainer_onboarding[0]:t.trainer_onboarding;
       const complete=Boolean(o?.onboarding_completed_at);
       return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(t.full_name)}</h3><div class="meta"><span>${esc(t.email)}</span><span>${esc(t.phone)}</span><span>${esc(t.state)}</span></div></div>${badge(t.collaboration_status)}</div><p class="muted">${esc(t.expertise_summary)}</p><div class="meta"><span>Onboarding: <strong>${complete?'Complete':'Pending'}</strong></span><span>Availability: ${esc(t.availability_status)}</span><span>Joined: ${fmt(t.created_at)}</span></div>${o?.profile_photo_url?`<div class="admin-photo"><img src="${esc(o.profile_photo_url)}" alt="${esc(t.full_name)}"></div>`:''}<div class="btn-row">${complete&&t.collaboration_status!=='ACTIVE'?`<button class="btn btn-primary" data-activate="${t.id}">Activate Trainer</button>`:''}${t.collaboration_status==='ACTIVE'?`<button class="btn btn-outline" data-inactivate="${t.id}">Set Inactive</button>`:''}</div></div>`;
