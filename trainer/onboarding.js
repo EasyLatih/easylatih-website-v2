@@ -8,6 +8,7 @@
   let user = null;
   let profile = null;
   let onboarding = null;
+  let etrisProfile = null;
   let programmes = [];
   let eligibleProposals = [];
 
@@ -32,21 +33,142 @@
     return profile;
   }
 
+  function buildEtrisFields(){
+    const form=$('onboardingForm');
+    if(!form)return;
+    const heading=form.querySelector('h3');
+    const intro=form.querySelector('p.muted');
+    const grid=form.querySelector('.form-grid');
+    if(!grid || grid.dataset.etrisBuilt==='1') return;
+    grid.dataset.etrisBuilt='1';
+    if(heading) heading.textContent='2. eTRiS Trainer Profile';
+    if(intro) intro.textContent='Complete the structured trainer information required for EasyLatih to prepare your eTRiS trainer profile.';
+    grid.innerHTML=`
+      <div class="field full">
+        <h4 style="margin:.25rem 0 .75rem">Personal Details</h4>
+        <div class="form-grid">
+          <div class="field full"><label>Full Name (as per IC/Passport)</label><input id="etris_full_name" required maxlength="180" autocomplete="name"></div>
+          <div class="field"><label>IC No. / Passport No.</label><input id="etris_identity_no" required maxlength="40" autocomplete="off"></div>
+          <div class="field"><label>Race</label><input id="etris_race" required maxlength="80" autocomplete="off"></div>
+          <div class="field"><label>Mobile No.</label><input id="etris_mobile" required maxlength="40" autocomplete="tel"></div>
+          <div class="field"><label>Email Address</label><input id="etris_email" type="email" readonly></div>
+        </div>
+        <span class="help">IC/Passport number and race are kept in a restricted eTRiS profile record and are not published in the public trainer catalogue.</span>
+      </div>
+
+      <div class="field full">
+        <div class="panel-header" style="margin-bottom:.25rem"><div><h4 style="margin:0">Academic Qualification</h4><div class="muted">Add each qualification separately.</div></div><button id="addAcademicQualification" type="button" class="btn btn-soft">+ Add Qualification</button></div>
+        <div id="academicQualificationRows"></div>
+      </div>
+
+      <div class="field full">
+        <div class="panel-header" style="margin-bottom:.25rem"><div><h4 style="margin:0">Professional Certification</h4><div class="muted">Optional if you do not hold a professional certification.</div></div><button id="addProfessionalCertification" type="button" class="btn btn-soft">+ Add Certification</button></div>
+        <div id="professionalCertificationRows"></div>
+      </div>
+
+      <div class="field full">
+        <div class="panel-header" style="margin-bottom:.25rem"><div><h4 style="margin:0">Career Experience</h4><div class="muted">Provide previous relevant positions separately.</div></div><button id="addCareerExperience" type="button" class="btn btn-soft">+ Add Career Experience</button></div>
+        <div id="careerExperienceRows"></div>
+      </div>
+
+      <div class="field full">
+        <div class="panel-header" style="margin-bottom:.25rem"><div><h4 style="margin:0">Training Experience</h4><div class="muted">Provide relevant programmes conducted.</div></div><button id="addTrainingExperience" type="button" class="btn btn-soft">+ Add Training Experience</button></div>
+        <div id="trainingExperienceRows"></div>
+      </div>
+
+      <div class="field full">
+        <h4 style="margin:.25rem 0 .75rem">EasyLatih / HRD Corp Information</h4>
+        <div class="field"><label>HRD Corp TTT / Trainer Status</label><textarea id="onboarding_ttt" name="ttt_status" required placeholder="e.g. HRD Corp TTT Certified / Accredited Trainer / Exempted and relevant details."></textarea></div>
+      </div>`;
+
+    $('addAcademicQualification')?.addEventListener('click',()=>appendRepeatRow('academicQualificationRows','academic',{}));
+    $('addProfessionalCertification')?.addEventListener('click',()=>appendRepeatRow('professionalCertificationRows','certification',{}));
+    $('addCareerExperience')?.addEventListener('click',()=>appendRepeatRow('careerExperienceRows','career',{}));
+    $('addTrainingExperience')?.addEventListener('click',()=>appendRepeatRow('trainingExperienceRows','training',{}));
+  }
+
+  function repeatRowTemplate(type,row={}){
+    const commonStart='<div data-repeat-row style="border:1px solid #dfe5ec;border-radius:12px;padding:1rem;margin:.75rem 0;background:#fff"><div class="form-grid">';
+    const commonEnd='</div><div class="btn-row" style="margin-top:.5rem"><button type="button" class="btn btn-soft" data-remove-row>Remove</button></div></div>';
+    if(type==='academic') return `${commonStart}
+      <div class="field full"><label>Qualification</label><input data-field="qualification" value="${esc(row.qualification||'')}" maxlength="180" placeholder="e.g. Bachelor of Strategic Studies"></div>
+      <div class="field"><label>Year Awarded</label><input data-field="year_awarded" type="number" min="1900" max="2100" value="${esc(row.year_awarded||'')}"></div>
+      <div class="field"><label>Name of Academic Institution</label><input data-field="institution" value="${esc(row.institution||'')}" maxlength="220"></div>${commonEnd}`;
+    if(type==='certification') return `${commonStart}
+      <div class="field full"><label>Professional Certification</label><input data-field="certification" value="${esc(row.certification||'')}" maxlength="220"></div>
+      <div class="field"><label>Certification Body</label><input data-field="certification_body" value="${esc(row.certification_body||'')}" maxlength="220"></div>
+      <div class="field"><label>Year Awarded</label><input data-field="year_awarded" type="number" min="1900" max="2100" value="${esc(row.year_awarded||'')}"></div>${commonEnd}`;
+    if(type==='career') return `${commonStart}
+      <div class="field"><label>Year From</label><input data-field="year_from" maxlength="20" value="${esc(row.year_from||'')}" placeholder="e.g. 2020"></div>
+      <div class="field"><label>Year To</label><input data-field="year_to" maxlength="20" value="${esc(row.year_to||'')}" placeholder="e.g. 2024 / Present"></div>
+      <div class="field"><label>Position</label><input data-field="position" value="${esc(row.position||'')}" maxlength="180"></div>
+      <div class="field"><label>Company / Organization</label><input data-field="company_organization" value="${esc(row.company_organization||'')}" maxlength="220"></div>${commonEnd}`;
+    return `${commonStart}
+      <div class="field"><label>Year From</label><input data-field="year_from" maxlength="20" value="${esc(row.year_from||'')}" placeholder="e.g. 2022"></div>
+      <div class="field"><label>Year To</label><input data-field="year_to" maxlength="20" value="${esc(row.year_to||'')}" placeholder="e.g. 2026 / Present"></div>
+      <div class="field full"><label>Training Program Conducted</label><input data-field="training_program_conducted" value="${esc(row.training_program_conducted||'')}" maxlength="300"></div>${commonEnd}`;
+  }
+
+  function appendRepeatRow(containerId,type,row){
+    const holder=$(containerId); if(!holder)return;
+    const box=document.createElement('div');
+    box.innerHTML=repeatRowTemplate(type,row).trim();
+    const node=box.firstElementChild;
+    node.querySelector('[data-remove-row]')?.addEventListener('click',()=>{
+      node.remove();
+      if(!holder.querySelector('[data-repeat-row]') && type!=='certification') appendRepeatRow(containerId,type,{});
+    });
+    holder.appendChild(node);
+  }
+
+  function renderRepeatRows(containerId,type,rows,required=true){
+    const holder=$(containerId); if(!holder)return;
+    holder.innerHTML='';
+    const list=Array.isArray(rows)?rows:[];
+    if(list.length) list.forEach(row=>appendRepeatRow(containerId,type,row));
+    else if(required || type==='certification') appendRepeatRow(containerId,type,{});
+  }
+
+  function collectRepeatRows(containerId,fields){
+    const holder=$(containerId); if(!holder)return[];
+    return [...holder.querySelectorAll('[data-repeat-row]')].map(row=>{
+      const item={};
+      fields.forEach(field=>{item[field]=String(row.querySelector(`[data-field="${field}"]`)?.value||'').trim()});
+      return item;
+    }).filter(item=>Object.values(item).some(Boolean));
+  }
+
+  function validateCompleteRows(rows,fields,label){
+    if(!rows.length) throw new Error(`Please add at least one ${label}.`);
+    if(rows.some(row=>fields.some(field=>!row[field]))) throw new Error(`Please complete all fields for each ${label}.`);
+  }
+
   async function loadOnboarding(){
     user=await getUser(); if(!user)return;
+    buildEtrisFields();
     try{await refreshProfile();}catch{return;}
     if(!['APPROVED_TO_COLLAB','ONBOARDING','ACTIVE'].includes(profile.collaboration_status)) return;
-    const {data:o}=await client.from('trainer_onboarding').select('*').eq('trainer_id',user.id).maybeSingle();
+    const [{data:o,error:oError},{data:e,error:eError}]=await Promise.all([
+      client.from('trainer_onboarding').select('*').eq('trainer_id',user.id).maybeSingle(),
+      client.from('trainer_etris_profiles').select('*').eq('trainer_id',user.id).maybeSingle()
+    ]);
+    if(oError) throw oError;
+    if(eError) throw eError;
     onboarding=o||null;
-    const map={
-      onboarding_academic:o?.academic_qualification,
-      onboarding_certifications:o?.professional_certifications,
-      onboarding_working:o?.working_experience,
-      onboarding_training:o?.training_experience,
-      onboarding_industry:o?.industry_experience,
-      onboarding_ttt:o?.ttt_status
-    };
-    Object.entries(map).forEach(([id,val])=>{if($(id))$(id).value=val||''});
+    etrisProfile=e||null;
+
+    if($('etris_full_name')) $('etris_full_name').value=profile.full_name||'';
+    if($('etris_identity_no')) $('etris_identity_no').value=e?.identity_no||'';
+    if($('etris_race')) $('etris_race').value=e?.race||'';
+    if($('etris_mobile')) $('etris_mobile').value=profile.phone||'';
+    if($('etris_email')) $('etris_email').value=profile.email||user.email||'';
+    if($('onboarding_ttt')) $('onboarding_ttt').value=o?.ttt_status||'';
+
+    renderRepeatRows('academicQualificationRows','academic',e?.academic_qualifications||[],true);
+    renderRepeatRows('professionalCertificationRows','certification',e?.professional_certifications||[],false);
+    renderRepeatRows('careerExperienceRows','career',e?.career_experience||[],true);
+    renderRepeatRows('trainingExperienceRows','training',e?.training_experience||[],true);
+
     if($('photoConsent')) $('photoConsent').checked=Boolean(o?.photo_consent_at);
     renderPhoto(o?.profile_photo_url);
     if($('onboardingStatus')){
@@ -84,9 +206,28 @@
     }
     const f=new FormData(e.currentTarget);
     if(!f.get('photo_consent')) return msg('onboardingMessage','Photo and marketing consent is required for an approved EasyLatih trainer profile.','danger');
-    const photoFile=$('profilePhoto')?.files?.[0]||null;
+
+    const fullName=String($('etris_full_name')?.value||'').trim();
+    const identityNo=String($('etris_identity_no')?.value||'').trim();
+    const race=String($('etris_race')?.value||'').trim();
+    const mobile=String($('etris_mobile')?.value||'').trim();
+    const email=String($('etris_email')?.value||profile.email||user.email||'').trim();
+    const tttStatus=String(f.get('ttt_status')||'').trim();
+    const academic=collectRepeatRows('academicQualificationRows',['qualification','year_awarded','institution']);
+    const certifications=collectRepeatRows('professionalCertificationRows',['certification','certification_body','year_awarded']);
+    const career=collectRepeatRows('careerExperienceRows',['year_from','year_to','position','company_organization']);
+    const training=collectRepeatRows('trainingExperienceRows',['year_from','year_to','training_program_conducted']);
+
     try{
-      msg('onboardingMessage','Saving onboarding details…','info');
+      if(!fullName||!identityNo||!race||!mobile||!email) throw new Error('Please complete all Personal Details required for eTRiS.');
+      validateCompleteRows(academic,['qualification','year_awarded','institution'],'academic qualification');
+      if(certifications.some(row=>['certification','certification_body','year_awarded'].some(field=>!row[field]))) throw new Error('Please complete all fields for each professional certification, or remove the incomplete entry.');
+      validateCompleteRows(career,['year_from','year_to','position','company_organization'],'career experience');
+      validateCompleteRows(training,['year_from','year_to','training_program_conducted'],'training experience');
+      if(!tttStatus) throw new Error('Please provide your HRD Corp TTT / Trainer Status.');
+
+      msg('onboardingMessage','Saving eTRiS trainer profile…','info');
+      const photoFile=$('profilePhoto')?.files?.[0]||null;
       const oldPhotoPath=onboarding?.profile_photo_storage_path||null;
       let photoUrl=onboarding?.profile_photo_url||null;
       let photoPath=oldPhotoPath;
@@ -95,22 +236,39 @@
         photoUrl=uploaded.url; photoPath=uploaded.path;
       }
       if(!photoUrl) throw new Error('Please upload a professional trainer profile photo.');
+
+      const profileUpdate=await client.from('profiles').update({full_name:fullName,phone:mobile,updated_at:new Date().toISOString()}).eq('id',user.id);
+      if(profileUpdate.error) throw profileUpdate.error;
+
+      const etrisRow={
+        trainer_id:user.id,
+        identity_no:identityNo,
+        race,
+        academic_qualifications:academic,
+        professional_certifications:certifications,
+        career_experience:career,
+        training_experience:training,
+        updated_at:new Date().toISOString()
+      };
+      const etrisSave=await client.from('trainer_etris_profiles').upsert(etrisRow,{onConflict:'trainer_id'});
+      if(etrisSave.error) throw etrisSave.error;
+
+      const now=new Date().toISOString();
       const row={
         trainer_id:user.id,
-        academic_qualification:String(f.get('academic_qualification')||'').trim(),
-        professional_certifications:String(f.get('professional_certifications')||'').trim(),
-        working_experience:String(f.get('working_experience')||'').trim(),
-        training_experience:String(f.get('training_experience')||'').trim(),
-        industry_experience:String(f.get('industry_experience')||'').trim(),
-        ttt_status:String(f.get('ttt_status')||'').trim(),
+        academic_qualification:academic.map(x=>`${x.qualification} (${x.year_awarded}) - ${x.institution}`).join('\n'),
+        professional_certifications:certifications.map(x=>`${x.certification} - ${x.certification_body} (${x.year_awarded})`).join('\n'),
+        working_experience:career.map(x=>`${x.year_from}-${x.year_to}: ${x.position}, ${x.company_organization}`).join('\n'),
+        training_experience:training.map(x=>`${x.year_from}-${x.year_to}: ${x.training_program_conducted}`).join('\n'),
+        industry_experience:onboarding?.industry_experience||'',
+        ttt_status:tttStatus,
         profile_photo_url:photoUrl,
         profile_photo_storage_path:photoPath,
         photo_consent_version:cfg.collaborationTermsVersion,
-        photo_consent_at:onboarding?.photo_consent_at||new Date().toISOString(),
-        updated_at:new Date().toISOString()
+        photo_consent_at:onboarding?.photo_consent_at||now,
+        onboarding_completed_at:onboarding?.onboarding_completed_at||now,
+        updated_at:now
       };
-      const complete=[row.academic_qualification,row.working_experience,row.training_experience,row.ttt_status,row.profile_photo_url].every(Boolean);
-      if(complete) row.onboarding_completed_at=onboarding?.onboarding_completed_at||new Date().toISOString();
       const {error}=await client.from('trainer_onboarding').upsert(row,{onConflict:'trainer_id'});
       if(error)throw error;
       if(!onboarding?.photo_consent_at){
@@ -120,9 +278,9 @@
       if(photoFile&&oldPhotoPath&&oldPhotoPath!==photoPath){
         await client.storage.from('trainer-profile-photos').remove([oldPhotoPath]);
       }
-      msg('onboardingMessage',complete?'Onboarding saved and marked complete.':'Onboarding saved. Complete the remaining required fields to finish.','success');
+      msg('onboardingMessage','eTRiS trainer profile saved and onboarding marked complete.','success');
       await loadOnboarding();
-    }catch(err){msg('onboardingMessage',err.message||'Unable to save onboarding.','danger')}
+    }catch(err){msg('onboardingMessage',err.message||'Unable to save trainer profile.','danger')}
   }
 
   async function loadProgrammeEditor(){
@@ -272,5 +430,5 @@
     $('acceptTermsButton')?.addEventListener('click',refreshAfterTermsAcceptance);
   }
 
-  document.addEventListener('DOMContentLoaded',async()=>{wire();await loadOnboarding();});
+  document.addEventListener('DOMContentLoaded',async()=>{buildEtrisFields();wire();await loadOnboarding();});
 })();
