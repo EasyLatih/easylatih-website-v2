@@ -11,12 +11,17 @@
     el.textContent = text;
   }
 
-  function resetRedirectUrl() {
-    const url = new URL(window.location.href);
-    url.pathname = url.pathname.replace(/forgot-password\.html$/, 'reset-password.html');
-    url.hash = '';
-    url.search = '';
-    return url.toString();
+  async function requestCustomRecovery(email) {
+    const response = await fetch(`${cfg.supabaseUrl}/functions/v1/trainer-password-reset-request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': cfg.supabasePublishableKey
+      },
+      body: JSON.stringify({ email })
+    });
+    if (!response.ok) throw new Error('Unable to request password reset at the moment.');
+    return response.json().catch(() => ({}));
   }
 
   async function initForgotPassword() {
@@ -36,10 +41,7 @@
       button.disabled = true;
       message('forgotMessage','Sending password reset link…','info');
       try {
-        const { error } = await client.auth.resetPasswordForEmail(email, {
-          redirectTo: resetRedirectUrl()
-        });
-        if (error) throw error;
+        await requestCustomRecovery(email);
         formEl.reset();
         message('forgotMessage','If an EasyLatih Trainer Portal account exists for that email, a password reset link has been sent. Please check your inbox and spam folder.','success');
       } catch (err) {
@@ -58,10 +60,10 @@
 
     const form = $('resetPasswordForm');
     let recoverySessionReady = false;
-
     const hash = new URLSearchParams(window.location.hash.replace(/^#/,''));
     const query = new URLSearchParams(window.location.search);
     const authError = hash.get('error_description') || query.get('error_description');
+
     if (authError) {
       message('resetMessage', decodeURIComponent(authError.replace(/\+/g,' ')), 'danger');
       return;
@@ -73,12 +75,32 @@
       message('resetMessage','Recovery link verified. Enter your new password below.','success');
     };
 
-    client.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' && session) revealForm();
-    });
+    const tokenHash = query.get('token_hash');
+    const tokenType = query.get('type') || 'recovery';
 
-    const { data } = await client.auth.getSession();
-    if (data?.session) revealForm();
+    if (tokenHash) {
+      try {
+        const { data, error } = await client.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: tokenType
+        });
+        if (error) throw error;
+        if (data?.session) {
+          history.replaceState({}, document.title, window.location.pathname);
+          revealForm();
+        }
+      } catch (err) {
+        message('resetMessage', err?.message || 'This recovery link is invalid or expired. Please request a new reset link.','danger');
+        return;
+      }
+    } else {
+      client.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' && session) revealForm();
+      });
+
+      const { data } = await client.auth.getSession();
+      if (data?.session) revealForm();
+    }
 
     setTimeout(() => {
       if (!recoverySessionReady) {
