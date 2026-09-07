@@ -20,7 +20,8 @@ const allowedTypes = new Set([
   'TTT_CERTIFICATE',
   'ACCREDITED_TRAINER_CERTIFICATE',
   'RESUME_CV',
-  'OTHER_RELEVANT_CERTIFICATE'
+  'OTHER_RELEVANT_CERTIFICATE',
+  'COURSE_CONTENT'
 ]);
 const allowedMime = new Set([
   'application/pdf',
@@ -69,7 +70,7 @@ Deno.serve(async (req) => {
     .single();
   if (profileError || !profile) return json({ ok: false, error: 'Trainer profile not found.' }, 404);
   if (!['ONBOARDING', 'ACTIVE'].includes(profile.collaboration_status)) {
-    return json({ ok: false, error: 'Supporting document upload is only available during trainer onboarding or active collaboration.' }, 403);
+    return json({ ok: false, error: 'Document upload is only available during trainer onboarding or active collaboration.' }, 403);
   }
 
   const contentType = req.headers.get('content-type') || '';
@@ -97,11 +98,26 @@ Deno.serve(async (req) => {
 
   const form = await req.formData();
   const documentType = String(form.get('document_type') || '').trim().toUpperCase();
+  const programmeId = String(form.get('programme_id') || '').trim();
   const file = form.get('file');
   if (!allowedTypes.has(documentType)) return json({ ok: false, error: 'Unsupported document type.' }, 400);
   if (!(file instanceof File)) return json({ ok: false, error: 'Please choose a document to upload.' }, 400);
   if (!allowedMime.has(file.type)) return json({ ok: false, error: 'Unsupported file type.' }, 400);
   if (file.size <= 0 || file.size > 10 * 1024 * 1024) return json({ ok: false, error: 'File must be between 1 byte and 10 MB.' }, 400);
+
+  let programme: any = null;
+  if (documentType === 'COURSE_CONTENT') {
+    if (!programmeId) return json({ ok: false, error: 'Save the programme draft before uploading full course content.' }, 400);
+    const programmeResult = await db
+      .from('programmes')
+      .select('id,trainer_id,title,publish_status')
+      .eq('id', programmeId)
+      .eq('trainer_id', user.id)
+      .single();
+    if (programmeResult.error || !programmeResult.data) return json({ ok: false, error: 'Programme not found.' }, 404);
+    programme = programmeResult.data;
+    if (programme.publish_status !== 'DRAFT') return json({ ok: false, error: 'Course content can only be replaced while the programme is in Draft status.' }, 409);
+  }
 
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -115,6 +131,8 @@ Deno.serve(async (req) => {
       trainerId: user.id,
       trainerName: profile.full_name,
       documentType,
+      programmeId: programme?.id || '',
+      programmeTitle: programme?.title || '',
       fileName: file.name,
       mimeType: file.type,
       base64
@@ -127,11 +145,13 @@ Deno.serve(async (req) => {
       accredited_folder_id: drive.accreditedFolderId,
       resume_folder_id: drive.resumeFolderId,
       other_certificates_folder_id: drive.otherCertificatesFolderId,
+      course_content_folder_id: drive.courseContentFolderId || null,
       updated_at: new Date().toISOString()
     }, { onConflict: 'trainer_id' });
 
     const { data: document, error: insertError } = await db.from('trainer_documents').insert({
       trainer_id: user.id,
+      programme_id: programme?.id || null,
       document_type: documentType,
       provider: 'GOOGLE_DRIVE',
       file_name: drive.fileName || file.name,
@@ -139,7 +159,7 @@ Deno.serve(async (req) => {
       file_url: drive.fileUrl || null,
       verification_status: 'PENDING',
       updated_at: new Date().toISOString()
-    }).select('id,document_type,file_name,file_id,file_url,verification_status,created_at').single();
+    }).select('id,programme_id,document_type,file_name,file_id,file_url,verification_status,created_at').single();
     if (insertError) throw insertError;
 
     return json({ ok: true, document });
