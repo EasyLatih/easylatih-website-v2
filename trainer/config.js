@@ -8,3 +8,7 @@ window.EASYLATIH_TRAINER_PORTAL = {
   supportEmail: "sales@easylatih.my",
   supportWhatsApp: "+60109202811"
 };
+
+if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
+  document.write('<script src="etris-supporting-documents.js"><\\/script>');
+}
