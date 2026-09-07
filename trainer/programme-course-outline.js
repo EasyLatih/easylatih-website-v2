@@ -49,12 +49,12 @@
     for(let day=1;day<=days;day++){
       rows.push(
         {day,start:'09:00',end:'10:30',type:'SESSION',topic:'',content:''},
-        {day,start:'10:30',end:'10:45',type:'MORNING_BREAK',topic:'Morning Break',content:'Break - excluded from contact hours'},
+        {day,start:'10:30',end:'10:45',type:'MORNING_BREAK',topic:'Morning Break',content:'Break - included in contact hours'},
         {day,start:'10:45',end:'13:00',type:'SESSION',topic:'',content:''},
         {day,start:'13:00',end:'14:00',type:'LUNCH',topic:'Lunch',content:'Lunch - excluded from contact hours'},
         {day,start:'14:00',end:'15:30',type:'SESSION',topic:'',content:''},
-        {day,start:'15:30',end:'15:45',type:'AFTERNOON_BREAK',topic:'Afternoon Break',content:'Break - excluded from contact hours'},
-        {day,start:'15:45',end:'17:30',type:'SESSION',topic:'',content:''}
+        {day,start:'15:30',end:'15:45',type:'AFTERNOON_BREAK',topic:'Afternoon Break',content:'Break - included in contact hours'},
+        {day,start:'15:45',end:'17:00',type:'SESSION',topic:'',content:''}
       );
     }
     return rows;
@@ -73,7 +73,7 @@
       total.placeholder='Auto-calculated from schedule';
       const help=document.createElement('span');
       help.className='help';
-      help.textContent='Automatically calculated from training sessions. Morning break, lunch and afternoon break are excluded.';
+      help.textContent='Automatically calculated from the schedule. Only the 1-hour lunch break is excluded; the 15-minute morning and afternoon breaks remain within contact hours.';
       if(!total.parentElement.querySelector('[data-contact-hours-help]')){
         help.dataset.contactHoursHelp='1';
         total.parentElement.appendChild(help);
@@ -94,16 +94,16 @@
         <h4 style="margin:0 0 .4rem">Training Schedule & Detailed Course Content</h4>
         <p class="muted" style="margin:.25rem 0 .75rem">Complete the schedule below. When you submit the programme, EasyLatih will automatically generate an editable Google Docs Course Outline for internal review and finalisation.</p>
         <div class="alert alert-warning" style="margin:.75rem 0">
-          <strong>EasyLatih break allocation:</strong> Morning break is <strong>15 minutes only, once per training day</strong>; lunch is <strong>1 hour</strong>; afternoon break is <strong>15 minutes only, once per training day</strong>. Breaks and lunch are <strong>not counted</strong> as contact hours.
+          <strong>EasyLatih break allocation:</strong> Morning break is <strong>15 minutes only, once per training day</strong>; lunch is <strong>1 hour</strong>; afternoon break is <strong>15 minutes only, once per training day</strong>. <strong>Only lunch is excluded from contact hours.</strong> Morning and afternoon breaks remain within the programme contact hours.
         </div>
-        <div class="alert alert-info" style="margin:.75rem 0">For a normal full training day, use <strong>9:00 AM - 5:30 PM</strong>. The standard schedule below produces <strong>7 contact hours</strong> after excluding the two 15-minute breaks and 1-hour lunch.</div>
+        <div class="alert alert-info" style="margin:.75rem 0">For a normal full training day, use <strong>9:00 AM - 5:00 PM</strong>. The standard schedule produces <strong>7 contact hours</strong> by excluding only the 1-hour lunch break.</div>
         <div id="courseOutlineMessage" class="hidden"></div>
         <div class="btn-row" style="margin-bottom:.75rem">
           <button id="applyStandardSchedule" type="button" class="btn btn-soft">Apply Standard Full-Day Schedule</button>
           <button id="addScheduleSession" type="button" class="btn btn-soft">+ Add Schedule Row</button>
         </div>
         <div id="scheduleRows"></div>
-        <div class="alert alert-info" style="margin-top:.75rem"><strong>Total Contact Hours:</strong> <span id="scheduleContactHours">0</span> hour(s). Breaks and lunch are excluded automatically.</div>
+        <div class="alert alert-info" style="margin-top:.75rem"><strong>Total Contact Hours:</strong> <span id="scheduleContactHours">0</span> hour(s). Only lunch is excluded automatically; morning and afternoon breaks are included.</div>
         <div id="generatedCourseOutlineStatus" class="muted" style="margin-top:.5rem">Google Docs Course Outline will be generated automatically when the programme is submitted for EasyLatih review.</div>
       </div>`;
     buttonRow.parentNode.insertBefore(block,buttonRow);
@@ -172,7 +172,7 @@
     const rule=BREAK_RULES[type];
     if(rule){
       if(topic)topic.value=rule.label;
-      if(content)content.value=type==='LUNCH'?'Lunch - excluded from contact hours':'Break - excluded from contact hours';
+      if(content)content.value=type==='LUNCH'?'Lunch - excluded from contact hours':'Break - included in contact hours';
       if(topic)topic.readOnly=true;
       if(content)content.readOnly=true;
     }else{
@@ -200,7 +200,7 @@
       const start=node.querySelector('[data-field="start"]')?.value||'';
       const end=node.querySelector('[data-field="end"]')?.value||'';
       const mins=Math.max(0,minutesBetween(start,end));
-      const contact=type==='SESSION'?mins:0;
+      const contact=type==='LUNCH'?0:mins;
       total+=contact;
       const out=node.querySelector('[data-row-hours]');if(out)out.textContent=formatHours(contact);
     });
@@ -242,7 +242,7 @@
       }
     });
 
-    const contactMinutes=rows.reduce((sum,r)=>sum+(r.type==='SESSION'?Math.max(0,minutesBetween(r.start,r.end)):0),0);
+    const contactMinutes=rows.reduce((sum,r)=>sum+(r.type==='LUNCH'?0:Math.max(0,minutesBetween(r.start,r.end))),0);
     if(!contactMinutes)throw new Error('Total contact hours must be greater than 0.');
     return {rows,contactHours:Number((contactMinutes/60).toFixed(2))};
   }
