@@ -62,16 +62,7 @@ Deno.serve(async (req) => {
 
   const user = await getUser(req);
   if (!user) return json({ ok: false, error: 'Unauthorized.' }, 401);
-
-  const { data: profile, error: profileError } = await db
-    .from('profiles')
-    .select('id,full_name,collaboration_status')
-    .eq('id', user.id)
-    .single();
-  if (profileError || !profile) return json({ ok: false, error: 'Trainer profile not found.' }, 404);
-  if (!['ONBOARDING', 'ACTIVE'].includes(profile.collaboration_status)) {
-    return json({ ok: false, error: 'Document upload is only available during trainer onboarding or active collaboration.' }, 403);
-  }
+  const isAdmin = user.app_metadata?.role === 'admin';
 
   const contentType = req.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -79,12 +70,14 @@ Deno.serve(async (req) => {
     if (body?.action !== 'download') return json({ ok: false, error: 'Unsupported action.' }, 400);
     const documentId = String(body.document_id || '').trim();
     if (!documentId) return json({ ok: false, error: 'Missing document ID.' }, 400);
-    const { data: doc, error } = await db
+
+    let query = db
       .from('trainer_documents')
       .select('id,trainer_id,file_id,file_name,provider')
-      .eq('id', documentId)
-      .eq('trainer_id', user.id)
-      .single();
+      .eq('id', documentId);
+    if (!isAdmin) query = query.eq('trainer_id', user.id);
+    const { data: doc, error } = await query.single();
+
     if (error || !doc || doc.provider !== 'GOOGLE_DRIVE' || !doc.file_id) {
       return json({ ok: false, error: 'Document not found.' }, 404);
     }
@@ -94,6 +87,18 @@ Deno.serve(async (req) => {
     } catch (e) {
       return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 502);
     }
+  }
+
+  if (isAdmin) return json({ ok: false, error: 'Admin upload is not available from this endpoint.' }, 403);
+
+  const { data: profile, error: profileError } = await db
+    .from('profiles')
+    .select('id,full_name,collaboration_status')
+    .eq('id', user.id)
+    .single();
+  if (profileError || !profile) return json({ ok: false, error: 'Trainer profile not found.' }, 404);
+  if (!['ONBOARDING', 'ACTIVE'].includes(profile.collaboration_status)) {
+    return json({ ok: false, error: 'Document upload is only available during trainer onboarding or active collaboration.' }, 403);
   }
 
   const form = await req.formData();
