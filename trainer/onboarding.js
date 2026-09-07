@@ -126,17 +126,34 @@
   }
 
   async function loadProgrammeEditor(){
-    if(!user || !['ONBOARDING','ACTIVE'].includes(profile?.collaboration_status)) return;
-    const [{data:props},{data:progs}]=await Promise.all([
+    if(!user || !['APPROVED_TO_COLLAB','ONBOARDING','ACTIVE'].includes(profile?.collaboration_status)) return;
+    const [{data:props,error:propsError},{data:progs,error:progsError}]=await Promise.all([
       client.from('programme_proposals').select('*').eq('trainer_id',user.id).in('status',['APPROVED_TO_COLLAB','ONBOARDING','FULL_DETAILS_SUBMITTED','APPROVED_FOR_ETRIS','PUBLISHED']).order('created_at',{ascending:false}),
       client.from('programmes').select('*').eq('trainer_id',user.id).order('created_at',{ascending:false})
     ]);
-    eligibleProposals=props||[]; programmes=progs||[];
+    if(propsError) throw propsError;
+    if(progsError) throw progsError;
+    eligibleProposals=props||[];
+    programmes=progs||[];
     const select=$('programmeProposal'); if(!select)return;
     const current=select.value;
     select.innerHTML='<option value="">Select approved proposal</option>'+eligibleProposals.map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join('');
-    if(current && eligibleProposals.some(p=>p.id===current)) select.value=current;
+    let selectedProposal=null;
+    if(current && eligibleProposals.some(p=>p.id===current)){
+      select.value=current;
+      selectedProposal=eligibleProposals.find(p=>p.id===current)||null;
+    }else if(eligibleProposals.length===1){
+      select.value=eligibleProposals[0].id;
+      selectedProposal=eligibleProposals[0];
+    }
     renderProgrammeSubmissionList();
+    if(selectedProposal){
+      const existing=programmes.find(p=>p.proposal_id===selectedProposal.id);
+      setProgrammeForm(existing||null,selectedProposal);
+    }else if(!eligibleProposals.length){
+      setProgrammeForm(null,null);
+      msg('programmeFormMessage','No approved proposal is available for full programme submission yet.','info');
+    }
   }
 
   function renderProgrammeSubmissionList(){
@@ -166,11 +183,22 @@
     set('assessment_method',programme?.assessment_method||'');
     set('maximum_participants',programme?.maximum_participants||'');
     set('venue_requirements',programme?.venue_requirements||'');
-    const locked=programme && programme.publish_status!=='DRAFT';
-    form.querySelectorAll('input,select,textarea,button').forEach(el=>{ if(el.type!=='button') el.disabled=Boolean(locked); });
+
+    const termsReady=['ONBOARDING','ACTIVE'].includes(profile?.collaboration_status);
+    const reviewLocked=Boolean(programme && programme.publish_status!=='DRAFT');
+    const locked=!termsReady || reviewLocked;
+    form.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=Boolean(locked)});
+    if($('programmeProposal')) $('programmeProposal').disabled=false;
     if($('saveProgrammeDraft')) $('saveProgrammeDraft').disabled=Boolean(locked);
     if($('submitProgrammeReview')) $('submitProgrammeReview').disabled=Boolean(locked);
-    msg('programmeFormMessage',locked?`This programme is ${programme.publish_status.replaceAll('_',' ')} and is locked until EasyLatih returns it for amendment.`:'','info');
+
+    if(!termsReady){
+      msg('programmeFormMessage','Approved proposal found. Please accept the Trainer Collaboration Terms first to continue with full programme details.','warning');
+    }else if(reviewLocked){
+      msg('programmeFormMessage',`This programme is ${programme.publish_status.replaceAll('_',' ')} and is locked until EasyLatih returns it for amendment.`,'info');
+    }else{
+      msg('programmeFormMessage','','info');
+    }
   }
 
   function openProgramme(id){
@@ -199,6 +227,8 @@
   async function saveProgramme(submit=false){
     const form=$('fullProgrammeForm'); if(!form)return;
     try{
+      await refreshProfile();
+      if(!['ONBOARDING','ACTIVE'].includes(profile?.collaboration_status)) throw new Error('Please accept the Trainer Collaboration Terms before saving full programme details.');
       msg('programmeFormMessage',submit?'Submitting full programme for EasyLatih review…':'Saving draft…','info');
       const row=programmePayload(form);
       const required=[row.title,row.category,row.programme_overview,row.target_participants,row.duration,row.delivery_method,row.training_methodology];
@@ -218,6 +248,17 @@
     }catch(err){msg('programmeFormMessage',err.message||'Unable to save programme.','danger')}
   }
 
+  async function refreshAfterTermsAcceptance(){
+    for(let attempt=0;attempt<10;attempt++){
+      await new Promise(resolve=>setTimeout(resolve,300));
+      try{await refreshProfile();}catch{}
+      if(['ONBOARDING','ACTIVE'].includes(profile?.collaboration_status)){
+        await loadOnboarding();
+        return;
+      }
+    }
+  }
+
   function wire(){
     $('onboardingForm')?.addEventListener('submit',saveOnboarding);
     $('profilePhoto')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)renderPhoto(URL.createObjectURL(f));});
@@ -228,6 +269,7 @@
     });
     $('saveProgrammeDraft')?.addEventListener('click',()=>saveProgramme(false));
     $('submitProgrammeReview')?.addEventListener('click',()=>{if(confirm('Submit this full programme to EasyLatih for review? You will not be able to edit it while it is under review.'))saveProgramme(true)});
+    $('acceptTermsButton')?.addEventListener('click',refreshAfterTermsAcceptance);
   }
 
   document.addEventListener('DOMContentLoaded',async()=>{wire();await loadOnboarding();});
