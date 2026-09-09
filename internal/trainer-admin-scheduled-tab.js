@@ -1,5 +1,6 @@
 (() => {
   let timer = null;
+  let scheduledActive = false;
 
   function section() { return document.getElementById('adminScheduledTrainingSection'); }
   function tabs() { return document.getElementById('adminWorkflowTabs'); }
@@ -14,12 +15,16 @@
   }
 
   function hideScheduled() {
+    scheduledActive=false;
     const s=section();
     if(s)s.classList.add('admin-tab-hidden');
-    document.querySelector('[data-admin-scheduled-tab]')?.classList.remove('active');
+    const btn=document.querySelector('[data-admin-scheduled-tab]');
+    btn?.classList.remove('active');
+    btn?.setAttribute('aria-selected','false');
   }
 
-  function showScheduled() {
+  function enforceScheduledView(scroll=false) {
+    if(!scheduledActive)return;
     const s=section(); if(!s)return;
     document.querySelectorAll('[data-admin-workflow-tab]').forEach(btn=>{
       btn.classList.remove('active');
@@ -33,7 +38,12 @@
     btn?.classList.add('active');
     btn?.setAttribute('aria-selected','true');
     updateCount();
-    s.scrollIntoView({behavior:'smooth',block:'start'});
+    if(scroll)s.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function showScheduled() {
+    scheduledActive=true;
+    enforceScheduledView(true);
   }
 
   function ensureTab() {
@@ -50,7 +60,7 @@
       btn.addEventListener('click',showScheduled);
       host.appendChild(btn);
     }
-    s.classList.add('admin-tab-hidden');
+    if(!scheduledActive)s.classList.add('admin-tab-hidden');
     updateCount();
     return true;
   }
@@ -60,14 +70,18 @@
     timer=setTimeout(()=>{
       ensureTab();
       updateCount();
-    },100);
+      enforceScheduledView(false);
+    },140);
   }
 
   document.addEventListener('click',event=>{
     if(event.target.closest?.('[data-admin-workflow-tab]'))hideScheduled();
   },true);
 
-  document.addEventListener('admin-scheduled-training-updated',updateCount);
+  document.addEventListener('admin-scheduled-training-updated',()=>{
+    updateCount();
+    scheduleEnsure();
+  });
 
   document.addEventListener('DOMContentLoaded',()=>{
     if(!ensureTab()){
@@ -75,6 +89,6 @@
       setTimeout(()=>clearInterval(interval),5000);
     }
     const main=document.querySelector('main');
-    if(main)new MutationObserver(scheduleEnsure).observe(main,{childList:true,subtree:true});
+    if(main)new MutationObserver(scheduleEnsure).observe(main,{childList:true,subtree:true,characterData:true});
   });
 })();
