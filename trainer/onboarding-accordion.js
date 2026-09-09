@@ -54,14 +54,16 @@
     if(!holder) return {complete:false, optional};
     const rows=[...holder.querySelectorAll('[data-repeat-row]')];
     const values=rows.map(row=>fields.map(field=>String(row.querySelector(`[data-field="${field}"]`)?.value||'').trim()));
-    const any=values.some(row=>row.some(Boolean));
-    if(optional && !any) return {complete:true, optional:true};
-    if(!values.length || !any) return {complete:false, optional:false};
-    return {complete:values.every(row=>row.every(Boolean)), optional:false};
+    const nonEmptyRows=values.filter(row=>row.some(Boolean));
+    if(optional && !nonEmptyRows.length) return {complete:true, optional:true};
+    if(!nonEmptyRows.length) return {complete:false, optional:false};
+    return {complete:nonEmptyRows.every(row=>row.every(Boolean)), optional:false};
   }
 
   function photoState(){
-    const hasPhoto=Boolean($('profilePhoto')?.files?.length || $('photoPreview')?.querySelector('img'));
+    const preview=$('photoPreview');
+    const hasExistingPhoto=Boolean(preview?.querySelector('img') || (preview && !/no photo uploaded/i.test(String(preview.textContent||'')) && preview.children.length));
+    const hasPhoto=Boolean($('profilePhoto')?.files?.length || hasExistingPhoto);
     const consent=Boolean($('photoConsent')?.checked);
     return {complete:hasPhoto && consent, optional:false};
   }
@@ -75,11 +77,17 @@
     const yes=Boolean($('tttCertifiedYes')?.checked);
     const no=Boolean($('tttCertifiedNo')?.checked);
     if(no) return {complete:true, optional:false};
-    if(!yes) return {complete:false, optional:false};
-    const type=hasValue($('tttQualificationType'));
-    const accreditation=hasValue($('tttAccreditationStatus'));
-    const certificateNo=hasValue($('tttCertificateNo'));
-    return {complete:type && accreditation && certificateNo, optional:false};
+    if(yes){
+      const type=hasValue($('tttQualificationType'));
+      const accreditation=hasValue($('tttAccreditationStatus'));
+      const certificateNo=hasValue($('tttCertificateNo'));
+      return {complete:type && accreditation && certificateNo, optional:false};
+    }
+    const raw=String($('onboarding_ttt')?.value||'').trim();
+    if(/^(HRD Corp TTT Eligibility:\s*No|HRD Corp TTT:\s*No)$/i.test(raw)) return {complete:true, optional:false};
+    if(/^HRD Corp TTT Eligibility:\s*Yes\s*\|\s*Type:\s*(HRD Corp TTT|HRD Corp TTT Exempted)\s*\|\s*Accreditation:\s*(Accredited|Pre-Accredited|Non-Accredited)\s*\|\s*Reference No:\s*.+$/i.test(raw)) return {complete:true, optional:false};
+    if(/^HRD Corp TTT:\s*Yes\s*\|\s*Accreditation:\s*(Accredited|Pre-Accredited|Non-Accredited)\s*\|\s*TTT Certificate No:\s*.+$/i.test(raw)) return {complete:true, optional:false};
+    return {complete:false, optional:false};
   }
 
   function getState(key){
@@ -157,6 +165,18 @@
     });
   }
 
+  function startHydrationRefresh(){
+    let ticks=0;
+    let stableCompleteTicks=0;
+    const timer=setInterval(()=>{
+      refreshStatuses();
+      ticks+=1;
+      const requiredComplete=ITEMS.filter(x=>x.required).every(x=>getState(x.key).complete);
+      stableCompleteTicks=requiredComplete ? stableCompleteTicks+1 : 0;
+      if(stableCompleteTicks>=3 || ticks>=48) clearInterval(timer);
+    },250);
+  }
+
   function build(){
     const form=$('onboardingForm');
     if(!form || form.dataset.accordionBuilt==='1') return false;
@@ -181,7 +201,9 @@
 
     form.addEventListener('input',()=>requestAnimationFrame(refreshStatuses));
     form.addEventListener('change',()=>requestAnimationFrame(refreshStatuses));
+    document.addEventListener('easylatih:onboarding-hydrated',refreshStatuses);
     refreshStatuses();
+    startHydrationRefresh();
     return true;
   }
 
@@ -195,6 +217,8 @@
         clearInterval(timer);
         setTimeout(refreshStatuses,300);
         setTimeout(refreshStatuses,1000);
+        setTimeout(refreshStatuses,2500);
+        setTimeout(refreshStatuses,5000);
       }
     },150);
   }
