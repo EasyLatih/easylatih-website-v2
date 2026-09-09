@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Beta Training Schedule | EasyLatih</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .beta-wrap{max-width:1100px;margin:auto;padding:2rem}.beta-note{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:14px;padding:1rem;margin:1rem 0 1.25rem}.beta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.beta-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:1.1rem;box-shadow:0 8px 22px rgba(15,23,42,.06)}.beta-card h3{margin:.1rem 0 .45rem;color:#0d3b66}.beta-meta{display:flex;gap:.45rem;flex-wrap:wrap;color:#64748b;font-size:.82rem}.beta-pill{display:inline-flex;border-radius:999px;padding:.3rem .6rem;background:#f1f5f9;font-size:.74rem;font-weight:700}.beta-pill.status{background:#dcfce7;color:#166534}.beta-pill.full{background:#fef3c7;color:#92400e}.beta-pill.postponed{background:#fee2e2;color:#991b1b}.beta-info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem 1rem;margin:.9rem 0;font-size:.86rem}.beta-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.9rem}.beta-btn{display:inline-block;text-decoration:none;border-radius:999px;padding:.55rem .8rem;font-size:.8rem;font-weight:700;border:1px solid #cbd5e1;color:#0d3b66;background:#fff}.beta-btn.primary{background:#0d6efd;border-color:#0d6efd;color:#fff}.beta-btn.disabled{background:#e5e7eb;color:#64748b;pointer-events:none}.beta-empty{text-align:center;padding:2rem;color:#64748b}.beta-filters{display:grid;grid-template-columns:2fr 1fr;gap:.7rem;margin-bottom:1rem}.beta-filters input,.beta-filters select{width:100%;padding:.75rem;border:1px solid #cbd5e1;border-radius:12px;background:#fff}@media(max-width:760px){.beta-grid,.beta-info,.beta-filters{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="nav-container" style="display:flex;align-items:center;justify-content:space-between;">
+    <div class="logo-group" style="display:flex;align-items:center;"><a href="./" class="logo"><img src="assets/logo.png" alt="EasyLatih" style="height:50px"></a></div>
+    <nav><ul id="navMenu"><li><a href="courses.html">Course Catalogue</a></li><li><a href="beta-schedule.html">Beta Schedule</a></li></ul></nav>
+  </div>
+</header>
+<main class="beta-wrap">
+  <h1>Public Training Schedule</h1>
+  <p>Upcoming EasyLatih public training sessions.</p>
+  <div class="beta-note"><strong>Beta preview.</strong> This page is connected to the new Trainer Collaboration admin module and is not yet the live www.easylatih.my schedule.</div>
+  <div class="beta-filters"><input id="scheduleSearch" placeholder="Search programme, city or state"><select id="scheduleState"><option value="">All states</option></select></div>
+  <div id="betaScheduleList" class="beta-grid"><div class="beta-empty">Loading scheduled training…</div></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
+<script src="trainer/config.js"></script>
+<script>
+(() => {
+  const cfg=window.EASYLATIH_TRAINER_PORTAL||{};
+  const holder=document.getElementById('betaScheduleList');
+  const search=document.getElementById('scheduleSearch');
+  const stateSelect=document.getElementById('scheduleState');
+  const client=window.supabase?.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
+  let rows=[];
+  const esc=v=>String(v??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  const money=v=>v===null||v===undefined?'TBC':`RM ${Number(v).toLocaleString('en-MY',{maximumFractionDigits:2})}`;
+  const d=v=>v?new Date(`${v}T00:00:00`).toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}):'-';
+  const dt=v=>v?new Date(v).toLocaleString('en-MY'):'-';
+  function dateRange(r){return r.end_date&&r.end_date!==r.start_date?`${d(r.start_date)} – ${d(r.end_date)}`:d(r.start_date)}
+  function timeRange(r){return [r.start_time?String(r.start_time).slice(0,5):'',r.end_time?String(r.end_time).slice(0,5):''].filter(Boolean).join(' – ')}
+  function populateStates(){const states=[...new Set(rows.map(r=>r.state).filter(Boolean))].sort();const current=stateSelect.value;stateSelect.innerHTML='<option value="">All states</option>'+states.map(x=>`<option>${esc(x)}</option>`).join('');if(states.includes(current))stateSelect.value=current;}
+  function statusPill(r){if(r.status==='FULL')return '<span class="beta-pill full">FULL</span>';if(r.status==='POSTPONED')return '<span class="beta-pill postponed">POSTPONED</span>';return '<span class="beta-pill status">REGISTRATION OPEN</span>';}
+  function render(){const q=search.value.trim().toLowerCase();const st=stateSelect.value;const selectedCourse=new URLSearchParams(location.search).get('course');const filtered=rows.filter(r=>{if(selectedCourse&&r.programme_id!==selectedCourse)return false;if(st&&r.state!==st)return false;if(q&&!`${r.programme_title||''} ${r.city||''} ${r.state||''} ${r.category||''}`.toLowerCase().includes(q))return false;return true;});if(!filtered.length){holder.innerHTML='<div class="beta-empty">No scheduled training found.</div>';return;}holder.innerHTML=filtered.map(r=>{const started=new Date(`${r.start_date}T23:59:59`)<new Date();const deadlineClosed=r.registration_deadline&&new Date(r.registration_deadline)<new Date();const canRegister=r.status==='PUBLISHED'&&!started&&!deadlineClosed&&r.registration_url;const reg=canRegister?`<a class="beta-btn primary" href="${esc(r.registration_url)}" target="_blank" rel="noopener">Register Now</a>`:`<span class="beta-btn disabled">${r.status==='FULL'?'Registration Full':r.status==='POSTPONED'?'Registration Postponed':'Registration Closed'}</span>`;return `<article class="beta-card"><div class="beta-meta">${statusPill(r)}${r.hrd_claimable?'<span class="beta-pill">HRD Corp Claimable</span>':''}<span class="beta-pill">${esc(r.delivery_mode)}</span></div><h3>${esc(r.programme_title)}</h3><div class="beta-meta"><span>${esc(r.category||'Training')}</span></div><div class="beta-info"><div><strong>Date</strong><br>${dateRange(r)}</div><div><strong>Time</strong><br>${esc(timeRange(r)||'TBC')}</div><div><strong>Venue</strong><br>${esc(r.venue||[r.city,r.state].filter(Boolean).join(', ')||'TBC')}</div><div><strong>Fee</strong><br>${money(r.participant_fee)} / participant</div><div><strong>Capacity</strong><br>${esc(r.capacity||'TBC')}</div><div><strong>Registration Deadline</strong><br>${dt(r.registration_deadline)}</div></div><div class="beta-actions">${r.final_course_content_url?`<a class="beta-btn" href="${esc(r.final_course_content_url)}" target="_blank" rel="noopener">Course Content</a>`:''}${r.trainer_profile_url?`<a class="beta-btn" href="${esc(r.trainer_profile_url)}" target="_blank" rel="noopener">Trainer Profile</a>`:''}${reg}</div></article>`}).join('');}
+  async function load(){if(!client){holder.innerHTML='<div class="beta-empty">Beta backend is unavailable.</div>';return;}const {data,error}=await client.from('scheduled_trainings').select('id,programme_id,programme_title,category,duration,start_date,end_date,start_time,end_time,venue,city,state,delivery_mode,participant_fee,capacity,registration_deadline,trainer_profile_url,final_course_content_url,registration_url,hrd_claimable,status').in('status',['PUBLISHED','FULL','POSTPONED']).order('start_date',{ascending:true});if(error){holder.innerHTML=`<div class="beta-empty">Unable to load schedule: ${esc(error.message)}</div>`;return;}rows=data||[];populateStates();render();}
+  search.addEventListener('input',render);stateSelect.addEventListener('change',render);load();
+})();
+</script>
+<script src="script.js"></script>
+</body>
+</html>
