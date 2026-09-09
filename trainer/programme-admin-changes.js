@@ -32,7 +32,7 @@
       <div class="list-card-top"><div><h3>${esc(change.programmeTitle || 'Programme updated')}</h3><div class="meta"><span>EasyLatih correction</span><span>Version ${esc(change.from_version)} → ${esc(change.to_version)}</span><span>${esc(fmt(change.created_at))}</span></div></div><span class="badge blue">UPDATED BY EASYLATIH</span></div>
       ${change.note ? `<div class="alert alert-info" style="margin:.7rem 0"><strong>Admin note:</strong> ${esc(change.note)}</div>` : ''}
       <div class="muted" style="margin-bottom:.6rem">EasyLatih corrected the submitted programme directly so the review process does not need to wait for a resubmission. The latest version below is now the working version.</div>
-      ${entries.map(([field,diff]) => `<details style="border-top:1px solid #eef2f7;padding:.65rem 0"><summary style="cursor:pointer;font-weight:700">${esc(labels[field] || field.replaceAll('_',' '))}</summary><div class="review-grid" style="margin-top:.55rem"><div><strong>Before</strong>${displayValue(diff?.before)}</div><div><strong>After</strong>${displayValue(diff?.after)}</div></div></details>`).join('')}
+      ${entries.map(([field,diff]) => `<details style="border-top:1px solid #eef2f7;padding:.65rem 0"><summary style="cursor:pointer;font-weight:700">${esc(labels[field] || field.replaceAll('_',' '))}</summary><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem;background:#f8fafc;border-radius:10px;padding:.8rem;margin-top:.55rem"><div><strong>Before</strong>${displayValue(diff?.before)}</div><div><strong>After</strong>${displayValue(diff?.after)}</div></div></details>`).join('')}
     </div>`;
   }
 
