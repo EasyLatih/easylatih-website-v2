@@ -422,15 +422,15 @@ const shareText =
   `View details/register:\n${shareUrl}`;
 
 const whatsappBtn = `
-  <a href="https://wa.me/?text=${encodeURIComponent(shareText)}"
-     target="_blank"
+  <a href="https://wa.me/60109202811?text=${encodeURIComponent(shareText)}"
+     target="_blank" rel="noopener noreferrer"
      class="calendar-btn calendar-btn-outline">
     WhatsApp
   </a>
 `;
 
 const emailBtn = `
-  <a href="mailto:?subject=${encodeURIComponent(ev.programName)}&body=${encodeURIComponent(shareText)}"
+  <a href="mailto:sales@easylatih.my?subject=${encodeURIComponent(ev.programName)}&body=${encodeURIComponent(shareText)}"
      class="calendar-btn calendar-btn-outline">
     Email
   </a>
