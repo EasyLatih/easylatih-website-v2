@@ -1,7 +1,8 @@
 -- Trainer activation accepts either HRD Corp TTT or official HRD Corp TTT exemption.
--- TTT_CERTIFICATE is retained as the legacy document_type storage key for both
--- a TTT certificate and official TTT exemption evidence to avoid breaking the
--- existing Google Drive folder/Edge Function integration.
+-- Trainers who answer No remain eligible for the EasyLatih waiting/consultancy pools,
+-- but cannot be activated for automatic training opportunity matching.
+-- TTT_CERTIFICATE is retained as the legacy document_type storage key for either
+-- a TTT certificate or official TTT exemption evidence.
 
 create or replace function private.enforce_trainer_activation_requirements()
 returns trigger
@@ -42,7 +43,7 @@ begin
       select 1
       from public.trainer_onboarding o
       where o.trainer_id = new.id
-        and o.ttt_status ~* '^HRD Corp TTT:\s*Yes'
+        and o.ttt_status ~* '^(HRD Corp TTT Eligibility:\s*Yes|HRD Corp TTT:\s*Yes)'
     ) then
       missing_requirements := array_append(missing_requirements, 'HRD Corp TTT or official TTT Exemption status');
     end if;
