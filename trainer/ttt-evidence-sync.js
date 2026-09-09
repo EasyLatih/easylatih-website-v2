@@ -3,7 +3,7 @@
 
   function isExempted() {
     const value = String(document.getElementById('onboarding_ttt')?.value || '');
-    return /Qualification Type:\s*TTT Exempted/i.test(value);
+    return /Type:\s*HRD Corp TTT Exempted/i.test(value);
   }
 
   function updateSupportingDocumentLabel() {
