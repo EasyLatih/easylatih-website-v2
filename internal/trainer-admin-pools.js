@@ -70,23 +70,27 @@
     const host = ensureBlocks();
     if (!host) return;
     host.innerHTML = `
-      <div class="panel-header" style="margin-top:1rem"><div><h3 style="margin:0">Trainer Waiting List</h3><div class="muted">Completed onboarding but currently without HRD Corp TTT or an official TTT exemption. These trainers are not included in automatic training opportunity matching until eligible for activation.</div></div></div>
-      <div class="list" id="adminWaitingList">
-        ${waiting.length ? waiting.map(p => {
-          const cv = latestDoc(p.id,'RESUME_CV');
-          const c = consultancyById[p.id];
-          return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.full_name || 'Trainer')}</h3><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div></div>${badge('WAITING LIST','amber')}</div><div class="meta"><span>TTT: <strong>No TTT / Exemption</strong></span><span>Resume: <strong>${esc(cv?.verification_status || 'NOT UPLOADED')}</strong></span><span>Consultancy: <strong>${c?.available_for_consultancy ? 'Available' : 'Not opted in'}</strong></span></div></div>`;
-        }).join('') : '<div class="empty">No trainers are currently in the waiting list.</div>'}
-      </div>
+      <section id="adminWaitingListSection" class="admin-pool-section">
+        <div class="panel-header" style="margin-top:1rem"><div><h3 style="margin:0">Trainer Waiting List</h3><div class="muted">Completed onboarding but currently without HRD Corp TTT or an official TTT exemption. These trainers are not included in automatic training opportunity matching until eligible for activation.</div></div></div>
+        <div class="list" id="adminWaitingList">
+          ${waiting.length ? waiting.map(p => {
+            const cv = latestDoc(p.id,'RESUME_CV');
+            const c = consultancyById[p.id];
+            return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.full_name || 'Trainer')}</h3><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div></div>${badge('WAITING LIST','amber')}</div><div class="meta"><span>TTT: <strong>No TTT / Exemption</strong></span><span>Resume: <strong>${esc(cv?.verification_status || 'NOT UPLOADED')}</strong></span><span>Consultancy: <strong>${c?.available_for_consultancy ? 'Available' : 'Not opted in'}</strong></span></div></div>`;
+          }).join('') : '<div class="empty">No trainers are currently in the waiting list.</div>'}
+        </div>
+      </section>
 
-      <div class="panel-header" style="margin-top:1.4rem"><div><h3 style="margin:0">Consultancy Pool</h3><div class="muted">Optional consultant profiles. Consultancy availability is independent from Active Trainer status and HRD Corp TTT status.</div></div></div>
-      <div class="list" id="adminConsultancyPool">
-        ${consultants.length ? consultants.map(p => {
-          const c = consultancyById[p.id];
-          const o = onboardingById[p.id];
-          return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.full_name || 'Consultant')}</h3><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div></div>${badge('CONSULTANT POOL','green')}</div><div class="meta"><span>Trainer status: <strong>${esc(String(p.collaboration_status || '').replaceAll('_',' '))}</strong></span><span>TTT: <strong>${esc(qualificationLabel(o?.ttt_status))}</strong></span><span>Indicative rate: <strong>${esc(rateText(c))}</strong></span></div><div style="margin-top:.7rem"><strong>Consultancy Areas / Services</strong><p>${esc(c.consultancy_summary || '-')}</p><strong>Typical Deliverables</strong><p>${esc(c.deliverables_summary || '-')}</p>${c.rate_notes ? `<strong>Rate Notes</strong><p>${esc(c.rate_notes)}</p>` : ''}</div></div>`;
-        }).join('') : '<div class="empty">No trainers have opted into the consultancy pool yet.</div>'}
-      </div>`;
+      <section id="adminConsultancyPoolSection" class="admin-pool-section">
+        <div class="panel-header" style="margin-top:1.4rem"><div><h3 style="margin:0">Consultancy Pool</h3><div class="muted">Optional consultant profiles. Consultancy availability is independent from Active Trainer status and HRD Corp TTT status.</div></div></div>
+        <div class="list" id="adminConsultancyPool">
+          ${consultants.length ? consultants.map(p => {
+            const c = consultancyById[p.id];
+            const o = onboardingById[p.id];
+            return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.full_name || 'Consultant')}</h3><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div></div>${badge('CONSULTANT POOL','green')}</div><div class="meta"><span>Trainer status: <strong>${esc(String(p.collaboration_status || '').replaceAll('_',' '))}</strong></span><span>TTT: <strong>${esc(qualificationLabel(o?.ttt_status))}</strong></span><span>Indicative rate: <strong>${esc(rateText(c))}</strong></span></div><div style="margin-top:.7rem"><strong>Consultancy Areas / Services</strong><p>${esc(c.consultancy_summary || '-')}</p><strong>Typical Deliverables</strong><p>${esc(c.deliverables_summary || '-')}</p>${c.rate_notes ? `<strong>Rate Notes</strong><p>${esc(c.rate_notes)}</p>` : ''}</div></div>`;
+          }).join('') : '<div class="empty">No trainers have opted into the consultancy pool yet.</div>'}
+        </div>
+      </section>`;
   }
 
   function schedule() {
