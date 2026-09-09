@@ -28,4 +28,5 @@ if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="trainer-admin-ttt-evidence-sync.js"><\/script>');
   document.write('<script src="trainer-admin-pools.js"><\/script>');
   document.write('<script src="../internal/trainer-admin-search.js"><\/script>');
+  document.write('<script src="../internal/trainer-admin-workspace.js"><\/script>');
 }
