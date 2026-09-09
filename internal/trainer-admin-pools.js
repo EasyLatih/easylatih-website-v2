@@ -5,12 +5,12 @@
   const esc = v => String(v ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   let refreshTimer = null;
 
-  const isNoTtt = value => /^HRD Corp TTT:\s*No$/i.test(String(value || '').trim());
+  const isNoTtt = value => /^(HRD Corp TTT Eligibility:\s*No|HRD Corp TTT:\s*No)$/i.test(String(value || '').trim());
   const qualificationLabel = value => {
     const text = String(value || '');
     if (isNoTtt(text)) return 'No TTT / Exemption';
-    if (/Qualification Type:\s*TTT Exempted/i.test(text)) return 'TTT Exempted';
-    if (/HRD Corp TTT:\s*Yes/i.test(text)) return 'HRD Corp TTT';
+    if (/Type:\s*HRD Corp TTT Exempted/i.test(text)) return 'TTT Exempted';
+    if (/HRD Corp TTT Eligibility:\s*Yes/i.test(text) || /^HRD Corp TTT:\s*Yes/i.test(text)) return 'HRD Corp TTT';
     return 'Not stated';
   };
   const rateText = row => {
