@@ -10,17 +10,21 @@
 .calendar-filter-extra { display: flex; justify-content: flex-end; margin-top: 1rem; }
 .calendar-reset-btn { min-height: 44px; border: 1px solid #003e6f; color: #003e6f; background: #fff; border-radius: 4px; padding: .6rem 1rem; cursor: pointer; font-size: .875rem; font-weight: 600; }
 .calendar-reset-btn:hover, .calendar-btn-outline:hover { background: #e8f1f8; }
-.calendar-months-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1.5rem; }
+.calendar-months-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1.5rem; align-items: start; }
 .calendar-month-card { min-width: 0; background: #fff; border: 1px solid #dce4ea; border-radius: 4px; overflow: hidden; }
 .calendar-month-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; padding: 1.25rem; background: #003e6f; color: #fff; }
 .calendar-month-name { font-weight: 700; font-size: 1.25rem; }
 .calendar-month-count { font-size: .875rem; }
 .calendar-state-block { padding: 1rem; }
 .calendar-state-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; color: #526777; font-weight: 600; font-size: .875rem; margin-bottom: .75rem; }
-.calendar-session { background: #fff; border: 1px solid #dce4ea; border-left: 3px solid #bb4800; border-radius: 4px; padding: 1rem; margin-bottom: 1rem; overflow-wrap: anywhere; }
+.calendar-session { background: #fff; border: 1px solid #dce4ea; border-left: 3px solid #bb4800; border-radius: 4px; padding: 0; margin-bottom: .75rem; overflow-wrap: anywhere; }
 .calendar-session:last-child { margin-bottom: 0; }
 .calendar-session-date { font-weight: 700; font-size: 1.5rem; color: #a94300; }
-.calendar-session-title { color: #003e6f; font-weight: 700; line-height: 1.45; margin: .35rem 0 .75rem; }
+.calendar-session-title { color: #003e6f; font-weight: 700; line-height: 1.45; margin: 0; padding: 1rem; cursor: pointer; }
+.calendar-session-title::marker { color: #bb4800; }
+.calendar-session-title:hover { background: #f0f5f9; }
+.calendar-session[open] > .calendar-session-title { border-bottom: 1px solid #dce4ea; }
+.calendar-session-body { padding: 1rem; }
 .calendar-session-meta { font-size: .875rem; color: #526777; margin-top: .5rem; }
 .calendar-badge { display: inline-block; background: #e8f1f8; color: #003e6f; border-radius: 4px; padding: .3rem .5rem; font-size: .875rem; }
 .calendar-session-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }

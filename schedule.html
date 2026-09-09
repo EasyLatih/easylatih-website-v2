@@ -46,7 +46,7 @@
   <h1>Training Calendar</h1>
   <p class="calendar-subtitle">
     View upcoming scheduled training programmes by EasyLatih. Access course content,
-    trainer profile and registration link for each programme.
+    trainer profile and registration link for each programme. Click a programme title to view its details.
   </p>
 
   <div class="calendar-filters-card">
@@ -444,9 +444,10 @@ const copyBtn = `
 `;
 
         stateBlock.innerHTML += `
-          <div class="calendar-session">
+          <details class="calendar-session">
+            <summary class="calendar-session-title">${ev.programName}</summary>
+            <div class="calendar-session-body">
             <div class="calendar-session-date">${day}</div>
-            <div class="calendar-session-title">${ev.programName}</div>
 
             <div class="calendar-session-meta">
               <span class="calendar-badge ${badgeClass}">${ev.category || "Training"}</span>
@@ -468,7 +469,8 @@ ${whatsappBtn}
 ${emailBtn}
 ${copyBtn}
             </div>
-          </div>
+            </div>
+          </details>
         `;
       });
 
