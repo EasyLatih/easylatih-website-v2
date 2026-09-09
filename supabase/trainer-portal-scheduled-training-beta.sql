@@ -92,6 +92,10 @@ begin
     raise exception 'Assigned trainer is locked after a public scheduled training is published. Cancel/postpone the session and create a replacement if the trainer must change.';
   end if;
 
+  if old.trainer_locked and new.programme_id is distinct from old.programme_id then
+    raise exception 'Programme is locked after a public scheduled training is published. Create a replacement session if the programme must change.';
+  end if;
+
   if not old.trainer_locked and new.status in ('PUBLISHED','FULL','POSTPONED') then
     new.trainer_locked := true;
     if new.locked_at is null then new.locked_at := now(); end if;
@@ -135,11 +139,14 @@ create trigger scheduled_training_audit_trigger
 after insert or update or delete on public.scheduled_trainings
 for each row execute function public.scheduled_training_write_audit();
 
+revoke execute on function public.scheduled_training_before_write() from public, anon, authenticated;
+revoke execute on function public.scheduled_training_write_audit() from public, anon, authenticated;
+
 grant select on public.scheduled_trainings to anon, authenticated;
 grant insert, update, delete on public.scheduled_trainings to authenticated;
 grant select on public.scheduled_training_audit to authenticated;
 
-comment on table public.scheduled_trainings is 'Public scheduled training sessions. Assigned trainer is locked once a session is published.';
+comment on table public.scheduled_trainings is 'Public scheduled training sessions. Assigned trainer and programme are locked once a session is published.';
 comment on column public.scheduled_trainings.trainer_profile_url is 'Public-facing trainer profile PDF/Google Drive link for this scheduled session.';
 comment on column public.scheduled_trainings.final_course_content_url is 'Final public course content link for this scheduled session.';
 comment on column public.scheduled_trainings.registration_url is 'Public registration link for this scheduled session.';
