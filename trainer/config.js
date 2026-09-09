@@ -2,10 +2,10 @@ window.EASYLATIH_TRAINER_PORTAL = {
   supabaseUrl: "https://uxplxejkegommcandldj.supabase.co",
   supabasePublishableKey: "sb_publishable_1AW0hE-8BHIHnzmo2sGDNg_n2kvWkvP",
   appName: "EasyLatih Trainer Collaboration",
-  privacyNoticeVersion: "2026-09-06",
-  collaborationTermsVersion: "2026-09-06",
+  privacyNoticeVersion: "2026-09-09",
+  collaborationTermsVersion: "2026-09-09",
   maxActiveProposals: 5,
-  supportEmail: "sales@easylatih.my",
+  supportEmail: "admin@easylatih.my",
   supportWhatsApp: "+60109202811"
 };
 
