@@ -54,9 +54,11 @@
       anchor.insertAdjacentElement('afterend', block);
     }
 
-    const trainers = profiles.filter(p => p.id !== adminId && ['APPROVED_TO_COLLAB','ONBOARDING','ACTIVE'].includes(p.collaboration_status));
+    // Active trainers are already past this stage. Keeping them here caused the
+    // Pending dashboard to show a phantom "Ready to activate" count.
+    const trainers = profiles.filter(p => p.id !== adminId && ['APPROVED_TO_COLLAB','ONBOARDING'].includes(p.collaboration_status));
     const html = `
-      <div class="panel-header" style="margin-top:1rem"><div><h3 style="margin:0">Activation Checklist</h3><div class="muted">Trainer can only be activated after all mandatory requirements are complete.</div></div></div>
+      <div class="panel-header" style="margin-top:1rem"><div><h3 style="margin:0">Pending Activation</h3><div class="muted">Only trainers who have not yet been activated appear here.</div></div></div>
       <div class="list">
         ${trainers.length ? trainers.map(p => {
           const r = readiness(p.id);
@@ -69,11 +71,9 @@
               ${checkItem(r.resume, 'Resume / CV verified')}
             </div>
           </div>`;
-        }).join('') : '<div class="empty">No trainers currently in onboarding.</div>'}
+        }).join('') : '<div class="empty">No trainers are currently pending activation.</div>'}
       </div>`;
 
-    // Avoid needless DOM replacement. Replacing the block on every observer pass
-    // was causing the verification status area to visibly flicker.
     if (block.innerHTML !== html) block.innerHTML = html;
   }
 
@@ -184,8 +184,6 @@
       onboarding = oRes.data || [];
       agreements = aRes.data || [];
 
-      // Disconnect while this script adjusts its own buttons so its DOM writes do
-      // not recursively trigger another database reload.
       docsObserver?.disconnect();
       enhanceDocumentButtons();
       renderActivationChecklist();
