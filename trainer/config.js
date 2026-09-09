@@ -6,7 +6,8 @@ window.EASYLATIH_TRAINER_PORTAL = {
   collaborationTermsVersion: "2026-09-09",
   maxActiveProposals: 5,
   supportEmail: "admin@easylatih.my",
-  supportWhatsApp: "+60109202811"
+  supportWhatsApp: "+60109202811",
+  publicTrainingAppsScriptUrl: "https://script.google.com/a/macros/easylatih.my/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec"
 };
 
 if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
@@ -32,6 +33,5 @@ if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="../internal/trainer-admin-workspace.js"><\/script>');
   document.write('<script src="../internal/trainer-admin-opportunity-shortcut.js"><\/script>');
   document.write('<script src="../trainer/opportunity-fee-policy.js"><\/script>');
-  document.write('<script src="../internal/trainer-admin-scheduled-training.js"><\/script>');
-  document.write('<script src="../internal/trainer-admin-scheduled-tab.js"><\/script>');
+  document.write('<script src="../internal/trainer-admin-public-schedule-bridge.js"><\/script>');
 }
