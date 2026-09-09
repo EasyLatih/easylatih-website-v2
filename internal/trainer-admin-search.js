@@ -113,9 +113,12 @@
       btn.addEventListener('click',()=>{
         const target=found[i]?.card;
         if(!target) return;
-        target.scrollIntoView({behavior:'smooth',block:'center'});
-        target.classList.add('admin-search-highlight');
-        setTimeout(()=>target.classList.remove('admin-search-highlight'),1800);
+        document.dispatchEvent(new CustomEvent('admin-search-target',{detail:{card:target,type:found[i]?.type}}));
+        setTimeout(()=>{
+          target.scrollIntoView({behavior:'smooth',block:'center'});
+          target.classList.add('admin-search-highlight');
+          setTimeout(()=>target.classList.remove('admin-search-highlight'),1800);
+        },40);
       });
     });
   }
