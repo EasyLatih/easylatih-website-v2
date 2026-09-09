@@ -21,5 +21,5 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (event) => {
     if (!event.target.closest('nav')) setOpen(false);
   });
-  window.matchMedia('(max-width: 1100px)').addEventListener('change', () => setOpen(false));
+  window.matchMedia('(max-width: 1280px)').addEventListener('change', () => setOpen(false));
 });

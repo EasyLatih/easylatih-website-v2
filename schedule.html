@@ -10,55 +10,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
 
-  <style>
-    .container{max-width:1100px;margin:auto;padding:2rem}
-    .calendar-subtitle{color:#6b7280;font-size:.95rem}
-    .calendar-filters-card{background:#fff;border-radius:16px;padding:18px;margin:20px 0;border:1px solid #e5e7eb;box-shadow:0 8px 20px rgba(0,0,0,.06)}
-    .calendar-filters-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .calendar-filter-group label{display:block;font-size:.78rem;text-transform:uppercase;color:#6b7280;margin-bottom:4px}
-    .calendar-filter-group select,.calendar-filter-group input{width:100%;padding:9px 12px;border-radius:999px;border:1px solid #e5e7eb;background:#f9fafb}
-    .calendar-months-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-    .calendar-month-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;box-shadow:0 4px 12px rgba(0,0,0,.05)}
-    .calendar-month-header{display:flex;justify-content:space-between;margin-bottom:10px}
-    .calendar-month-name{font-weight:700;color:#0b3d91}
-    .calendar-month-count{font-size:.75rem;color:#6b7280}
-    .calendar-state-block{background:#f9fafb;border-radius:12px;padding:10px;margin-bottom:10px}
-    .calendar-state-header{display:flex;justify-content:space-between;font-weight:700;font-size:.8rem;color:#374151;margin-bottom:8px}
-    .calendar-session{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px}
-    .calendar-session-date{font-weight:700;color:#0b3d91}
-    .calendar-session-title{font-weight:700;margin:4px 0}
-    .calendar-session-meta{font-size:.75rem;color:#6b7280;margin-top:4px}
-    .calendar-badge{display:inline-block;color:#fff;border-radius:999px;padding:3px 8px;font-size:.7rem;margin-top:5px}
-    .calendar-badge.hr{background:#4f46e5}
-    .calendar-badge.ops{background:#0369a1}
-    .calendar-badge.finance{background:#0f766e}
-    .calendar-badge.sales{background:#c2410c}
-    .calendar-badge.soft{background:#0ea5e9}
-    .calendar-badge.quality{background:#dc2626}
-    .calendar-badge.it{background:#b45309}
-    .calendar-badge.customer{background:#16a34a}
-    .calendar-badge.senior{background:#7c3aed}
-    .calendar-badge.entrep{background:#f97316}
-    .calendar-badge.esg{background:#047857}
-    .calendar-badge.safety{background:#15803d}
-    .calendar-session-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-    .calendar-btn{display:inline-block;padding:6px 10px;border-radius:999px;font-size:.75rem;font-weight:600;text-decoration:none}
-    .calendar-btn-primary{background:#0d6efd;color:#fff}
-    .calendar-btn-outline{background:#fff;color:#111827;border:1px solid #e5e7eb}
-    .calendar-btn-disabled{background:#e5e7eb;color:#6b7280;cursor:not-allowed;pointer-events:none}
-    .calendar-status-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:7px}
-    .calendar-status{display:inline-block;border-radius:999px;padding:4px 9px;font-size:.7rem;font-weight:700}
-    .calendar-status.confirmed{background:#dcfce7;color:#166534}
-    .calendar-status.tentative{background:#fef3c7;color:#92400e}
-    .calendar-status.active{background:#dbeafe;color:#1d4ed8}
-    .calendar-status.closed{background:#fee2e2;color:#991b1b}
-    .calendar-availability{font-size:.75rem;font-weight:600;color:#374151}
-    .calendar-empty-state{text-align:center;color:#6b7280;padding:2rem}
-    .calendar-reset-btn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 14px;cursor:pointer}
-    .calendar-filter-extra{display:flex;justify-content:flex-end;margin-top:12px}
-    @media(max-width:900px){.calendar-filters-grid,.calendar-months-grid{grid-template-columns:1fr 1fr}}
-    @media(max-width:640px){.calendar-filters-grid,.calendar-months-grid{grid-template-columns:1fr}}
-  </style><meta name="description" content="View upcoming EasyLatih training programmes, dates, venues, trainer information and registration links for public and HRD Corp claimable training in Malaysia.">
+  <link rel="stylesheet" href="marketing.css">
+  <link rel="stylesheet" href="calendar.css"><meta name="description" content="View upcoming EasyLatih training programmes, dates, venues, trainer information and registration links for public and HRD Corp claimable training in Malaysia.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://www.easylatih.my/schedule.html">
 <meta property="og:type" content="website">
@@ -74,35 +27,23 @@
 <meta name="twitter:image" content="https://www.easylatih.my/assets/public_training.png">
 </head>
 
-<body>
+<body class="marketing calendar-page">
 
-<header>
-  <div class="nav-container" style="display:flex;align-items:center;justify-content:space-between;">
-    <div class="logo-group" style="display:flex;align-items:center;">
-      <a href="/" class="logo">
-        <img src="assets/logo.png" alt="EasyLatih logo" style="height:50px;margin-right:10px;">
-      </a>
-      <div class="hrdcorp-logos" style="display:flex;align-items:center;gap:10px;">
-        <img src="assets/Logo Training Provider_Logo Registered Training Provider.png" alt="HRD Corp Registered" style="height:40px;">
-        <img src="assets/HRD Corp - Claimable Logo.png" alt="HRD Corp Claimable" style="height:40px;">
-      </div>
-    </div>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><div class="nav-container">
+<div class="brand-lockup">
+<a href="/" class="logo"><img src="assets/logo.png" width="500" height="500" alt="EasyLatih home"></a>
+<div class="hrdcorp-logos" aria-label="HRD Corp accreditation">
+<img src="assets/Logo Training Provider_Logo Registered Training Provider.png" width="200" height="200" alt="HRD Corp Registered Training Provider">
+<img src="assets/HRD Corp - Claimable Logo.png" width="200" height="200" alt="HRD Corp Claimable">
+</div></div>
+<nav aria-label="Main navigation"><button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open navigation"><span></span><span></span><span></span></button>
+<ul id="navMenu"><li><a href="/">Home</a></li><li><a href="schedule.html" aria-current="page">Training Calendar</a></li><li><a href="courses.html">Courses</a></li><li><a href="skillsoft.html">Skillsoft</a></li><li><a href="consultancy.html">Consultancy</a></li><li><a href="room-rental.html">Venue Rental</a></li><li><a class="nav-portal" href="trainer/">Trainer Portal</a></li></ul>
+</nav></div></header>
 
-    <nav>
-      <div class="nav-toggle" id="navToggle"><span></span><span></span><span></span></div>
-      <ul id="navMenu">
-        <li><a href="/">Home</a></li>
-        <li><a href="courses.html">Course Catalogue</a></li>
-        <li><a href="room-rental.html">Training Venue</a></li>
-        <li><a href="schedule.html">Training Schedule</a></li>
-        <li><a href="blog.html">Blog</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
-
-<section class="container">
-  <h2 class="section-title">Training Schedule</h2>
+<main id="main" class="container calendar-main">
+  <p class="eyebrow">PUBLIC TRAINING</p>
+  <h1>Training Calendar</h1>
   <p class="calendar-subtitle">
     View upcoming scheduled training programmes by EasyLatih. Access course content,
     trainer profile and registration link for each programme.
@@ -112,7 +53,7 @@
     <div class="calendar-filters-grid">
 
       <div class="calendar-filter-group">
-        <label>Month</label>
+        <label for="calendar-filter-month">Month</label>
         <select id="calendar-filter-month">
           <option value="all">All months</option>
           <option value="1">January</option>
@@ -131,7 +72,7 @@
       </div>
 
       <div class="calendar-filter-group">
-        <label>State</label>
+        <label for="calendar-filter-state">State</label>
         <select id="calendar-filter-state">
           <option value="all">All states</option>
           <option value="Kuala Lumpur">Kuala Lumpur</option>
@@ -142,7 +83,7 @@
       </div>
 
       <div class="calendar-filter-group">
-        <label>Category</label>
+        <label for="calendar-filter-category">Category</label>
         <select id="calendar-filter-category">
           <option value="all">All categories</option>
           <option value="Human Resource Management">Human Resource Management</option>
@@ -159,7 +100,7 @@
       </div>
 
       <div class="calendar-filter-group">
-        <label>Search</label>
+        <label for="calendar-filter-search">Search</label>
         <input id="calendar-filter-search" type="text" placeholder="e.g. HR, Excel, Tax">
       </div>
 
@@ -172,47 +113,51 @@
     </div>
   </div>
 
-  <section id="calendar-months-container">
+  <section id="calendar-months-container" aria-label="Scheduled programmes" aria-live="polite">
     <div class="calendar-empty-state">Loading training schedule...</div>
   </section>
-</section>
+</main>
 
 <footer>
-  <div class="footer-container">
-    <div>
-      <h4>Contact Us</h4>
-      <p>B62, Tingkat 1, Jalan IM 7/1<br>Bandar Indera Mahkota 6, 25200<br>Kuantan, Pahang, Malaysia</p>
-      <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
-      <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
-      <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank">+60 10 920 2811</a></p>
-    </div>
-
-    <div>
-      <h4>Quick Links</h4>
-      <a href="/">Home</a>
-      <a href="courses.html">Course Catalogue</a>
-      <a href="room-rental.html">Training Venue</a>
-      <a href="schedule.html">Training Schedule</a>
-      <a href="blog.html">Blog</a>
-    </div>
-
-    <div>
-      <h4>Follow Us</h4>
-      <div class="socials">
-        <a href="https://www.facebook.com/EasyLatih/"><i class="fab fa-facebook-f"></i></a>
-        <a href="https://www.instagram.com/easylatih/"><i class="fab fa-instagram"></i></a>
-        <a href="https://my.linkedin.com/company/easylatih"><i class="fab fa-linkedin-in"></i></a>
-        <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w"><i class="fab fa-youtube"></i></a>
-        <a href="https://www.tiktok.com/@easylatih"><i class="fab fa-tiktok"></i></a>
-      </div>
-    </div>
-  </div>
-
-  <div class="text-center" style="margin-top:2rem;">
-    EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br>
-    &copy; 2025 EasyLatih. All rights reserved.
-  </div>
-</footer>
+        <div class="footer-container">
+            <div>
+                <h4 id="contact">Contact Us</h4>
+                <p>B62, Tingkat 1, Jalan IM 7/1<br>
+                   Bandar Indera Mahkota 6, 25200<br>
+                   Kuantan, Pahang, Malaysia</p>
+                <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
+                <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
+                <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank" rel="noopener noreferrer">+60 10 920 2811</a></p>
+            </div>
+            <div>
+                <h4>Quick Links</h4>
+                <a href="/">Home</a>
+                <a href="courses.html">Course Catalogue</a>
+                <a href="skillsoft.html">Skillsoft Learning</a>
+                <a href="consultancy.html">Consultancy</a>
+                <a href="room-rental.html">Venue Rental</a>
+                <a href="schedule.html">Training Schedule</a>
+                <a href="trainer/">Trainer Collaboration</a>
+                <a href="blog.html">Blog</a>
+                <a href="privacy.html">Privacy Notice</a>
+                <a href="terms-of-use.html">Terms of Use</a>
+            </div>
+            <div>
+                <h4>Follow Us</h4>
+                <div class="socials">
+                  <a href="https://www.facebook.com/EasyLatih/" aria-label="Facebook"><i aria-hidden="true" class="fab fa-facebook-f"></i></a>
+                  <a href="https://www.instagram.com/easylatih/" aria-label="Instagram"><i aria-hidden="true" class="fab fa-instagram"></i></a>
+                  <a href="https://my.linkedin.com/company/easylatih" aria-label="LinkedIn"><i aria-hidden="true" class="fab fa-linkedin-in"></i></a>
+                  <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w" aria-label="YouTube"><i aria-hidden="true" class="fab fa-youtube"></i></a>
+                  <a href="https://www.tiktok.com/@easylatih" aria-label="TikTok"><i aria-hidden="true" class="fab fa-tiktok"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="text-center" style="margin-top: 2rem;">
+            EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br>
+            &copy; 2026 EasyLatih. All rights reserved.
+        </div>
+    </footer>
 
 <script>
 const WEBAPP = "https://script.google.com/a/macros/easylatih.my/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
@@ -557,7 +502,7 @@ resetBtn.addEventListener("click", () => {
 loadPublishedPrograms();
 </script>
 
-<script src="script.js"></script>
+<script src="marketing.js"></script>
 
 </body>
 </html>

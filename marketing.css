@@ -7,14 +7,20 @@
 .marketing p + p { margin-top: 1rem; }
 .marketing .container { width: 100%; padding-left: 1.5rem; padding-right: 1.5rem; }
 .marketing .section-space { padding-top: 5rem; padding-bottom: 5rem; }
-.marketing section[id], .marketing [id="contact"], .marketing [id="gallery"], .marketing [id="enquire"], .marketing [id="venue-enquiry"] { scroll-margin-top: 6rem; }
+.marketing section[id], .marketing [id="contact"], .marketing [id="gallery"], .marketing [id="enquire"], .marketing [id="venue-enquiry"] { scroll-margin-top: 8rem; }
 .marketing .eyebrow { font-size: .875rem; font-weight: 700; letter-spacing: .1em; color: #a94300; margin-bottom: .75rem; }
 .marketing .lead { font-size: 1.25rem; line-height: 1.65; max-width: 42rem; }
 .marketing .measure { max-width: 52rem; }
 .marketing .site-header { background: #fff; color: #003e6f; border-bottom: 1px solid #dce4ea; }
 .marketing .nav-container { padding: 1rem 1.5rem; gap: 2rem; }
 .marketing .logo { flex-shrink: 0; }
-.marketing .logo img { width: 150px; height: 50px; object-fit: contain; }
+/* The source logo has square white margins; crop only its display box. */
+.marketing .brand-lockup { display: flex; align-items: center; flex-shrink: 0; gap: 1rem; }
+.marketing .logo { position: relative; width: 200px; height: 88px; overflow: hidden; }
+.marketing .logo img { position: absolute; width: 200px; height: 200px; max-width: none; top: 50%; left: 0; transform: translateY(-50%); }
+.marketing .hrdcorp-logos { display: flex; align-items: center; gap: .65rem; }
+.marketing .hrdcorp-logos img { width: 64px; height: 64px; object-fit: contain; }
+.marketing .nav-container { max-width: 1440px; padding-top: .5rem; padding-bottom: .5rem; }
 .marketing nav a { color: #003e6f; font-size: .875rem; }
 .marketing nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: .4rem; text-decoration-color: #c44b00; }
 .marketing nav a:hover { color: #a94300; }
@@ -72,7 +78,7 @@
 .marketing .fine-print, .marketing .source-note { font-size: .875rem; margin-top: 1.5rem; color: #526777; }
 .marketing .source-note a { text-decoration: underline; }
 .marketing footer { overflow-wrap: anywhere; }
-@media (max-width: 1100px) {
+@media (max-width: 1280px) {
   .marketing nav ul { display: none; position: absolute; top: 100%; right: 0; width: min(100%, 360px); max-height: calc(100dvh - 85px); overflow-y: auto; flex-direction: column; align-items: stretch; padding: 1.5rem; background: #fff; box-shadow: 0 12px 16px #003e6f18; }
   .marketing nav ul.show { display: flex; }
   .marketing nav ul a { display: block; padding: .5rem; }
@@ -97,4 +103,18 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .marketing *, .marketing *::before, .marketing *::after { transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media (max-width: 700px) {
+  .marketing .nav-container { padding: .5rem 1rem; gap: .5rem; }
+  .marketing .brand-lockup { gap: .5rem; }
+  .marketing .logo { width: 150px; height: 68px; }
+  .marketing .logo img { width: 150px; height: 150px; }
+  .marketing .hrdcorp-logos { gap: .4rem; }
+  .marketing .hrdcorp-logos img { width: 46px; height: 46px; }
+}
+@media (max-width: 360px) {
+  .marketing .logo { width: 126px; height: 60px; }
+  .marketing .logo img { width: 126px; height: 126px; }
+  .marketing .hrdcorp-logos img { width: 40px; height: 40px; }
 }
