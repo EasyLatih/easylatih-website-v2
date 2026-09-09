@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="style.css"><meta name="description" content="Rent a training room in Kuantan at EasyLatih, Bandar Indera Mahkota. Suitable for training, workshops and meetings with Wi-Fi, projector, sound system and classroom seating.">
+    <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="marketing.css"><meta name="description" content="Rent a training room in Kuantan at EasyLatih, Bandar Indera Mahkota. Suitable for training, workshops and meetings with Wi-Fi, projector, sound system and classroom seating.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://www.easylatih.my/room-rental.html">
 <meta property="og:type" content="website">
@@ -22,37 +22,16 @@
 <meta name="twitter:description" content="Rent a training room in Kuantan at EasyLatih, Bandar Indera Mahkota. Suitable for training, workshops and meetings with Wi-Fi, projector, sound system and classroom seating.">
 <meta name="twitter:image" content="https://www.easylatih.my/assets/room1.JPG">
 </head>
-<body>
-    <header>
-  <div class="nav-container" style="display: flex; align-items: center; justify-content: space-between;">
-    
-    <!-- Company + HRD Corp Logos -->
-    <div class="logo-group" style="display: flex; align-items: center;">
-      <a href="/" class="logo">
-        <img src="assets/logo.png" alt="EasyLatih logo" style="height: 50px; margin-right: 10px;">
-      </a>
-      <div class="hrdcorp-logos" style="display: flex; align-items: center; gap: 10px;">
-        <img src="assets/Logo Training Provider_Logo Registered Training Provider.png" alt="HRD Corp Registered" style="height: 40px;">
-        <img src="assets/HRD Corp - Claimable Logo.png" alt="HRD Corp Claimable" style="height: 40px;">
-      </div>
-    </div>
+<body class="marketing">
+    <a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><div class="nav-container">
+<a href="index.html" class="logo"><img src="assets/logo.png" width="150" height="50" alt="EasyLatih home"></a>
+<nav aria-label="Main navigation"><button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open navigation"><span></span><span></span><span></span></button>
+<ul id="navMenu"><li><a href="index.html">Home</a></li><li><a href="schedule.html">Training Calendar</a></li><li><a href="courses.html">Courses</a></li><li><a href="skillsoft.html">Skillsoft</a></li><li><a href="consultancy.html">Consultancy</a></li><li><a href="room-rental.html" aria-current="page">Venue Rental</a></li><li><a class="nav-portal" href="trainer/">Trainer Portal</a></li></ul>
+</nav></div></header>
 
-    <!-- Navigation -->
-    <nav>
-      <div class="nav-toggle" id="navToggle">
-        <span></span><span></span><span></span>
-      </div>
-      <ul id="navMenu">
-        <li><a href="/">Home</a></li>
-        <li><a href="courses.html">Courses</a></li>
-        <li><a href="room-rental.html">Training Room</a></li>
-        <li><a href="schedule.html">Public Training</a></li>
-        <li><a href="blog.html">Blog</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
-
+<main id="main">
+<section class="page-hero"><div class="container"><p class="eyebrow">VENUE RENTAL · KUANTAN</p><h1>A space for your next<br>workshop or meeting.</h1><p class="lead">EasyLatih Training Room · Bandar Indera Mahkota</p><div class="actions"><a class="btn" href="#venue-enquiry">Check Availability &amp; Rates</a><a class="btn btn-outline" href="#gallery">View Gallery</a></div></div></section>
     <!-- Room Rental Section -->
     <section class="container">
         <h2 class="section-title">Training Room Rental</h2>
@@ -87,8 +66,8 @@
             </div>
             <div class="feature">
                 <i class="fa-solid fa-chair"></i>
-                <h4>24 Chairs</h4>
-                <p>Comfortable seating for up to 24 participants.</p>
+                <h4>Participant Seating</h4>
+                <p>Contact us to confirm seating capacity for your preferred room layout.</p>
             </div>
             <div class="feature">
                 <i class="fa-solid fa-table"></i>
@@ -113,56 +92,62 @@
             
         </div>
 
-  <h3 style="margin-top:2rem;">Gallery</h3>
+  <h3 id="gallery" style="margin-top:2rem;">Gallery</h3>
     <div class="gallery" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top:1rem;">
-        <img src="assets/room1.JPG" alt="Training Room View 1" style="width:100%; border-radius:10px;">
-        <img src="assets/room2.JPG" alt="Training Room View 2" style="width:100%; border-radius:10px;">
-        <img src="assets/room3.JPG" alt="Training Room View 3" style="width:100%; border-radius:10px;">
-        <img src="assets/room4.JPG" alt="Training Room View 4" style="width:100%; border-radius:10px;">
+        <img src="assets/room1.JPG" loading="lazy" alt="Training Room View 1" style="width:100%; border-radius:10px;">
+        <img src="assets/room2.JPG" loading="lazy" alt="Training Room View 2" style="width:100%; border-radius:10px;">
+        <img src="assets/room3.JPG" loading="lazy" alt="Training Room View 3" style="width:100%; border-radius:10px;">
+        <img src="assets/room4.JPG" loading="lazy" alt="Training Room View 4" style="width:100%; border-radius:10px;">
     </div>
 
-        <p style="margin-top:2rem;">To book our training room or enquire about availability and rates, please contact us at
+        <div id="venue-enquiry" class="content-panel" style="margin-top:2rem;"><h2>Check availability &amp; request a quotation</h2><p>Share your event date, start and end time, participant count, preferred layout and catering needs.</p><div class="actions"><a class="btn" href="https://wa.me/60109202811?text=Hi%20EasyLatih%2C%20I%20would%20like%20to%20enquire%20about%20venue%20rental.%20Event%20date%3A%20__%3B%20Start%20and%20end%20time%3A%20__%3B%20Number%20of%20participants%3A%20__%3B%20Room%20layout%3A%20__%3B%20Catering%20required%3A%20__.%20Please%20confirm%20availability%2C%20capacity%20and%20rates." target="_blank" rel="noopener noreferrer">Enquire on WhatsApp</a></div></div><p style="margin-top:2rem;">To book our training room or enquire about availability and rates, please contact us at
            <a href="mailto:sales@easylatih.my">sales@easylatih.my</a> or call <a href="tel:+6095604273">+60 9 560 4273</a>.
            We look forward to hosting your next event!</p>
     </section>
 
+</main>
     <!-- Footer -->
     <footer>
         <div class="footer-container">
             <div>
-                <h4>Contact Us</h4>
+                <h4 id="contact">Contact Us</h4>
                 <p>B62, Tingkat 1, Jalan IM 7/1<br>
                    Bandar Indera Mahkota 6, 25200<br>
                    Kuantan, Pahang, Malaysia</p>
                 <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
                 <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
-                <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank">+60 10 920 2811</a></p>
+                <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank" rel="noopener noreferrer">+60 10 920 2811</a></p>
             </div>
             <div>
                 <h4>Quick Links</h4>
                 <a href="/">Home</a>
-                <a href="courses.html">Courses</a>
-                <a href="room-rental.html">Training Room</a>
-                <a href="schedule.html">Public Training</a>
+                <a href="courses.html">Course Catalogue</a>
+                <a href="skillsoft.html">Skillsoft Learning</a>
+                <a href="consultancy.html">Consultancy</a>
+                <a href="room-rental.html">Venue Rental</a>
+                <a href="schedule.html">Training Schedule</a>
+                <a href="trainer/">Trainer Collaboration</a>
                 <a href="blog.html">Blog</a>
+                <a href="privacy.html">Privacy Notice</a>
+                <a href="terms-of-use.html">Terms of Use</a>
             </div>
             <div>
                 <h4>Follow Us</h4>
                 <div class="socials">
-                  <a href="https://www.facebook.com/EasyLatih/"><i class="fab fa-facebook-f"></i></a>
-                  <a href="https://www.instagram.com/easylatih/"><i class="fab fa-instagram"></i></a>
-                  <a href="https://my.linkedin.com/company/easylatih"><i class="fab fa-linkedin-in"></i></a>
-                  <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w"><i class="fab fa-youtube"></i></a>
-                  <a href="https://www.tiktok.com/@easylatih"><i class="fab fa-tiktok"></i></a>
+                  <a href="https://www.facebook.com/EasyLatih/" aria-label="Facebook"><i aria-hidden="true" class="fab fa-facebook-f"></i></a>
+                  <a href="https://www.instagram.com/easylatih/" aria-label="Instagram"><i aria-hidden="true" class="fab fa-instagram"></i></a>
+                  <a href="https://my.linkedin.com/company/easylatih" aria-label="LinkedIn"><i aria-hidden="true" class="fab fa-linkedin-in"></i></a>
+                  <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w" aria-label="YouTube"><i aria-hidden="true" class="fab fa-youtube"></i></a>
+                  <a href="https://www.tiktok.com/@easylatih" aria-label="TikTok"><i aria-hidden="true" class="fab fa-tiktok"></i></a>
                 </div>
             </div>
         </div>
         <div class="text-center" style="margin-top: 2rem;">
             EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br>
-            &copy; 2025 EasyLatih. All rights reserved.
+            &copy; 2026 EasyLatih. All rights reserved.
         </div>
     </footer>
 
-    <script src="script.js"></script>
+<script src="marketing.js"></script>
 </body>
 </html>
