@@ -14,6 +14,7 @@ if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="programme-course-outline.js"><\/script>');
   document.write('<script src="programme-admin-changes.js"><\/script>');
   document.write('<script src="journey-notifications.js"><\/script>');
+  document.write('<script src="onboarding-ttt-override.js"><\/script>');
 }
 
 if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
