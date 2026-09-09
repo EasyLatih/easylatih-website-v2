@@ -12,8 +12,10 @@ window.EASYLATIH_TRAINER_PORTAL = {
 if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="etris-drive-documents.js"><\/script>');
   document.write('<script src="programme-course-outline.js"><\/script>');
+  document.write('<script src="programme-admin-changes.js"><\/script>');
 }
 
 if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="trainer-admin-course-outline.js"><\/script>');
+  document.write('<script src="trainer-admin-programme-editor.js"><\/script>');
 }
