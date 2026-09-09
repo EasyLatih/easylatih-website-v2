@@ -23,7 +23,8 @@
     step.classList.add(state);
     step.disabled = state === 'locked';
     if (statusEl && statusEl.textContent !== status) statusEl.textContent = status;
-    if (icon) icon.textContent = state === 'complete' ? '✓' : state === 'action' ? '!' : state === 'waiting' ? '…' : icon.textContent;
+    const desiredIcon = state === 'complete' ? '✓' : state === 'action' ? '!' : state === 'waiting' ? '…' : null;
+    if (icon && desiredIcon && icon.textContent !== desiredIcon) icon.textContent = desiredIcon;
   }
 
   function removeOnboardingBadge() {
@@ -45,8 +46,8 @@
         note.innerHTML = '<strong>Trainer Waiting List:</strong> You indicated that you do not currently hold HRD Corp TTT or an official TTT exemption. You may continue your EasyLatih collaboration and programme submissions, but you will remain in the trainer waiting list until this requirement is available and verified.';
         field.parentNode?.insertBefore(note, field);
       }
-    } else {
-      note?.remove();
+    } else if (note) {
+      note.remove();
     }
   }
 
@@ -72,14 +73,19 @@
 
     const completed = steps.filter(x => x.classList.contains('complete')).length;
     const summary = document.getElementById('trainerJourneySummary');
-    if (summary) summary.textContent = `${completed} of ${steps.length} steps complete`;
+    const desiredSummary = `${completed} of ${steps.length} steps complete`;
+    if (summary && summary.textContent !== desiredSummary) summary.textContent = desiredSummary;
 
     const next = document.getElementById('trainerJourneyNext');
     if (next && snapshot.onboardingComplete && cvVerified) {
-      next.innerHTML = '<div class="alert alert-info"><strong>Trainer Waiting List</strong><span>Your onboarding and Resume / CV are complete. You may continue submitting programmes and may also opt into the consultancy pool. Trainer activation will become available once HRD Corp TTT or an official TTT exemption is available and verified.</span></div>';
+      if (!next.textContent.includes('Trainer Waiting List')) {
+        next.innerHTML = '<div class="alert alert-info"><strong>Trainer Waiting List</strong><span>Your onboarding and Resume / CV are complete. You may continue submitting programmes and may also opt into the consultancy pool. Trainer activation will become available once HRD Corp TTT or an official TTT exemption is available and verified.</span></div>';
+      }
       removeOnboardingBadge();
     } else if (next && snapshot.onboardingComplete && !cvUploaded) {
-      next.innerHTML = '<div class="alert alert-warning"><strong>Your Next Step: Upload Resume / CV</strong><span>You do not need to upload TTT evidence while you are on the trainer waiting list. Please upload your Resume / CV for EasyLatih verification.</span></div>';
+      if (!next.textContent.includes('Upload Resume / CV')) {
+        next.innerHTML = '<div class="alert alert-warning"><strong>Your Next Step: Upload Resume / CV</strong><span>You do not need to upload TTT evidence while you are on the trainer waiting list. Please upload your Resume / CV for EasyLatih verification.</span></div>';
+      }
     }
   }
 
