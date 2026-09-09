@@ -6,7 +6,7 @@
   let applying = false;
   let timer = null;
 
-  const isNoTtt = value => /^HRD Corp TTT:\s*No$/i.test(String(value || '').trim());
+  const isNoTtt = value => /^(HRD Corp TTT Eligibility:\s*No|HRD Corp TTT:\s*No)$/i.test(String(value || '').trim());
 
   function latest(docs, type) {
     return docs.filter(d => d.document_type === type && d.programme_id == null)
