@@ -20,6 +20,7 @@ if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="ttt-evidence-sync.js"><\/script>');
   document.write('<script src="consultancy-profile.js"><\/script>');
   document.write('<script src="waiting-list-sync.js"><\/script>');
+  document.write('<script src="opportunity-fee-policy.js"><\/script>');
 }
 
 if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
@@ -30,4 +31,5 @@ if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="../internal/trainer-admin-search.js"><\/script>');
   document.write('<script src="../internal/trainer-admin-workspace.js"><\/script>');
   document.write('<script src="../internal/trainer-admin-opportunity-shortcut.js"><\/script>');
+  document.write('<script src="../trainer/opportunity-fee-policy.js"><\/script>');
 }
