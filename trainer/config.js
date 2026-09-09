@@ -17,9 +17,11 @@ if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="onboarding-ttt-override.js"><\/script>');
   document.write('<script src="onboarding-save-fix.js"><\/script>');
   document.write('<script src="onboarding-accordion.js"><\/script>');
+  document.write('<script src="ttt-evidence-sync.js"><\/script>');
 }
 
 if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="trainer-admin-course-outline.js"><\/script>');
   document.write('<script src="trainer-admin-programme-editor.js"><\/script>');
+  document.write('<script src="trainer-admin-ttt-evidence-sync.js"><\/script>');
 }
