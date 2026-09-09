@@ -46,10 +46,17 @@
 
   function validateTttStatus(value) {
     const status = String(value || '').trim();
-    if (!status) throw new Error('Please answer Yes or No for HRD Corp TTT.');
-    if (/^HRD Corp TTT:\s*No$/i.test(status)) return status;
+    if (!status) throw new Error('Please answer Yes or No for HRD Corp TTT / TTT Exemption.');
+
+    if (/^HRD Corp TTT Eligibility:\s*No$/i.test(status) || /^HRD Corp TTT:\s*No$/i.test(status)) return status;
+
+    const current = status.match(/^HRD Corp TTT Eligibility:\s*Yes\s*\|\s*Type:\s*(HRD Corp TTT|HRD Corp TTT Exempted)\s*\|\s*Accreditation:\s*(Accredited|Pre-Accredited|Non-Accredited)\s*\|\s*Reference No:\s*(.+)$/i);
+    if (current) return status;
+
+    // Backward compatibility for records saved with the earlier onboarding format.
     if (/^HRD Corp TTT:\s*Yes\s*\|\s*Accreditation:\s*(Accredited|Pre-Accredited|Non-Accredited)\s*\|\s*TTT Certificate No:\s*.+$/i.test(status)) return status;
-    throw new Error('Please complete your HRD Corp trainer status and TTT Certificate No.');
+
+    throw new Error('Please complete your HRD Corp TTT / Exemption type, trainer status and certificate/reference number.');
   }
 
   async function uploadPhoto(userId, file) {
