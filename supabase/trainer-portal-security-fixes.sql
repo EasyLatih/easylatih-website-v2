@@ -2,6 +2,19 @@
 -- Keeps admin authorization in app_metadata while allowing the portal to call
 -- the private is_admin helper used by RLS policies.
 
+create or replace function private.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = auth, pg_temp
+as $
+  select exists(
+    select 1 from auth.users u
+    where u.id=(select auth.uid()) and u.raw_app_meta_data->>'role'='admin'
+  );
+$;
+revoke all on function private.is_admin() from public, anon, authenticated;
 grant usage on schema private to authenticated;
 grant execute on function private.is_admin() to authenticated;
 

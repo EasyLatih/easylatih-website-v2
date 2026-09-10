@@ -2,6 +2,18 @@
 -- Run after trainer-portal-schema.sql and trainer-portal-security-fixes.sql.
 -- This file mirrors the additional rules applied to the dedicated EasyLatih Supabase project.
 
+-- Read the server-managed admin role rather than a potentially stale browser token.
+create or replace function private.is_admin()
+returns boolean language sql stable security definer set search_path=auth,pg_temp as $
+  select exists(
+    select 1 from auth.users u
+    where u.id=(select auth.uid()) and u.raw_app_meta_data->>'role'='admin'
+  );
+$;
+revoke all on function private.is_admin() from public,anon,authenticated;
+grant usage on schema private to authenticated;
+grant execute on function private.is_admin() to authenticated;
+
 -- Proposal approval unlocks approved trainer onboarding.
 create or replace function private.sync_approved_trainer()
 returns trigger language plpgsql security definer set search_path=public,pg_temp as $$

@@ -253,10 +253,13 @@ create or replace function private.is_admin()
 returns boolean
 language sql
 stable
-security invoker
-set search_path = public, auth, pg_temp
-as $$
-  select coalesce((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false);
+security definer
+set search_path = auth, pg_temp
+as $
+  select exists(
+    select 1 from auth.users u
+    where u.id=(select auth.uid()) and u.raw_app_meta_data->>'role'='admin'
+  );
 $$;
 revoke all on function private.is_admin() from public, anon, authenticated;
 
