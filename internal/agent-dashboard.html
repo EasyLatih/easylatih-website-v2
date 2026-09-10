@@ -508,6 +508,25 @@ const API_URL =
 
 let prospectAvailable = true;
 
+function getSessionToken(){
+  return localStorage.getItem("agentSessionToken") || "";
+}
+
+async function apiRequest(params){
+  const token = getSessionToken();
+  if (token) params.set("sessionToken", token);
+  const response = await fetch(`${API_URL}?${params.toString()}`);
+  const data = await response.json();
+  if (data.code === "SESSION_REQUIRED") {
+    localStorage.clear();
+    alert("Sesi anda tamat. Sila log masuk semula.");
+    location.reload();
+    throw new Error("Session required");
+  }
+  return data;
+}
+
+
 const resources = [
   {
     program: "Basic HR for Non-HR",
@@ -588,8 +607,7 @@ async function checkProspect(){
     email: email
   });
 
-  const response = await fetch(`${API_URL}?${params.toString()}`);
-  const data = await response.json();
+  const data = await apiRequest(params);
 
   if(!data.success){
     prospectAvailable = true;
@@ -613,11 +631,8 @@ async function checkProspect(){
       html += `
         <div class="match-card">
           <strong>${m.company || "-"}</strong><br>
-          Contact: ${m.contact || "-"}<br>
           Owner: ${m.ownerName || "-"} (${m.ownerAgent || "-"})<br>
           Status: ${m.status || "-"}<br>
-          Phone: ${m.phone || "-"}<br>
-          Email: ${m.email || "-"}<br>
           State: ${m.state || "-"}
         </div>
       `;
@@ -648,6 +663,7 @@ async function login(){
   localStorage.setItem("agentId", data.agentId);
   localStorage.setItem("agentName", data.name);
   localStorage.setItem("role", data.role);
+  localStorage.setItem("agentSessionToken", data.sessionToken);
   showAdminButton();
 
   loadDashboard();
@@ -662,8 +678,7 @@ async function loadDashboard(){
   document.getElementById("dashboard").classList.remove("hidden");
   document.getElementById("headerLogoutBtn").classList.remove("hidden");
 
-  const response = await fetch(`${API_URL}?action=getDashboard&agentId=${encodeURIComponent(agentId)}`);
-  const data = await response.json();
+  const data = await apiRequest(new URLSearchParams({ action: "getDashboard" }));
 
   setText("totalProspects", data.totalProspects || 0);
   setText("levy", data.levy || 0);
@@ -897,6 +912,11 @@ function renderResources(){
 }
 
 function logout(){
+  const token = getSessionToken();
+  if (token) {
+    fetch(`${API_URL}?${new URLSearchParams({ action: "logout", sessionToken: token }).toString()}`)
+      .catch(() => {});
+  }
   localStorage.clear();
   location.reload();
 }
@@ -951,8 +971,6 @@ async function addProspect(){
 
   const params = new URLSearchParams({
     action: "addProspect",
-    agentId: localStorage.getItem("agentId"),
-    agentName: localStorage.getItem("agentName"),
     company: document.getElementById("company").value,
     contact: document.getElementById("contact").value,
     position: document.getElementById("position").value,
@@ -967,8 +985,7 @@ async function addProspect(){
     remarks: document.getElementById("remarks").value
   });
 
-  const response = await fetch(`${API_URL}?${params.toString()}`);
-  const data = await response.json();
+  const data = await apiRequest(params);
 
   if(data.success){
     alert("Prospect Saved");
@@ -992,8 +1009,7 @@ async function updateStatus(rowNumber, status){
     status: status
   });
 
-  const response = await fetch(`${API_URL}?${params.toString()}`);
-  const data = await response.json();
+  const data = await apiRequest(params);
 
   if(data.success){
     loadDashboard();
@@ -1015,8 +1031,7 @@ async function saveCallLog(rowNumber){
     callType: "FOLLOW UP"
   });
 
-  const response = await fetch(`${API_URL}?${params.toString()}`);
-  const data = await response.json();
+  const data = await apiRequest(params);
 
   if(data.success){
     alert("Call Log Saved");
@@ -1027,7 +1042,7 @@ async function saveCallLog(rowNumber){
 }
 
 window.onload = () => {
-  if(localStorage.getItem("agentId")){
+  if(localStorage.getItem("agentId") && getSessionToken()){
     loadDashboard();
     showAdminButton();
   }

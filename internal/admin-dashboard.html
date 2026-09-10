@@ -350,8 +350,9 @@ tr:hover{
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycby5Tl6A7Vip6GdkNsMstjl6026EvH6boWU9de-11DO6EaSR4XJTogXdY7ZDIxyJS6Go/exec";
 const role = localStorage.getItem("role");
+const sessionToken = localStorage.getItem("agentSessionToken");
 
-if(role !== "ADMIN"){
+if(role !== "ADMIN" || !sessionToken){
   document.body.innerHTML = `
     <div style="text-align:center;padding:100px;font-family:Arial;">
       <h1>Access Denied</h1>
@@ -374,8 +375,14 @@ function cleanPhone(phone){
 
 async function loadAdminDashboard(){
   try{
-    const response = await fetch(`${API_URL}?action=adminDashboard`);
+    const params = new URLSearchParams({ action: "adminDashboard", sessionToken });
+    const response = await fetch(`${API_URL}?${params.toString()}`);
     const data = await response.json();
+    if (data.code === "SESSION_REQUIRED" || data.code === "FORBIDDEN") {
+      localStorage.clear();
+      location.href = "agent-dashboard.html";
+      return;
+    }
 
     if(!data.success){
       alert("Cannot load admin dashboard");
