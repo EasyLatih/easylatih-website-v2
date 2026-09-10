@@ -27,6 +27,9 @@ function emailBody(row:any){
   }else if(type==='OPPORTUNITY_AWARDED'){
     heading='Training Opportunity Awarded';
     detail=`Congratulations. EasyLatih has selected you for the training opportunity${label}. Please log in to the portal for the current status and next steps.`;
+  }else if(type==='OPPORTUNITY_SHORTLISTED'){
+    heading='Training Opportunity Shortlisted';
+    detail=`EasyLatih has shortlisted you for the training opportunity${label}. Please keep your availability up to date while we complete the final selection.`;
   }else if(type==='OPPORTUNITY_CANCELLED'){
     heading='Training Opportunity Cancelled';
     detail=`The training opportunity${label} has been cancelled. No further response is required.`;

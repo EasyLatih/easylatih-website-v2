@@ -388,10 +388,21 @@
   }
 
   function renderAdminOpportunities(rows){
-    const holder=$('adminOpportunityList');if(!holder)return;
-    holder.innerHTML=rows.length?rows.map(o=>{const responses=o.opportunity_responses||[];const interested=responses.filter(r=>r.response==='INTERESTED');return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(o.title)}</h3><div class="meta"><span>${esc(o.training_type)}</span><span>${esc(o.category)}</span><span>${esc(o.location||'TBC')}</span><span>${fmtDate(o.training_date)}</span></div></div>${statusBadge(o.status)}</div><p class="muted">${interested.length} interested · ${responses.length} responses · deadline ${fmtDateTime(o.response_deadline)}</p>${interested.length?`<div class="table-wrap"><table><thead><tr><th>Trainer</th><th>Fee</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${interested.map(r=>`<tr><td>${esc(r.trainer_name||r.trainer_id)}</td><td>${money(r.proposed_fee)}</td><td>${esc(r.remarks||'-')}</td><td><button class="btn btn-primary" data-award-response="${r.id}">Award</button></td></tr>`).join('')}</tbody></table></div>`:''}</div>`}).join(''):'<div class="empty">No opportunities created yet.</div>';
-    holder.querySelectorAll('[data-award-response]').forEach(b=>b.addEventListener('click',()=>awardOpportunity(b.dataset.awardResponse)));
+    const holder=$('adminOpportunityList'),archiveHolder=$('archivedOpportunityList');if(!holder)return;
+    const active=rows.filter(o=>o.status==='OPEN'&&new Date(o.response_deadline)>=new Date());
+    const archived=rows.filter(o=>!active.includes(o));
+    const card=o=>{const responses=o.opportunity_responses||[];const interested=responses.filter(r=>r.response==='INTERESTED');return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(o.title)}</h3><div class="meta"><span>${esc(o.training_type)}</span><span>${esc(o.category)}</span><span>${esc(o.location||'TBC')}</span><span>${fmtDate(o.training_date)}</span></div></div>${statusBadge(o.status)}</div><p class="muted">${interested.length} interested · ${responses.length} responses · deadline ${fmtDateTime(o.response_deadline)}</p>${interested.length?`<div class="table-wrap"><table><thead><tr><th>Trainer</th><th>Fee</th><th>Remarks</th><th>Action</th></tr></thead><tbody>${interested.map(r=>`<tr><td>${esc(r.trainer_name||r.trainer_id)}</td><td>${money(r.proposed_fee)}</td><td>${esc(r.remarks||'-')}</td><td>${r.is_awarded?'<span class="tag">Awarded</span>':`<button class="btn btn-soft" data-shortlist-response="${r.id}">${r.is_shortlisted?'Shortlisted':'Shortlist'}</button> <button class="btn btn-primary" data-award-response="${r.id}">Award</button>`}</td></tr>`).join('')}</tbody></table></div>`:''}<div class="btn-row">${o.status==='OPEN'?`<button class="btn btn-outline" data-archive-opportunity="${o.id}">Archive</button>`:''}<button class="btn btn-danger" data-delete-opportunity="${o.id}">Delete</button></div></div>`};
+    holder.innerHTML=active.length?active.map(card).join(''):'<div class="empty">No active opportunities.</div>';
+    if(archiveHolder)archiveHolder.innerHTML=archived.length?archived.map(card).join(''):'<div class="empty">No archived opportunities.</div>';
+    document.querySelectorAll('[data-award-response]').forEach(b=>b.addEventListener('click',()=>awardOpportunity(b.dataset.awardResponse)));
+    document.querySelectorAll('[data-shortlist-response]').forEach(b=>b.addEventListener('click',()=>shortlistOpportunity(b.dataset.shortlistResponse)));
+    document.querySelectorAll('[data-archive-opportunity]').forEach(b=>b.addEventListener('click',()=>setOpportunityStatus(b.dataset.archiveOpportunity,'ARCHIVED')));
+    document.querySelectorAll('[data-delete-opportunity]').forEach(b=>b.addEventListener('click',()=>deleteOpportunity(b.dataset.deleteOpportunity)));
   }
+
+  async function shortlistOpportunity(responseId){const{error}=await client.from('opportunity_responses').update({is_shortlisted:true,shortlisted_at:new Date().toISOString()}).eq('id',responseId);if(error)return alert(error.message);await refreshAdmin();}
+  async function setOpportunityStatus(id,status){if(!confirm('Archive this opportunity?'))return;const{error}=await client.from('opportunities').update({status}).eq('id',id);if(error)return alert(error.message);await refreshAdmin();}
+  async function deleteOpportunity(id){if(!confirm('Delete this opportunity permanently? This cannot be undone.'))return;const{error}=await client.from('opportunities').delete().eq('id',id);if(error)return alert(error.message);await refreshAdmin();}
 
   async function awardOpportunity(responseId){
     if(!confirm('Award this training opportunity to the selected trainer?'))return;
@@ -400,6 +411,5 @@
     const b=await client.from('opportunities').update({status:'AWARDED',awarded_trainer_id:resp.trainer_id}).eq('id',resp.opportunity_id);if(b.error)return alert(b.error.message);
     await refreshAdmin();
   }
-
   window.EasyLatihPortal = { initRegistration, initDashboard, initAdmin, switchSection };
 })();
