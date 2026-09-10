@@ -19,6 +19,12 @@
     const labels = {HOURLY:'hour',HALF_DAY:'half day',DAILY:'day',PROJECT:'project'};
     return row.rate_amount != null ? `RM ${Number(row.rate_amount).toLocaleString('en-MY')} / ${labels[row.rate_basis] || row.rate_basis || '-'}` : '-';
   };
+  const whatsAppNumber = value => {
+    const digits=String(value||'').replace(/\D/g,'');
+    if(!digits)return '';
+    if(digits.startsWith('60'))return digits;
+    return digits.startsWith('0')?`60${digits.slice(1)}`:digits;
+  };
 
   function badge(text, cls='blue') {
     return `<span class="badge ${cls}">${esc(text)}</span>`;
@@ -76,7 +82,7 @@
           ${waiting.length ? waiting.map(p => {
             const cv = latestDoc(p.id,'RESUME_CV');
             const c = consultancyById[p.id];
-            return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.full_name || 'Trainer')}</h3><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div></div>${badge('WAITING LIST','amber')}</div><div class="meta"><span>TTT: <strong>No TTT / Exemption</strong></span><span>Resume: <strong>${esc(cv?.verification_status || 'NOT UPLOADED')}</strong></span><span>Consultancy: <strong>${c?.available_for_consultancy ? 'Available' : 'Not opted in'}</strong></span></div></div>`;
+            return `<details class="list-card collapsible-card" data-trainer-id="${esc(p.id)}"><summary><strong>${esc(p.full_name || 'Trainer')}</strong><span>${badge('WAITING LIST','amber')}</span></summary><div class="card-details"><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div><div class="meta"><span>TTT: <strong>No TTT / Exemption</strong></span><span>Resume: <strong>${esc(cv?.verification_status || 'NOT UPLOADED')}</strong></span><span>Consultancy: <strong>${c?.available_for_consultancy ? 'Available' : 'Not opted in'}</strong></span></div><div class="btn-row"><button type="button" class="btn btn-soft" data-open-trainer-profile="${esc(p.id)}">View trainer profile</button></div></div></details>`;
           }).join('') : '<div class="empty">No trainers are currently in the waiting list.</div>'}
         </div>
       </section>
@@ -87,7 +93,8 @@
           ${consultants.length ? consultants.map(p => {
             const c = consultancyById[p.id];
             const o = onboardingById[p.id];
-            return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.full_name || 'Consultant')}</h3><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div></div>${badge('CONSULTANT POOL','green')}</div><div class="meta"><span>Trainer status: <strong>${esc(String(p.collaboration_status || '').replaceAll('_',' '))}</strong></span><span>TTT: <strong>${esc(qualificationLabel(o?.ttt_status))}</strong></span><span>Indicative rate: <strong>${esc(rateText(c))}</strong></span></div><div style="margin-top:.7rem"><strong>Consultancy Areas / Services</strong><p>${esc(c.consultancy_summary || '-')}</p><strong>Typical Deliverables</strong><p>${esc(c.deliverables_summary || '-')}</p>${c.rate_notes ? `<strong>Rate Notes</strong><p>${esc(c.rate_notes)}</p>` : ''}</div></div>`;
+            const phone=whatsAppNumber(p.phone);
+            return `<details class="list-card collapsible-card" data-trainer-id="${esc(p.id)}"><summary><strong>${esc(p.full_name || 'Consultant')}</strong><span>${badge('CONSULTANT POOL','green')}</span></summary><div class="card-details"><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div><div class="meta"><span>Trainer status: <strong>${esc(String(p.collaboration_status || '').replaceAll('_',' '))}</strong></span><span>TTT: <strong>${esc(qualificationLabel(o?.ttt_status))}</strong></span><span>Indicative rate: <strong>${esc(rateText(c))}</strong></span></div><div class="admin-detail-section"><strong>Consultancy services offered</strong><p>${esc(c.consultancy_summary || '-')}</p><strong>Typical deliverables</strong><p>${esc(c.deliverables_summary || '-')}</p>${c.rate_notes ? `<strong>Rate notes</strong><p>${esc(c.rate_notes)}</p>` : ''}</div><div class="btn-row admin-consultancy-card-actions"><button type="button" class="btn btn-soft" data-open-trainer-profile="${esc(p.id)}">View trainer profile</button>${phone?`<a class="btn admin-trainer-whatsapp" href="https://wa.me/${phone}" target="_blank" rel="noopener">WhatsApp trainer</a>`:''}</div></div></details>`;
           }).join('') : '<div class="empty">No trainers have opted into the consultancy pool yet.</div>'}
         </div>
       </section>`;
