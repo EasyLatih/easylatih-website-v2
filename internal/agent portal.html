@@ -513,9 +513,9 @@
      SEMAKAN PROSPEK (PRIVATE)
      ========================= */
   // ✅ Tukar 2 value ini
-const PROSPECT_API_URL =
-  "https://script.google.com/macros/s/AKfycbxYVBkSdssNBNx44QBYcXEKkNETTjW8QN26dBTRIBjw3NMPremxp5f2emNVKDPGavRe/exec";
-const PROSPECT_API_KEY = "EASYLATIH_2026_7fK9pQ2xLm8Vt0ZrA13nG5hW";
+// The prospect-checking integration is intentionally disabled until it moves
+// behind an authenticated server endpoint. Never put its credential in a page.
+const PROSPECT_CHECK_ENABLED = false;
 
   let typingTimer = null;
 
@@ -542,59 +542,9 @@ const PROSPECT_API_KEY = "EASYLATIH_2026_7fK9pQ2xLm8Vt0ZrA13nG5hW";
     const input = document.getElementById("prospectQuery");
     const box = document.getElementById("prospectResult");
     if(!input || !box) return;
-
-    const q = (input.value || "").trim();
-    if (q.length < 2) {
-      box.innerHTML = "<div class='sop-note'>Taip sekurang-kurangnya 2 aksara untuk semakan.</div>";
+    if (!PROSPECT_CHECK_ENABLED) {
+      box.innerHTML = "<div class='sop-note'>Semakan prospek sedang dikemas kini. Sila gunakan dashboard dalaman yang dilindungi.</div>";
       return;
-    }
-
-    box.innerHTML = "Menyemak...";
-    const url = `${PROSPECT_API_URL}?key=${encodeURIComponent(PROSPECT_API_KEY)}&q=${encodeURIComponent(q)}`;
-
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (!data.ok) {
-        box.innerHTML = `<div class='sop-note'>Ralat: ${escapeHtml(data.error || "Unknown error")}</div>`;
-        return;
-      }
-
-      if (!data.exists || !data.results || data.results.length === 0) {
-        box.innerHTML = "<div class='sop-note'>Tiada rekod prospek ditemui.</div>";
-        return;
-      }
-
-      const rows = data.results.map(r => `
-        <tr>
-          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.agent || "—")}</td>
-          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.state || "—")}</td>
-          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.company || "—")}</td>
-          <td style="padding:10px; border-bottom:1px solid #eee;">${escapeHtml(r.timestamp || "—")}</td>
-        </tr>
-      `).join("");
-
-      box.innerHTML = `
-        <div class="sop-ok">
-          <strong>Rekod ditemui (maksimum 5 dipaparkan)</strong>
-          <div style="overflow:auto; margin-top:10px;">
-            <table style="width:100%; border-collapse:collapse; min-width:720px;">
-              <thead>
-                <tr>
-                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Nama Ejen</th>
-                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Negeri</th>
-                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Nama Syarikat</th>
-                  <th style="text-align:left; border-bottom:1px solid #ddd; padding:10px;">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    } catch (e) {
-      box.innerHTML = "<div class='sop-note'>Tidak dapat akses sistem semakan. Sila cuba lagi.</div>";
     }
   }
 

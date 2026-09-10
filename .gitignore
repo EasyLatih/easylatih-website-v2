@@ -1,0 +1,12 @@
+# Never commit environment files or private credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Local platform state
+.vercel/
+.netlify/
