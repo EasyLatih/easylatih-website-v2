@@ -35,6 +35,7 @@ begin
     )
     and (
       cardinality(new.expertise_tags)=0
+      or cardinality(pref.expertise_tags)=0
       or exists(
         select 1
         from unnest(new.expertise_tags) requested(tag)

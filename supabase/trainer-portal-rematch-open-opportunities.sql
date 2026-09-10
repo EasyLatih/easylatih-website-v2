@@ -24,6 +24,7 @@ begin
     )
     and (
       cardinality(o.expertise_tags)=0
+      or cardinality(pref.expertise_tags)=0
       or exists(select 1 from unnest(o.expertise_tags) requested(tag) join unnest(pref.expertise_tags) offered(tag) on lower(trim(requested.tag))=lower(trim(offered.tag)))
     )
     and (

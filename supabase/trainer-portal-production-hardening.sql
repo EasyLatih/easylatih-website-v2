@@ -104,6 +104,12 @@ create policy "trainer deletes own profile photo" on storage.objects for delete 
 create or replace function private.protect_preference_admin_fields()
 returns trigger language plpgsql security invoker set search_path=public,auth,pg_temp as $$
 begin
+  -- Category approvals are applied by the dedicated after-update trigger on
+  -- trainer_category_change_requests. Allow that nested server-side update
+  -- while keeping direct browser updates blocked.
+  if pg_trigger_depth() > 1 then
+    new.updated_at:=now(); return new;
+  end if;
   if not private.is_admin() and (new.proposal_limit_override is distinct from old.proposal_limit_override or new.categories is distinct from old.categories) then
     raise exception 'Trainer cannot modify admin-controlled matching or proposal limit fields';
   end if;
