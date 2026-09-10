@@ -65,6 +65,9 @@ textarea{min-height:110px;resize:vertical}
 .help{font-size:.78rem;color:var(--muted)}
 .checkbox-row{display:flex;align-items:flex-start;gap:.6rem;margin:.65rem 0}
 .checkbox-row input{width:auto;margin-top:.25rem}
+.checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 .9rem}
+.checkbox-grid .checkbox-row{margin:.35rem 0}
+@media(max-width:620px){.checkbox-grid{grid-template-columns:1fr}}
 
 .profile-photo-grid{display:grid;grid-template-columns:190px minmax(0,1fr);gap:1.25rem;align-items:start;margin-top:1rem}
 .photo-preview{width:190px;aspect-ratio:4/5;border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);font-size:.8rem;text-align:center;padding:.5rem}

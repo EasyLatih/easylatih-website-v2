@@ -183,6 +183,8 @@
     if ($('pref_public')) $('pref_public').checked = Boolean(pref.accepts_public ?? true);
     if ($('pref_inhouse')) $('pref_inhouse').checked = Boolean(pref.accepts_inhouse ?? true);
     if ($('pref_online')) $('pref_online').checked = Boolean(pref.accepts_online ?? true);
+    const categories = new Set(pref.categories || []);
+    document.querySelectorAll('#profile_categories input[name="categories"]').forEach(input => { input.checked = categories.has(input.value); });
   }
 
   async function loadProposals() {
@@ -273,7 +275,8 @@
       professional_bio:String(f.get('professional_bio')||'').trim(),availability_status:String(f.get('availability_status')||'AVAILABLE')
     };
     const prefUpdate={trainer_id:currentUser.id,accepts_public:Boolean(f.get('accepts_public')),accepts_inhouse:Boolean(f.get('accepts_inhouse')),accepts_online:Boolean(f.get('accepts_online')),
-      travel_states:String(f.get('travel_states')||'').split(',').map(x=>x.trim()).filter(Boolean),expertise_tags:String(f.get('expertise_tags')||'').split(',').map(x=>x.trim()).filter(Boolean)};
+      travel_states:String(f.get('travel_states')||'').split(',').map(x=>x.trim()).filter(Boolean),expertise_tags:String(f.get('expertise_tags')||'').split(',').map(x=>x.trim()).filter(Boolean),
+      categories:f.getAll('categories').map(x=>String(x).trim()).filter(Boolean)};
     const [a,b]=await Promise.all([client.from('profiles').update(profileUpdate).eq('id',currentUser.id),client.from('trainer_preferences').upsert(prefUpdate,{onConflict:'trainer_id'})]);
     if(a.error)throw a.error;if(b.error)throw b.error;
     showMessage('profileMessage','Profile updated.','success');
