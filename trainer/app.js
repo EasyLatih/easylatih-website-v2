@@ -183,8 +183,7 @@
     if ($('pref_public')) $('pref_public').checked = Boolean(pref.accepts_public ?? true);
     if ($('pref_inhouse')) $('pref_inhouse').checked = Boolean(pref.accepts_inhouse ?? true);
     if ($('pref_online')) $('pref_online').checked = Boolean(pref.accepts_online ?? true);
-    const categories = new Set(pref.categories || []);
-    document.querySelectorAll('#profile_categories input[name="categories"]').forEach(input => { input.checked = categories.has(input.value); });
+    if ($('approvedCategoryList')) $('approvedCategoryList').innerHTML = (pref.categories || []).length ? (pref.categories || []).map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '<span class="muted">No approved category yet.</span>';
   }
 
   async function loadProposals() {
@@ -275,12 +274,19 @@
       professional_bio:String(f.get('professional_bio')||'').trim(),availability_status:String(f.get('availability_status')||'AVAILABLE')
     };
     const prefUpdate={trainer_id:currentUser.id,accepts_public:Boolean(f.get('accepts_public')),accepts_inhouse:Boolean(f.get('accepts_inhouse')),accepts_online:Boolean(f.get('accepts_online')),
-      travel_states:String(f.get('travel_states')||'').split(',').map(x=>x.trim()).filter(Boolean),expertise_tags:String(f.get('expertise_tags')||'').split(',').map(x=>x.trim()).filter(Boolean),
-      categories:f.getAll('categories').map(x=>String(x).trim()).filter(Boolean)};
+      travel_states:String(f.get('travel_states')||'').split(',').map(x=>x.trim()).filter(Boolean),expertise_tags:String(f.get('expertise_tags')||'').split(',').map(x=>x.trim()).filter(Boolean)};
     const [a,b]=await Promise.all([client.from('profiles').update(profileUpdate).eq('id',currentUser.id),client.from('trainer_preferences').upsert(prefUpdate,{onConflict:'trainer_id'})]);
     if(a.error)throw a.error;if(b.error)throw b.error;
     showMessage('profileMessage','Profile updated.','success');
     await loadProfile();
+  }
+
+  async function requestCategoryChange(e) {
+    e.preventDefault(); const form=e.currentTarget; const f=new FormData(form);
+    const requested_categories=f.getAll('requested_categories').map(x=>String(x).trim()).filter(Boolean);
+    if (!requested_categories.length || requested_categories.length>3) throw new Error('Please select between 1 and 3 categories.');
+    const {error}=await client.from('trainer_category_change_requests').insert({trainer_id:currentUser.id,requested_categories,reason:String(f.get('reason')).trim()});
+    if(error) throw error; form.reset(); showMessage('categoryRequestMessage','Request submitted for EasyLatih review.','success');
   }
 
   async function acceptCollaborationTerms() {
@@ -303,6 +309,7 @@
     $('proposalForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;showMessage('proposalMessage','Submitting…','info');try{await submitProposal(formEl);formEl.reset();showMessage('proposalMessage','Programme proposal submitted for EasyLatih review.','success');await loadProposals();}catch(err){showMessage('proposalMessage',err.message,'danger');}});
     $('commentForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;const f=new FormData(formEl);const proposalId=String(f.get('proposal_id'));const body=String(f.get('body')).trim();if(!body)return;const{error}=await client.from('proposal_comments').insert({proposal_id:proposalId,author_id:currentUser.id,author_role:'TRAINER',visibility:'TRAINER',body});if(error)return alert(error.message);formEl.reset();$('commentProposalId').value=proposalId;loadProposalComments(proposalId);});
     $('profileForm')?.addEventListener('submit',async(e)=>{try{await saveProfile(e);}catch(err){showMessage('profileMessage',err.message,'danger');}});
+    $('categoryChangeRequestForm')?.addEventListener('submit',async(e)=>{try{await requestCategoryChange(e);}catch(err){showMessage('categoryRequestMessage',err.message,'danger');}});
     $('acceptTermsButton')?.addEventListener('click',acceptCollaborationTerms);
     await Promise.all([loadProfile(),loadProposals(),loadOpportunities(),loadProgrammes()]);
   }
@@ -323,14 +330,30 @@
   }
 
   async function refreshAdmin(){
-    const [{data:stats},{data:proposals},{data:opps}] = await Promise.all([
+    const [{data:stats},{data:proposals},{data:opps},{data:categoryRequests}] = await Promise.all([
       client.from('portal_stats').select('*').eq('id',1).maybeSingle(),
       client.from('programme_proposals').select('*,profiles(full_name,email,phone,state)').order('created_at',{ascending:false}).limit(200),
-      client.from('opportunities').select('*,opportunity_responses(*)').order('created_at',{ascending:false}).limit(100)
+      client.from('opportunities').select('*,opportunity_responses(*)').order('created_at',{ascending:false}).limit(100),
+      client.from('trainer_category_change_requests').select('*,profiles(full_name,state)').eq('status','PENDING').order('created_at',{ascending:false})
     ]);
     if(stats){ ['registered_trainers','approved_collaborators','active_trainers','published_programmes','proposals_under_review'].forEach(k=>{const el=$(k);if(el)el.textContent=Number(stats[k]||0).toLocaleString();}); }
     renderAdminProposals(proposals||[]);
+    renderAdminCategoryRequests(categoryRequests||[]);
     renderAdminOpportunities(opps||[]);
+  }
+
+  function renderAdminCategoryRequests(rows){
+    const holder=$('adminCategoryRequestList'); if(!holder)return;
+    holder.innerHTML=rows.length?rows.map(r=>`<div class="list-card"><div class="list-card-top"><div><h3>${esc(r.profiles?.full_name||'Trainer')}</h3><div class="meta"><span>${esc(r.profiles?.state||'-')}</span><span>${fmtDate(r.created_at)}</span></div></div>${statusBadge(r.status)}</div><div class="tag-wrap">${(r.requested_categories||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div><p class="muted">${esc(r.reason)}</p><div class="btn-row"><button class="btn btn-primary" data-category-approve="${r.id}">Approve Categories</button><button class="btn btn-danger" data-category-reject="${r.id}">Reject</button></div></div>`).join(''):'<div class="empty">No pending category requests.</div>';
+    holder.querySelectorAll('[data-category-approve]').forEach(b=>b.addEventListener('click',()=>reviewCategoryRequest(b.dataset.categoryApprove,'APPROVED')));
+    holder.querySelectorAll('[data-category-reject]').forEach(b=>b.addEventListener('click',()=>reviewCategoryRequest(b.dataset.categoryReject,'REJECTED')));
+  }
+
+  async function reviewCategoryRequest(id,status){
+    const admin_note=prompt(status==='APPROVED'?'Optional note to trainer:':'Reason for rejection:','') ?? '';
+    if(status==='REJECTED'&&!admin_note.trim()) return;
+    const {error}=await client.from('trainer_category_change_requests').update({status,admin_note,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString()}).eq('id',id);
+    if(error)return alert(error.message); await refreshAdmin();
   }
 
   function renderAdminProposals(rows){
