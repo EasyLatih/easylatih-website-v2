@@ -58,6 +58,13 @@ create policy "admin updates programme versions" on public.programme_versions fo
 create policy "admin deletes programme versions" on public.programme_versions for delete to authenticated using (private.is_admin());
 
 drop policy if exists "admin manages opportunities" on public.opportunities;
+drop policy if exists "trainer reads assigned opportunities" on public.opportunities;
+create policy "trainer reads assigned opportunities" on public.opportunities for select to authenticated using (
+  private.is_admin() or exists(
+    select 1 from public.opportunity_recipients r
+    where r.opportunity_id=public.opportunities.id and r.trainer_id=(select auth.uid())
+  )
+);
 create policy "admin inserts opportunities" on public.opportunities for insert to authenticated with check (private.is_admin());
 create policy "admin updates opportunities" on public.opportunities for update to authenticated using (private.is_admin()) with check (private.is_admin());
 create policy "admin deletes opportunities" on public.opportunities for delete to authenticated using (private.is_admin());

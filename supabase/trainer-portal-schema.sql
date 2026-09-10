@@ -514,7 +514,7 @@ create policy "trainer reads own programme versions" on public.programme_version
 create policy "admin manages programme versions" on public.programme_versions for all to authenticated using (private.is_admin()) with check (private.is_admin());
 
 create policy "trainer reads assigned opportunities" on public.opportunities for select to authenticated using (
-  private.is_admin() or exists(select 1 from public.opportunity_recipients r where r.opportunity_id=id and r.trainer_id=(select auth.uid()))
+  private.is_admin() or exists(select 1 from public.opportunity_recipients r where r.opportunity_id=public.opportunities.id and r.trainer_id=(select auth.uid()))
 );
 create policy "admin manages opportunities" on public.opportunities for all to authenticated using (private.is_admin()) with check (private.is_admin());
 
