@@ -1,6 +1,3 @@
-const COURSES_API_URL =
-  "https://script.google.com/macros/s/AKfycbwp9TPceQ4TllKPJUPzmTt_COiNTnzeYmj8bx559HV57dybksFXQe9O0FSX_Eo9VZ8/exec";
-
 const COURSE_ENQUIRY_URL =
   "https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
 
@@ -29,131 +26,6 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-
-function normaliseCourseKey(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-}
-
-
-function mergeCourseSources(primary, supplemental) {
-  const merged = Array.isArray(primary)
-    ? primary.slice()
-    : [];
-
-  const ids = new Set(
-    merged
-      .map(function (course) {
-        return normaliseCourseKey(
-          course.masterCourseId
-        );
-      })
-      .filter(Boolean)
-  );
-
-  const titles = new Set(
-    merged
-      .map(function (course) {
-        return normaliseCourseKey(
-          course.courseTitle
-        );
-      })
-      .filter(Boolean)
-  );
-
-  (Array.isArray(supplemental)
-    ? supplemental
-    : []
-  ).forEach(function (course) {
-    const id = normaliseCourseKey(
-      course.masterCourseId
-    );
-
-    const title = normaliseCourseKey(
-      course.courseTitle
-    );
-
-    if (
-      (id && ids.has(id)) ||
-      (title && titles.has(title))
-    ) {
-      return;
-    }
-
-    merged.push(course);
-
-    if (id) {
-      ids.add(id);
-    }
-
-    if (title) {
-      titles.add(title);
-    }
-  });
-
-  return merged;
-}
-
-
-function loadPublishedCourses() {
-  coursesContainer.innerHTML =
-    "<p>Loading course catalogue...</p>";
-
-  const callbackName =
-    "publishedCoursesCallback_" + Date.now();
-
-  const script =
-    document.createElement("script");
-
-  window[callbackName] = function (data) {
-    /*
-      The legacy Google Apps Script catalogue and the
-      Trainer Portal catalogue load independently.
-      Preserve any Trainer Portal courses that may have
-      arrived first instead of overwriting them when the
-      legacy JSONP response completes.
-    */
-    const trainerPortalCourses =
-      publishedCourses.filter(function (course) {
-        return course &&
-          course.source === "trainer-portal";
-      });
-
-    publishedCourses = mergeCourseSources(
-      Array.isArray(data) ? data : [],
-      trainerPortalCourses
-    );
-
-    populateCategoryFilter();
-    renderCourses();
-
-    delete window[callbackName];
-    script.remove();
-  };
-
-  script.onerror = function () {
-    if (publishedCourses.length) {
-      populateCategoryFilter();
-      renderCourses();
-    } else {
-      coursesContainer.innerHTML =
-        "<p>Unable to load the course catalogue.</p>";
-    }
-
-    delete window[callbackName];
-    script.remove();
-  };
-
-  script.src =
-    COURSES_API_URL +
-    "?action=getPublishedCourses&callback=" +
-    encodeURIComponent(callbackName);
-
-  document.body.appendChild(script);
 }
 
 
@@ -577,8 +449,8 @@ categoryFilter.addEventListener(
 
 
 /*
-  Level is not included in the current
-  Courses sheet, so hide this filter.
+  Level is not currently shown in the
+  public trainer programme catalogue, so hide this filter.
 */
 if (levelFilter) {
   levelFilter.style.display = "none";
@@ -597,4 +469,9 @@ if (inquiryCart) {
 }
 
 
-loadPublishedCourses();
+/*
+  Published modules are loaded exclusively by
+  trainer/trainer-catalogue.js from Supabase.
+*/
+coursesContainer.innerHTML =
+  "<p>Loading course catalogue...</p>";
