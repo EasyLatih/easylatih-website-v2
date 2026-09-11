@@ -105,8 +105,10 @@
         const { data, error } = await client.auth.signUp({
           email: String(form.get('email')).trim(),
           password,
-          options: { data: {
-            full_name: String(form.get('full_name')).trim(),
+          options: {
+            emailRedirectTo: `${window.location.origin}/trainer/`,
+            data: {
+              full_name: String(form.get('full_name')).trim(),
             phone: String(form.get('phone')).trim(),
             state: String(form.get('state')).trim(),
             expertise_summary: String(form.get('expertise_summary')).trim(),
