@@ -81,7 +81,7 @@
       </section>
 
       <section class="admin-view hidden" data-admin-view-panel="modules">
-        <div class="admin-view-heading"><div><p class="admin-eyebrow">LIBRARY</p><h1>Module Library</h1><p class="muted">Review trainer submissions, keep approved modules internally, and publish selected modules to the public Course Catalog.</p></div></div>
+        <div class="admin-view-heading admin-view-heading-actions"><div><p class="admin-eyebrow">LIBRARY</p><h1>Module Library</h1><p class="muted">Review trainer submissions, keep approved modules internally, and publish selected modules to the public Course Catalog. Scheduled training is created in Google Sheets from a published module.</p></div><button type="button" class="btn btn-primary" data-admin-start-schedule>+ Create Scheduled Training</button></div>
         <div class="admin-library-tabs" role="tablist" aria-label="Module status filters">
           <button type="button" class="active" data-module-library-filter="pending">Needs review <span id="adminModulePendingCount">0</span></button>
           <button type="button" data-module-library-filter="approved">Approved – internal <span id="adminModuleApprovedCount">0</span></button>
@@ -159,6 +159,7 @@
 <script src="trainer-admin-shell.js?v=1"></script>
 <script src="trainer-admin-review-details.js"></script>
 <script src="trainer-admin-document-verification.js"></script>
+<script src="trainer-admin-public-schedule-bridge.js?v=2"></script>
 <script>EasyLatihPortal.initAdmin();</script>
 </body>
 </html>

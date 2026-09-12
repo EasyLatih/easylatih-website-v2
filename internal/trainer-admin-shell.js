@@ -183,6 +183,12 @@
 
     document.querySelectorAll('[data-module-library-filter]').forEach(button => button.addEventListener('click', () => setModuleFilter(button.dataset.moduleLibraryFilter)));
 
+    document.querySelectorAll('[data-admin-start-schedule]').forEach(button => button.addEventListener('click', () => {
+      setView('modules', true);
+      setModuleFilter('published');
+      setTimeout(() => $('adminProgrammePanel')?.scrollIntoView({behavior:'smooth',block:'start'}), 140);
+    }));
+
     document.querySelectorAll('[data-admin-collapse-toggle]').forEach(button => button.addEventListener('click', () => {
       const panel = $(button.dataset.adminCollapseToggle);
       if (!panel) return;

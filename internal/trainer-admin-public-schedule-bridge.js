@@ -36,14 +36,14 @@
     dialog.id = 'publicScheduleBridgeDialog';
     dialog.innerHTML = `
       <div class="schedule-bridge-wrap">
-        <div class="panel-header"><div><h2>Schedule via Google Apps Script</h2><div class="muted">Trainer Portal supplies the approved programme details. Google Apps Script remains the master system for the actual public session, registration, attendance and post-training operations.</div></div><button type="button" class="btn btn-soft" data-close-bridge>Close</button></div>
+        <div class="panel-header"><div><h2>Create Scheduled Training</h2><div class="muted">This sends the published module details to Google Apps Script. Google Sheets remains the master system for the public session, registration, attendance and post-training operations.</div></div><button type="button" class="btn btn-soft" data-close-bridge>Close</button></div>
         <div id="publicScheduleBridgeMessage" class="hidden"></div>
         <div id="publicScheduleBridgeSummary" class="schedule-bridge-summary"></div>
         <div class="form-grid">
           <div class="field full"><label>Trainer Profile PDF / Google Drive Link</label><input id="bridgeTrainerProfileUrl" type="url" placeholder="https://drive.google.com/..."><span class="help">Saved against the trainer for reuse the next time you schedule a programme with the same trainer.</span></div>
           <div class="field full"><label>Final Course Content Link</label><input id="bridgeCourseContentUrl" type="url" placeholder="https://docs.google.com/... or PDF link"><span class="help">Prefilled from the latest Course Outline where available. You may replace it with the final client/public PDF link.</span></div>
         </div>
-        <div class="alert alert-info" style="margin-top:.9rem"><strong>Bridge behaviour:</strong> the programme details are passed to Apps Script through URL parameters and also copied to your clipboard as a fallback. In Apps Script you only complete session-specific details such as date, venue, fee, capacity and registration deadline.</div>
+        <div class="alert alert-info" style="margin-top:.9rem"><strong>What happens next:</strong> published module details are passed to Apps Script and copied as a fallback. In Apps Script, complete only the session details such as date, venue, fee, capacity and registration deadline. The saved row then feeds the public Training Calendar.</div>
         <div class="schedule-bridge-actions">
           <button type="button" class="btn btn-outline" id="copyScheduleBridge">Copy Details</button>
           <button type="button" class="btn btn-primary" id="openScheduleBridge">Open Apps Script</button>
@@ -200,7 +200,7 @@
       btn.type='button';
       btn.className='btn btn-primary';
       btn.dataset.publicScheduleBridge=programmeId;
-      btn.textContent='Schedule via Apps Script';
+      btn.textContent='Create Scheduled Training';
       btn.addEventListener('click',()=>openBridge(programmeId));
       row.prepend(btn);
     });
