@@ -72,29 +72,38 @@
   .admin-collapsible-body{padding:0 1rem 1rem}
 }
 
-+
-+/* Full trainer record – visible only after an admin opens a trainer card. */
-+.admin-trainer-full-profile{display:grid;gap:.85rem;margin:.9rem 0}
-+.admin-trainer-data-section{border:1px solid #dfe5ec;border-radius:12px;padding:.9rem;background:#fbfdff}
-+.admin-trainer-data-section h4{margin:0 0 .75rem;color:var(--navy);font-size:.95rem}
-+.admin-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem .85rem;margin:0}
-+.admin-detail-field{min-width:0}
-+.admin-detail-field dt{color:var(--muted);font-size:.72rem;font-weight:700;letter-spacing:.01em}
-+.admin-detail-field dd{margin:.18rem 0 0;color:var(--text);font-size:.86rem;overflow-wrap:anywhere}
-+.admin-profile-link{color:#14558f;font-weight:700}
-+.admin-text-field{margin-top:.7rem}
-+.admin-text-field strong,.admin-tag-group>strong,.admin-row-group>strong{display:block;color:var(--navy);font-size:.82rem}
-+.admin-text-field p{margin:.28rem 0 0;white-space:pre-line;overflow-wrap:anywhere}
-+.admin-tag-group,.admin-row-group{margin-top:.7rem}
-+.admin-tag-group .tag-wrap{margin-top:.35rem}
-+.admin-detail-list{margin:.35rem 0 0;padding-left:1.1rem}
-+.admin-detail-list li{margin:.25rem 0;white-space:pre-line;overflow-wrap:anywhere;font-size:.86rem}
-+.admin-restricted-section{border-color:#f3c77f;background:#fffaf0}
-+.admin-restricted-section h4:after{content:"Admin only";display:inline-block;margin-left:.45rem;padding:.16rem .38rem;border-radius:999px;background:#fce4b5;color:#8a4b08;font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle}
-+.admin-trainer-detail-photo{width:96px;height:122px;object-fit:cover;border:1px solid #d7e0e9;border-radius:10px;margin-top:.75rem}
-+.admin-document-list{display:grid;gap:.5rem;margin-top:.45rem}
-+.admin-document-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.6rem .7rem;border:1px solid #e2e8f0;border-radius:9px;background:#fff}
-+.admin-document-info{display:grid;gap:.15rem;min-width:0}
-+.admin-document-info strong,.admin-document-info span{overflow-wrap:anywhere}
-+.admin-document-row .btn{flex:0 0 auto}
-+
+
+/* Full trainer record – visible only after an admin opens a trainer card. */
+.admin-trainer-full-profile{display:grid;gap:.85rem;margin:.9rem 0}
+.admin-trainer-data-section{border:1px solid #dfe5ec;border-radius:12px;padding:.9rem;background:#fbfdff}
+.admin-trainer-data-section h4{margin:0 0 .75rem;color:var(--navy);font-size:.95rem}
+.admin-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem .85rem;margin:0}
+.admin-detail-field{min-width:0}
+.admin-detail-field dt{color:var(--muted);font-size:.72rem;font-weight:700;letter-spacing:.01em}
+.admin-detail-field dd{margin:.18rem 0 0;color:var(--text);font-size:.86rem;overflow-wrap:anywhere}
+.admin-profile-link{color:#14558f;font-weight:700}
+.admin-text-field{margin-top:.7rem}
+.admin-text-field strong,.admin-tag-group>strong,.admin-row-group>strong{display:block;color:var(--navy);font-size:.82rem}
+.admin-text-field p{margin:.28rem 0 0;white-space:pre-line;overflow-wrap:anywhere}
+.admin-tag-group,.admin-row-group{margin-top:.7rem}
+.admin-tag-group .tag-wrap{margin-top:.35rem}
+.admin-detail-list{margin:.35rem 0 0;padding-left:1.1rem}
+.admin-detail-list li{margin:.25rem 0;white-space:pre-line;overflow-wrap:anywhere;font-size:.86rem}
+.admin-restricted-section{border-color:#f3c77f;background:#fffaf0}
+.admin-restricted-section h4:after{content:"Admin only";display:inline-block;margin-left:.45rem;padding:.16rem .38rem;border-radius:999px;background:#fce4b5;color:#8a4b08;font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle}
+.admin-trainer-detail-photo{width:96px;height:122px;object-fit:cover;border:1px solid #d7e0e9;border-radius:10px;margin-top:.75rem}
+.admin-document-list{display:grid;gap:.5rem;margin-top:.45rem}
+.admin-document-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.6rem .7rem;border:1px solid #e2e8f0;border-radius:9px;background:#fff}
+.admin-document-info{display:grid;gap:.15rem;min-width:0}
+.admin-document-info strong,.admin-document-info span{overflow-wrap:anywhere}
+.admin-document-row .btn{flex:0 0 auto}
+
+.admin-proposal-quick{display:flex;flex-wrap:wrap;gap:.35rem .85rem;margin:.65rem 0;color:var(--text);font-size:.86rem}
+.admin-proposal-details{margin:.8rem 0;border:1px solid #dfe7f0;border-radius:11px;background:#fbfdff;padding:.75rem .85rem}
+.admin-proposal-details summary{cursor:pointer;color:#14558f;font-weight:700}
+.admin-proposal-details[open] summary{margin-bottom:.15rem}
+.admin-proposal-details .review-grid{margin:.75rem 0}
+.admin-proposal-text-block{margin:.75rem 0}
+.admin-proposal-text-block strong{display:block;color:var(--navy);font-size:.85rem}
+.admin-proposal-text-block p{margin:.3rem 0 0;white-space:pre-line;overflow-wrap:anywhere}
+.admin-proposal-text-block ul{margin:.35rem 0 0;padding-left:1.2rem}

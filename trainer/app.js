@@ -358,9 +358,32 @@
     if(error)return alert(error.message); await refreshAdmin();
   }
 
+
   function renderAdminProposals(rows){
     const holder=$('adminProposalList');if(!holder)return;
-    holder.innerHTML=rows.length?rows.map(p=>`<div class="list-card"><div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><span>${esc(p.profiles?.full_name||'Trainer')}</span><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span><span>${fmtDate(p.created_at)}</span></div></div>${statusBadge(p.status)}</div><p><strong>Target:</strong> ${esc(p.target_audience)}</p><p class="muted">${esc(p.summary)}</p><div class="tag-wrap">${(p.key_learning_points||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div><div class="btn-row"><button class="btn btn-primary" data-approve="${p.id}">Approve to Collaborate</button><button class="btn btn-soft" data-clarify="${p.id}">Request Clarification</button><button class="btn btn-outline" data-shortlist="${p.id}">Shortlist</button><button class="btn btn-danger" data-reject="${p.id}">Reject</button><button class="btn btn-outline" data-note="${p.id}">Internal Note</button></div></div>`).join(''):'<div class="empty">No proposals.</div>';
+    holder.innerHTML=rows.length?rows.map(p=>{
+      const fee=money(p.expected_fee);
+      const learningPoints=(p.key_learning_points||[]).map(x=>`<li>${esc(x)}</li>`).join('')||'<li>Not stated</li>';
+      const trainerName=p.profiles?.full_name||'Trainer';
+      return `<div class="list-card admin-proposal-card">
+        <div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><button type="button" class="admin-module-link" data-open-trainer-profile="${esc(p.trainer_id)}">${esc(trainerName)}</button><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span><span>Submitted ${fmtDate(p.submitted_at||p.created_at)}</span></div></div>${statusBadge(p.status)}</div>
+        <div class="admin-proposal-quick"><span><strong>Expected trainer fee:</strong> ${fee}</span><span><strong>Duration:</strong> ${esc(p.duration||'Not stated')}</span><span><strong>Delivery:</strong> ${esc(p.delivery_method||'Not stated')}</span></div>
+        <p class="muted">${esc(p.summary||'No summary provided.')}</p>
+        <details class="admin-proposal-details">
+          <summary>View full proposal details</summary>
+          <div class="review-grid">
+            <div><strong>Target participants</strong><p>${esc(p.target_audience||'Not stated')}</p></div>
+            <div><strong>Preferred location</strong><p>${esc(p.preferred_location||'Not stated')}</p></div>
+            <div><strong>Expected trainer fee</strong><p>${fee}</p></div>
+            <div><strong>Duration &amp; delivery method</strong><p>${esc(p.duration||'Not stated')} · ${esc(p.delivery_method||'Not stated')}</p></div>
+          </div>
+          <div class="admin-proposal-text-block"><strong>Problem this training addresses</strong><p>${esc(p.problem_statement||'Not stated')}</p></div>
+          <div class="admin-proposal-text-block"><strong>Training summary</strong><p>${esc(p.summary||'Not stated')}</p></div>
+          <div class="admin-proposal-text-block"><strong>Key learning points</strong><ul>${learningPoints}</ul></div>
+        </details>
+        <div class="btn-row"><button class="btn btn-primary" data-approve="${p.id}">Approve to Collaborate</button><button class="btn btn-soft" data-clarify="${p.id}">Request Clarification</button><button class="btn btn-outline" data-shortlist="${p.id}">Shortlist</button><button class="btn btn-danger" data-reject="${p.id}">Reject</button><button class="btn btn-outline" data-note="${p.id}">Internal Note</button></div>
+      </div>`;
+    }).join(''):'<div class="empty">No proposals.</div>';
     holder.querySelectorAll('[data-approve]').forEach(b=>b.addEventListener('click',()=>adminProposalAction(b.dataset.approve,'APPROVED_TO_COLLAB','Congratulations. EasyLatih would like to invite you to collaborate. Please complete your trainer onboarding and collaboration terms in the portal.')));
     holder.querySelectorAll('[data-clarify]').forEach(b=>b.addEventListener('click',()=>adminPromptComment(b.dataset.clarify,'CLARIFICATION_REQUIRED','TRAINER')));
     holder.querySelectorAll('[data-shortlist]').forEach(b=>b.addEventListener('click',()=>adminProposalAction(b.dataset.shortlist,'SHORTLISTED')));
