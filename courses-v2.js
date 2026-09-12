@@ -1,6 +1,3 @@
-const COURSES_API_URL =
-  "https://script.google.com/macros/s/AKfycbwp9TPceQ4TllKPJUPzmTt_COiNTnzeYmj8bx559HV57dybksFXQe9O0FSX_Eo9VZ8/exec";
-
 const COURSE_ENQUIRY_URL =
   "https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
 
@@ -32,44 +29,6 @@ function escapeHtml(value) {
 }
 
 
-function loadPublishedCourses() {
-  coursesContainer.innerHTML =
-    "<p>Loading course catalogue...</p>";
-
-  const callbackName =
-    "publishedCoursesCallback_" + Date.now();
-
-  const script =
-    document.createElement("script");
-
-  window[callbackName] = function (data) {
-    publishedCourses =
-      Array.isArray(data) ? data : [];
-
-    populateCategoryFilter();
-    renderCourses();
-
-    delete window[callbackName];
-    script.remove();
-  };
-
-  script.onerror = function () {
-    coursesContainer.innerHTML =
-      "<p>Unable to load the course catalogue.</p>";
-
-    delete window[callbackName];
-    script.remove();
-  };
-
-  script.src =
-    COURSES_API_URL +
-    "?action=getPublishedCourses&callback=" +
-    encodeURIComponent(callbackName);
-
-  document.body.appendChild(script);
-}
-
-
 function populateCategoryFilter() {
   const categories = [
     ...new Set(
@@ -80,6 +39,9 @@ function populateCategoryFilter() {
         .filter(Boolean)
     )
   ].sort();
+
+  const selected =
+    categoryFilter.value;
 
   categoryFilter.innerHTML =
     '<option value="">All Categories</option>';
@@ -93,6 +55,13 @@ function populateCategoryFilter() {
 
     categoryFilter.appendChild(option);
   });
+
+  if (
+    selected &&
+    categories.includes(selected)
+  ) {
+    categoryFilter.value = selected;
+  }
 }
 
 
@@ -480,8 +449,8 @@ categoryFilter.addEventListener(
 
 
 /*
-  Level is not included in the current
-  Courses sheet, so hide this filter.
+  Level is not currently shown in the
+  public trainer programme catalogue, so hide this filter.
 */
 if (levelFilter) {
   levelFilter.style.display = "none";
@@ -500,4 +469,9 @@ if (inquiryCart) {
 }
 
 
-loadPublishedCourses();
+/*
+  Published modules are loaded exclusively by
+  trainer/trainer-catalogue.js from Supabase.
+*/
+coursesContainer.innerHTML =
+  "<p>Loading course catalogue...</p>";

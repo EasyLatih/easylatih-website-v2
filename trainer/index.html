@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Trainer Collaboration | EasyLatih</title>
+  <meta name="description" content="Register as an EasyLatih trainer collaborator, propose training programmes and manage training opportunities through the EasyLatih Trainer Portal.">
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body>
+<header class="portal-topbar">
+  <div class="portal-topbar-inner">
+    <a href="../index.html" class="portal-brand">
+      <img src="../assets/logo.png" alt="EasyLatih">
+      <div>Trainer Collaboration<small>Easy Learning, Real Results!</small></div>
+    </a>
+    <div class="top-actions">
+      <a href="../index.html" class="btn btn-outline">EasyLatih Website</a>
+      <a id="continuePortal" href="dashboard.html" class="btn hidden">Open My Portal</a>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero-card">
+    <h1>Collaborate with EasyLatih</h1>
+    <p>Create your trainer account, pitch programmes that fit your expertise, and receive relevant public or in-house training opportunities from EasyLatih. Registration is intentionally short — full onboarding is only requested after a programme is approved for collaboration.</p>
+  </section>
+
+  <div class="alert alert-warning hidden" data-needs-backend>
+    <strong>Development environment:</strong> The new trainer portal UI is ready, but registration will remain closed until the dedicated EasyLatih Supabase project is connected.
+  </div>
+
+  <section class="stats-grid" aria-label="Trainer collaboration statistics">
+    <div class="stat-card"><strong id="registeredStat">0</strong><span>Trainers Registered</span></div>
+    <div class="stat-card"><strong id="approvedStat">0</strong><span>Approved Collaborators</span></div>
+    <div class="stat-card"><strong id="activeStat">0</strong><span>Active Trainers</span></div>
+    <div class="stat-card"><strong id="publishedStat">0</strong><span>Programmes Published</span></div>
+  </section>
+
+  <section class="auth-grid">
+    <div>
+      <div class="form-card">
+        <h2>Create Trainer Account</h2>
+        <p class="muted">We only need your contact details and a short expertise summary at this stage. You can submit programme ideas after logging in.</p>
+        <div id="registerMessage" class="hidden"></div>
+        <form id="registerForm">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="full_name">Full Name</label>
+              <input id="full_name" name="full_name" autocomplete="name" required maxlength="120">
+            </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required maxlength="160">
+            </div>
+            <div class="field">
+              <label for="phone">WhatsApp / Phone</label>
+              <input id="phone" name="phone" autocomplete="tel" required maxlength="30" placeholder="e.g. +6012 345 6789">
+            </div>
+            <div class="field">
+              <label for="state">Base State</label>
+              <select id="state" name="state" required>
+                <option value="">Select state</option>
+                <option>Johor</option><option>Kedah</option><option>Kelantan</option><option>Melaka</option><option>Negeri Sembilan</option><option>Pahang</option><option>Perak</option><option>Perlis</option><option>Penang</option><option>Sabah</option><option>Sarawak</option><option>Selangor</option><option>Terengganu</option><option>Kuala Lumpur</option><option>Putrajaya</option><option>Labuan</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="linkedin_url">LinkedIn / Profile Link <span class="muted">(optional)</span></label>
+              <input id="linkedin_url" name="linkedin_url" type="url" placeholder="https://...">
+            </div>
+            <div class="field full">
+              <label for="expertise_summary">Main Training Expertise</label>
+              <textarea id="expertise_summary" name="expertise_summary" required maxlength="500" placeholder="Example: 10 years in payroll and HR operations, specialising in Malaysian payroll compliance and practical HR administration for SMEs."></textarea>
+              <span class="help">Keep this short. Detailed trainer profile and documents are requested only after approval to collaborate.</span>
+            </div>
+            <div class="field full">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+            </div>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" name="privacy_ack" value="1" required>
+            <span>I acknowledge that I have read the <a href="../privacy.html" target="_blank" style="color:#0d3b66;font-weight:600">Personal Data Protection Notice (PDPA) / Notis Perlindungan Data Peribadi</a> and understand how Easy Latih Consultancy processes my personal data.</span>
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" name="marketing_consent" value="1">
+            <span>I would like to receive optional EasyLatih programme, trainer collaboration and consultancy updates. I understand this marketing consent is optional and may be withdrawn.</span>
+          </label>
+
+          <button id="registerButton" class="btn btn-primary" type="submit" data-disable-without-backend>Create Account</button>
+        </form>
+      </div>
+
+      <div class="form-card" id="loginCard" style="margin-top:1rem">
+        <h2>Already registered?</h2>
+        <p class="muted">Log in to manage your proposals, comments, profile and training opportunities.</p>
+        <div id="loginMessage" class="hidden"></div>
+        <form id="loginForm">
+          <div class="field"><label>Email</label><input name="email" type="email" autocomplete="email" required></div>
+          <div class="field"><label>Password</label><input name="password" type="password" autocomplete="current-password" required></div>
+          <div style="margin:.45rem 0 1rem;text-align:right"><a href="forgot-password.html" style="color:#0d3b66;font-weight:600;font-size:.88rem">Forgot password?</a></div>
+          <button id="loginButton" class="btn" type="submit" data-disable-without-backend>Log In</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>How collaboration works</h2>
+        <div class="list">
+          <div class="list-card"><strong>1. Register your account</strong><div class="muted">Only basic contact and expertise details are required.</div></div>
+          <div class="list-card"><strong>2. Pitch up to 5 active programme ideas</strong><div class="muted">We review title, specific target audience, training need, learning points, duration and market fit.</div></div>
+          <div class="list-card"><strong>3. EasyLatih reviews and comments</strong><div class="muted">Your proposal may be shortlisted, returned for clarification, kept for future demand or approved to collaborate.</div></div>
+          <div class="list-card"><strong>4. Approved trainers complete onboarding</strong><div class="muted">Full trainer details, professional photo, documents, collaboration terms and full programme information are requested only after approval.</div></div>
+          <div class="list-card"><strong>5. Receive matching training opportunities</strong><div class="muted">Active trainers can receive relevant public or in-house opportunities based on category, expertise, location and availability.</div></div>
+        </div>
+        <div class="alert alert-info">Registration and programme submission do not guarantee programme approval, engagement or training assignment by EasyLatih.</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><div><h2>Current category intake</h2><div class="muted">This helps trainers see where EasyLatih is actively looking for more expertise.</div></div></div>
+        <div id="categoryIntake" class="category-meter"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Public & In-House Training</h3>
+        <p class="muted">When proposing a programme, you can indicate whether it is suitable for Public Training, In-House Training or both. This also helps us match you to future opportunities.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    <strong>Easy Latih Consultancy</strong> (Registration No. 202503030373) · 09-560 4273 · admin@easylatih.my<br>
+    B62, Tingkat 1, Jalan IM 7/1, Bandar Indera Mahkota 6, 25200 Kuantan, Pahang · <a href="../privacy.html">PDPA Notice</a> · <a href="../terms-of-use.html">Terms of Use</a>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="login-override.js"></script>
+<script>EasyLatihPortal.initRegistration();</script>
+</body>
+</html>

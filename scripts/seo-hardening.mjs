@@ -8,10 +8,22 @@ const DEFAULT_IMAGE = `${BASE}/assets/hero_image.png`;
 const pages = {
   'index.html': {
     url: '/',
-    title: 'HRD Corp Training Provider Malaysia | EasyLatih',
-    description: 'EasyLatih is an HRD Corp Registered Training Provider in Kuantan offering public training, in-house training, customised programmes and practical workplace upskilling across Malaysia.',
+    title: 'Training, Skillsoft, Consultancy & Venue Rental | EasyLatih',
+    description: 'Explore EasyLatih public and in-house training, Skillsoft digital learning, business consultancy and training venue rental in Kuantan.',
     image: DEFAULT_IMAGE,
     schema: true
+  },
+  'skillsoft.html': {
+    url: '/skillsoft.html',
+    title: 'Skillsoft Digital Learning | EasyLatih',
+    description: 'Discuss Skillsoft digital learning for your organisation with EasyLatih. Share your workforce learning priorities and enquire about available options.',
+    image: DEFAULT_IMAGE
+  },
+  'consultancy.html': {
+    url: '/consultancy.html',
+    title: 'Business Consultancy | EasyLatih',
+    description: 'Discuss business consultancy with EasyLatih in people management, finance, workplace compliance, ESG and productivity. Request a scoped proposal.',
+    image: DEFAULT_IMAGE
   },
   'courses.html': {
     url: '/courses.html',

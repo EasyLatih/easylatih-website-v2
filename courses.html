@@ -8,125 +8,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .container { max-width: 1100px; margin: auto; padding: 2rem; }
-    .course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-    .course-card { border: 1px solid #ccc; padding: 1rem; border-radius: 8px; background: #fff; }
-    .details { font-size: 0.9rem; color: #333; }
-    .inquire-button { margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    .inquiry-cart { position: fixed; bottom: 1rem; right: 1rem; background: #f8f9fa; color: #000; padding: 1rem; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    .cart-summary { list-style: none; padding-left: 1rem; margin-top: 0.5rem; }
-    .cart-summary button { background: none; border: none; font-size: 1.2rem; color: red; cursor: pointer; padding: 0; margin-left: 8px; }
-    .course-card {
-  border:1px solid #e6e8ef;
-  padding:1.25rem;
-  border-radius:12px;
-  background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.04);
-}
-
-.course-card h3 {
-  color:#0d3b66;
-  margin-top:0;
-}
-
-.course-meta {
-  display:flex;
-  gap:.5rem;
-  flex-wrap:wrap;
-  margin:1rem 0;
-}
-
-.course-meta span {
-  background:#eef2ff;
-  color:#1e3a8a;
-  padding:5px 10px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
-}
-
-.inquire-button {
-  background:#0d3b66;
-  color:white;
-  border:none;
-  border-radius:8px;
-  padding:.75rem 1rem;
-  font-weight:600;
-}
-    .course-summary {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 72px;
-}
-
-.course-details-toggle {
-  width: 100%;
-  margin-top: 18px;
-  padding: 11px 14px;
-  border: 1px solid #0d3b66;
-  border-radius: 9px;
-  background: #ffffff;
-  color: #0d3b66;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.course-details-toggle:hover {
-  background: #f3f7fb;
-}
-
-.course-expanded-details {
-  display: none;
-  margin-top: 15px;
-  padding: 16px;
-  border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-
-.course-expanded-details.open {
-  display: block;
-}
-
-.course-detail-section {
-  margin-bottom: 16px;
-}
-
-.course-detail-section:last-child {
-  margin-bottom: 0;
-}
-
-.course-detail-section h4 {
-  margin: 0 0 7px;
-  color: #0d3b66;
-  font-size: 15px;
-}
-
-.course-detail-section p {
-  margin: 0;
-  color: #374151;
-  font-size: 14px;
-  line-height: 1.65;
-}
-    .course-grid,
-.course-card,
-.course-expanded-details,
-.course-detail-section,
-.course-detail-section p {
-  min-width: 0;
-  max-width: 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.course-card {
-  overflow: hidden;
-}
-  </style><meta name="description" content="Explore EasyLatih training courses in HR, finance, leadership, digital skills, customer service and workplace compliance for public, in-house and customised training in Malaysia.">
+  <link rel="stylesheet" href="marketing.css">
+  <link rel="stylesheet" href="catalogue.css"><meta name="description" content="Explore EasyLatih training courses in HR, finance, leadership, digital skills, customer service and workplace compliance for public, in-house and customised training in Malaysia.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://www.easylatih.my/courses.html">
 <meta property="og:type" content="website">
@@ -141,39 +24,23 @@
 <meta name="twitter:description" content="Explore EasyLatih training courses in HR, finance, leadership, digital skills, customer service and workplace compliance for public, in-house and customised training in Malaysia.">
 <meta name="twitter:image" content="https://www.easylatih.my/assets/hero_image.png">
 </head>
-<body>
-  <header>
-  <div class="nav-container" style="display: flex; align-items: center; justify-content: space-between;">
-    
-    <!-- Company + HRD Corp Logos -->
-    <div class="logo-group" style="display: flex; align-items: center;">
-      <a href="/" class="logo">
-        <img src="assets/logo.png" alt="EasyLatih logo" style="height: 50px; margin-right: 10px;">
-      </a>
-      <div class="hrdcorp-logos" style="display: flex; align-items: center; gap: 10px;">
-        <img src="assets/Logo Training Provider_Logo Registered Training Provider.png" alt="HRD Corp Registered" style="height: 40px;">
-        <img src="assets/HRD Corp - Claimable Logo.png" alt="HRD Corp Claimable" style="height: 40px;">
-      </div>
-    </div>
+<body class="marketing catalogue-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><div class="nav-container">
+<div class="brand-lockup">
+<a href="/" class="logo"><img src="assets/logo.png" width="500" height="500" alt="EasyLatih home"></a>
+<div class="hrdcorp-logos" aria-label="HRD Corp accreditation">
+<img src="assets/Logo Training Provider_Logo Registered Training Provider.png" width="200" height="200" alt="HRD Corp Registered Training Provider">
+<img src="assets/HRD Corp - Claimable Logo.png" width="200" height="200" alt="HRD Corp Claimable">
+</div></div>
+<nav aria-label="Main navigation"><button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open navigation"><span></span><span></span><span></span></button>
+<ul id="navMenu"><li><a href="/">Home</a></li><li><a href="schedule.html">Training Calendar</a></li><li><a href="courses.html" aria-current="page">Courses</a></li><li><a href="skillsoft.html">Skillsoft</a></li><li><a href="consultancy.html">Consultancy</a></li><li><a href="room-rental.html">Venue Rental</a></li><li><a class="nav-portal" href="trainer/">Trainer Portal</a></li></ul>
+</nav></div></header>
 
-    <!-- Navigation -->
-    <nav>
-      <div class="nav-toggle" id="navToggle">
-        <span></span><span></span><span></span>
-      </div>
-      <ul id="navMenu">
-<li><a href="/">Home</a></li>
-<li><a href="courses.html">Course Catalogue</a></li>
-<li><a href="room-rental.html">Training Venue</a></li>
-<li><a href="schedule.html">Training Schedule</a></li>
-<li><a href="blog.html">Blog</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
-
-<section class="container">
-  <h2 class="section-title">Course Catalogue</h2>
+<main id="main">
+<section class="container catalogue-intro">
+  <p class="eyebrow">BUILD WORKPLACE SKILLS</p>
+  <h1>Course Catalogue</h1>
   <p class="mb-4">
     Explore EasyLatih’s training catalogue covering HR, finance, safety, leadership,
     digital skills and workplace compliance. These courses are available for in-house
@@ -182,10 +49,10 @@
 </section>
 
 <section class="container">
-  <div style="margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem;">
-    <input type="text" id="searchInput" placeholder="Search courses..." style="flex: 1; padding: 0.5rem;" />
+  <div class="catalogue-filters">
+    <div><label for="searchInput">Search</label><input type="text" id="searchInput" placeholder="Search courses..." /></div>
 
-    <select id="categoryFilter" style="padding: 0.5rem;">
+    <div><label for="categoryFilter">Category</label><select id="categoryFilter">
       <option value="">All Categories</option>
       <option value="Finance">Finance</option>
       <option value="HR">HR</option>
@@ -197,9 +64,9 @@
       <option value="Customer Service">Customer Service</option>
       <option value="ESG">ESG</option>
       <option value="Wellbeing">Wellbeing</option>
-    </select>
+    </select></div>
 
-    <select id="levelFilter" style="padding: 0.5rem;">
+    <div hidden><label for="levelFilter">Level</label><select id="levelFilter">
       <option value="">All Levels</option>
       <option value="Entry-Level">Entry-Level</option>
       <option value="Mid-Level">Mid-Level</option>
@@ -207,7 +74,7 @@
       <option value="All Levels">All Levels</option>
       <option value="Intermediate">Intermediate</option>
       <option value="Advanced">Advanced</option>
-    </select>
+    </select></div>
   </div>
 
   <div id="coursesContainer" class="course-grid"></div>
@@ -230,42 +97,52 @@
   </div>
 </section>
 
+</main>
   <footer>
-    <div class="footer-container">
-      <div>
-        <h4>Contact Us</h4>
-        <p>B62, Tingkat 1, Jalan IM 7/1<br />Bandar Indera Mahkota 6, 25200<br />Kuantan, Pahang, Malaysia</p>
-        <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
-        <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
-        <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank">+60 10 920 2811</a></p>
-      </div>
-      <div>
-        <h4>Quick Links</h4>
-        <a href="/">Home</a>
-<a href="courses.html">Course Catalogue</a>
-<a href="room-rental.html">Training Venue</a>
-<a href="schedule.html">Training Schedule</a>
-        <a href="blog.html">Blog</a>
-      </div>
-      <div>
-        <h4>Follow Us</h4>
-        <div class="socials">
-                  <a href="https://www.facebook.com/EasyLatih/"><i class="fab fa-facebook-f"></i></a>
-                  <a href="https://www.instagram.com/easylatih/"><i class="fab fa-instagram"></i></a>
-                  <a href="https://my.linkedin.com/company/easylatih"><i class="fab fa-linkedin-in"></i></a>
-                  <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w"><i class="fab fa-youtube"></i></a>
-                  <a href="https://www.tiktok.com/@easylatih"><i class="fab fa-tiktok"></i></a>
+        <div class="footer-container">
+            <div>
+                <h4 id="contact">Contact Us</h4>
+                <p>B62, Tingkat 1, Jalan IM 7/1<br>
+                   Bandar Indera Mahkota 6, 25200<br>
+                   Kuantan, Pahang, Malaysia</p>
+                <p>Email: <a href="mailto:sales@easylatih.my">sales@easylatih.my</a></p>
+                <p>Phone: <a href="tel:+6095604273">+60 9 560 4273</a></p>
+                <p>WhatsApp: <a href="https://wa.me/60109202811" target="_blank" rel="noopener noreferrer">+60 10 920 2811</a></p>
+            </div>
+            <div>
+                <h4>Quick Links</h4>
+                <a href="/">Home</a>
+                <a href="courses.html">Course Catalogue</a>
+                <a href="skillsoft.html">Skillsoft Learning</a>
+                <a href="consultancy.html">Consultancy</a>
+                <a href="room-rental.html">Venue Rental</a>
+                <a href="schedule.html">Training Schedule</a>
+                <a href="trainer/">Trainer Collaboration</a>
+                <a href="blog.html">Blog</a>
+                <a href="privacy.html">Privacy Notice</a>
+                <a href="terms-of-use.html">Terms of Use</a>
+            </div>
+            <div>
+                <h4>Follow Us</h4>
+                <div class="socials">
+                  <a href="https://www.facebook.com/EasyLatih/" aria-label="Facebook"><i aria-hidden="true" class="fab fa-facebook-f"></i></a>
+                  <a href="https://www.instagram.com/easylatih/" aria-label="Instagram"><i aria-hidden="true" class="fab fa-instagram"></i></a>
+                  <a href="https://my.linkedin.com/company/easylatih" aria-label="LinkedIn"><i aria-hidden="true" class="fab fa-linkedin-in"></i></a>
+                  <a href="https://www.youtube.com/channel/UCQ2aaTN9fwSkmpjN5cC6O2w" aria-label="YouTube"><i aria-hidden="true" class="fab fa-youtube"></i></a>
+                  <a href="https://www.tiktok.com/@easylatih" aria-label="TikTok"><i aria-hidden="true" class="fab fa-tiktok"></i></a>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-    <div class="text-center" style="margin-top: 2rem;">
-      EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br />
-      &copy; 2025 EasyLatih. All rights reserved.
-    </div>
-  </footer>
+        <div class="text-center" style="margin-top: 2rem;">
+            EasyLatih is a brand under Easy Latih Consultancy (Registration No. 202503030373).<br>
+            &copy; 2026 EasyLatih. All rights reserved.
+        </div>
+    </footer>
 
- <script src="courses-v2.js?v=5"></script>
- <script src="script.js"></script>
+ <script src="courses-v2.js?v=6"></script>
+ <script src="trainer/config.js"></script>
+ <script src="trainer/trainer-catalogue.js?v=3"></script>
+ <script src="marketing.js"></script>
   
 </body>
 </html>
