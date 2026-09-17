@@ -14,16 +14,23 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 
 const recent = new Map<string, number>();
 
+const TRUSTED_PORTAL_ORIGINS = new Set([
+  "https://www.easylatih.my",
+  "https://easylatih.my",
+  "https://easylatih-v2-preview.vercel.app",
+]);
+
 function allowedOrigin(value: string | null) {
-  if (!value) return "https://www.easylatih.my";
+  const fallbackOrigin = "https://www.easylatih.my";
+  if (!value) return fallbackOrigin;
   try {
     const u = new URL(value);
     const host = u.hostname.toLowerCase();
-    if (u.protocol !== "https:") return "https://www.easylatih.my";
-    if (host === "www.easylatih.my" || host === "easylatih.my") return u.origin;
+    if (u.protocol !== "https:") return fallbackOrigin;
+    if (TRUSTED_PORTAL_ORIGINS.has(u.origin)) return u.origin;
     if (host.endsWith(".vercel.app") && host.startsWith("easylatih-trainer-")) return u.origin;
   } catch (_) {}
-  return "https://www.easylatih.my";
+  return fallbackOrigin;
 }
 
 function cors(origin: string) {
@@ -69,7 +76,7 @@ Deno.serve(async (req) => {
       ok: true,
       configured: Boolean(SUPABASE_URL && SERVICE_ROLE_KEY && RESEND_API_KEY),
       primaryFrom: PRIMARY_FROM.replace(/<[^>]+>/, "<configured>"),
-      version: 1,
+      version: 2,
     }, 200, origin);
   }
 
