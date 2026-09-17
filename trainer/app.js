@@ -3,6 +3,7 @@
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   const ACTIVE_PROPOSAL_STATUSES = ['SUBMITTED','UNDER_REVIEW','CLARIFICATION_REQUIRED','SHORTLISTED','APPROVED_TO_COLLAB','ONBOARDING','FULL_DETAILS_SUBMITTED','APPROVED_FOR_ETRIS'];
+  const EDITABLE_PROPOSAL_STATUSES = ['SUBMITTED','CLARIFICATION_REQUIRED'];
 
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? '').replace(/[&<>'\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[ch]));
@@ -148,6 +149,7 @@
   let currentUser = null;
   let currentProfile = null;
   let currentProposals = [];
+  let editingProposalId = null;
 
   function switchSection(name) {
     document.querySelectorAll('[data-section]').forEach(el => el.classList.toggle('hidden', el.dataset.section !== name));
@@ -195,7 +197,7 @@
     const activeCount = currentProposals.filter(p => ACTIVE_PROPOSAL_STATUSES.includes(p.status)).length;
     if ($('activeProposalCount')) $('activeProposalCount').textContent = `${activeCount}/${cfg.maxActiveProposals || 5}`;
     if ($('proposalSlots')) $('proposalSlots').textContent = Math.max(0,(cfg.maxActiveProposals || 5)-activeCount);
-    if ($('proposalSubmitButton')) $('proposalSubmitButton').disabled = activeCount >= (cfg.maxActiveProposals || 5);
+    if ($('proposalSubmitButton')) $('proposalSubmitButton').disabled = !editingProposalId && activeCount >= (cfg.maxActiveProposals || 5);
     const holder = $('proposalList');
     if (!holder) return;
     holder.innerHTML = currentProposals.length ? currentProposals.map(p => `
@@ -203,26 +205,113 @@
         <div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span><span>${esc(p.duration)}</span></div></div>${statusBadge(p.status)}</div>
         <div class="muted">Target: ${esc(p.target_audience)}</div>
         <div class="tag-wrap">${(p.key_learning_points || []).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>
-        <div class="btn-row"><button class="btn btn-soft" data-open-comments="${p.id}">View comments</button></div>
+        <div class="btn-row">
+          ${EDITABLE_PROPOSAL_STATUSES.includes(p.status) ? `<button type="button" class="btn btn-primary" data-edit-proposal="${p.id}">Edit &amp; Resubmit</button>` : ''}
+          <button type="button" class="btn btn-soft" data-open-comments="${p.id}">View comments</button>
+        </div>
       </div>`).join('') : '<div class="empty">No programme proposal yet. You may submit up to 5 active proposals.</div>';
     holder.querySelectorAll('[data-open-comments]').forEach(btn => btn.addEventListener('click',() => loadProposalComments(btn.dataset.openComments)));
+    holder.querySelectorAll('[data-edit-proposal]').forEach(btn => btn.addEventListener('click',() => startProposalEdit(btn.dataset.editProposal)));
+  }
+
+  function proposalFormRow(formEl) {
+    const f = new FormData(formEl);
+    const points = String(f.get('key_learning_points') || '').split('\n').map(x=>x.trim()).filter(Boolean).slice(0,5);
+    return {
+      title:String(f.get('title')).trim(),
+      category:String(f.get('category')).trim(),
+      training_type:String(f.get('training_type')).trim(),
+      target_audience:String(f.get('target_audience')).trim(),
+      problem_statement:String(f.get('problem_statement')).trim(),
+      summary:String(f.get('summary')).trim(),
+      key_learning_points:points,
+      duration:String(f.get('duration')).trim(),
+      delivery_method:String(f.get('delivery_method')).trim(),
+      preferred_location:String(f.get('preferred_location') || '').trim(),
+      expected_fee:Number(f.get('expected_fee') || 0) || null
+    };
+  }
+
+  function setProposalFormMode(proposal=null) {
+    const formEl=$('proposalForm');
+    if(!formEl)return;
+    const isEditing=Boolean(proposal);
+    editingProposalId=isEditing ? proposal.id : null;
+
+    if(isEditing){
+      const values={
+        title:proposal.title,
+        category:proposal.category,
+        training_type:proposal.training_type,
+        target_audience:proposal.target_audience,
+        problem_statement:proposal.problem_statement,
+        summary:proposal.summary,
+        duration:proposal.duration,
+        delivery_method:proposal.delivery_method,
+        preferred_location:proposal.preferred_location,
+        expected_fee:proposal.expected_fee
+      };
+      Object.entries(values).forEach(([name,value])=>{
+        const field=formEl.elements[name];
+        if(field)field.value=value ?? '';
+      });
+      const pointsField=formEl.elements.key_learning_points;
+      if(pointsField)pointsField.value=(proposal.key_learning_points||[]).join('\n');
+      if($('proposalFormTitle'))$('proposalFormTitle').textContent='Edit & resubmit programme idea';
+      if($('proposalFormHelp'))$('proposalFormHelp').textContent='Update the details, then resubmit for EasyLatih review. The previous submission is kept in the admin revision history.';
+      if($('proposalSubmitButton'))$('proposalSubmitButton').textContent='Save & Resubmit';
+      $('cancelProposalEdit')?.classList.remove('hidden');
+      switchSection('proposals');
+      formEl.scrollIntoView?.({behavior:'smooth',block:'start'});
+    }else{
+      formEl.reset();
+      if($('proposalFormTitle'))$('proposalFormTitle').textContent='Submit a new programme idea';
+      if($('proposalFormHelp'))$('proposalFormHelp').textContent='Keep it concise. EasyLatih only needs enough information to assess market potential and fit at this stage.';
+      if($('proposalSubmitButton'))$('proposalSubmitButton').textContent='Submit Programme Idea';
+      $('cancelProposalEdit')?.classList.add('hidden');
+    }
+
+    const activeCount=currentProposals.filter(p=>ACTIVE_PROPOSAL_STATUSES.includes(p.status)).length;
+    if($('proposalSubmitButton'))$('proposalSubmitButton').disabled=!editingProposalId && activeCount >= (cfg.maxActiveProposals || 5);
+  }
+
+  function startProposalEdit(proposalId) {
+    const proposal=currentProposals.find(p=>p.id===proposalId);
+    if(!proposal || !EDITABLE_PROPOSAL_STATUSES.includes(proposal.status)){
+      showMessage('proposalMessage','This proposal is no longer editable because its review status has changed.','danger');
+      return;
+    }
+    setProposalFormMode(proposal);
+    showMessage('proposalMessage','You are editing this proposal. Save & Resubmit will return it to EasyLatih for review.','info');
   }
 
   async function submitProposal(formEl) {
-    const activeCount = currentProposals.filter(p => ACTIVE_PROPOSAL_STATUSES.includes(p.status)).length;
-    if (activeCount >= (cfg.maxActiveProposals || 5)) throw new Error('You already have 5 active proposals. Please wait until one is completed, rejected or withdrawn.');
-    const f = new FormData(formEl);
-    const points = String(f.get('key_learning_points') || '').split('\n').map(x=>x.trim()).filter(Boolean).slice(0,5);
-    const row = {
-      trainer_id:currentUser.id,
-      title:String(f.get('title')).trim(), category:String(f.get('category')).trim(), training_type:String(f.get('training_type')).trim(),
-      target_audience:String(f.get('target_audience')).trim(), problem_statement:String(f.get('problem_statement')).trim(), summary:String(f.get('summary')).trim(),
-      key_learning_points:points, duration:String(f.get('duration')).trim(), delivery_method:String(f.get('delivery_method')).trim(),
-      preferred_location:String(f.get('preferred_location') || '').trim(), expected_fee:Number(f.get('expected_fee') || 0) || null,
-      status:'SUBMITTED'
-    };
-    const { error } = await client.from('programme_proposals').insert(row);
-    if (error) throw error;
+    const row=proposalFormRow(formEl);
+
+    if(editingProposalId){
+      const proposal=currentProposals.find(p=>p.id===editingProposalId);
+      if(!proposal || !EDITABLE_PROPOSAL_STATUSES.includes(proposal.status)){
+        throw new Error('This proposal is no longer editable because its review status has changed.');
+      }
+      const {data,error}=await client
+        .from('programme_proposals')
+        .update({...row,status:'SUBMITTED'})
+        .eq('id',editingProposalId)
+        .eq('trainer_id',currentUser.id)
+        .select('id,status')
+        .maybeSingle();
+      if(error)throw error;
+      if(!data)throw new Error('This proposal could not be resubmitted because its review status has changed.');
+      return {resubmitted:true};
+    }
+
+    const activeCount=currentProposals.filter(p=>ACTIVE_PROPOSAL_STATUSES.includes(p.status)).length;
+    if(activeCount >= (cfg.maxActiveProposals || 5)){
+      throw new Error('You already have 5 active proposals. Please wait until one is completed, rejected or withdrawn.');
+    }
+    const {error}=await client.from('programme_proposals').insert({...row,trainer_id:currentUser.id,status:'SUBMITTED'});
+    if(error)throw error;
+    return {resubmitted:false};
   }
 
   async function loadProposalComments(proposalId) {
@@ -308,7 +397,8 @@
     $('userEmail').textContent=currentUser.email;
     document.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>switchSection(btn.dataset.nav)));
     $('logoutButton')?.addEventListener('click',async()=>{await client.auth.signOut();location.replace('./index.html');});
-    $('proposalForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;showMessage('proposalMessage','Submitting…','info');try{await submitProposal(formEl);formEl.reset();showMessage('proposalMessage','Programme proposal submitted for EasyLatih review.','success');await loadProposals();}catch(err){showMessage('proposalMessage',err.message,'danger');}});
+    $('proposalForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;showMessage('proposalMessage',editingProposalId?'Resubmitting…':'Submitting…','info');try{const result=await submitProposal(formEl);setProposalFormMode();showMessage('proposalMessage',result.resubmitted?'Proposal updated and resubmitted for EasyLatih review.':'Programme proposal submitted for EasyLatih review.','success');await loadProposals();}catch(err){showMessage('proposalMessage',err.message,'danger');}});
+    $('cancelProposalEdit')?.addEventListener('click',()=>{setProposalFormMode();showMessage('proposalMessage','','info');});
     $('commentForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;const f=new FormData(formEl);const proposalId=String(f.get('proposal_id'));const body=String(f.get('body')).trim();if(!body)return;const{error}=await client.from('proposal_comments').insert({proposal_id:proposalId,author_id:currentUser.id,author_role:'TRAINER',visibility:'TRAINER',body});if(error)return alert(error.message);formEl.reset();$('commentProposalId').value=proposalId;loadProposalComments(proposalId);});
     $('profileForm')?.addEventListener('submit',async(e)=>{try{await saveProfile(e);}catch(err){showMessage('profileMessage',err.message,'danger');}});
     $('categoryChangeRequestForm')?.addEventListener('submit',async(e)=>{try{await requestCategoryChange(e);}catch(err){showMessage('categoryRequestMessage',err.message,'danger');}});
@@ -332,14 +422,18 @@
   }
 
   async function refreshAdmin(){
-    const [{data:stats},{data:proposals},{data:opps},{data:categoryRequests}] = await Promise.all([
+    const [{data:stats},{data:proposals},{data:revisions,error:revisionsError},{data:opps},{data:categoryRequests}] = await Promise.all([
       client.from('portal_stats').select('*').eq('id',1).maybeSingle(),
       client.from('programme_proposals').select('*,profiles(full_name,email,phone,state)').order('created_at',{ascending:false}).limit(200),
+      client.from('programme_proposal_revisions').select('proposal_id,revision_no,previous_status,title,category,training_type,target_audience,problem_statement,summary,key_learning_points,duration,delivery_method,preferred_location,expected_fee,changed_at').order('changed_at',{ascending:false}).limit(500),
       client.from('opportunities').select('*,opportunity_responses(*)').order('created_at',{ascending:false}).limit(100),
       client.from('trainer_category_change_requests').select('*,profiles(full_name,state)').eq('status','PENDING').order('created_at',{ascending:false})
     ]);
     if(stats){ ['registered_trainers','approved_collaborators','active_trainers','published_programmes','proposals_under_review'].forEach(k=>{const el=$(k);if(el)el.textContent=Number(stats[k]||0).toLocaleString();}); }
-    renderAdminProposals(proposals||[]);
+    if(revisionsError)console.warn('Unable to load proposal revision history.',revisionsError);
+    const revisionsByProposal={};
+    (revisions||[]).forEach(r=>{(revisionsByProposal[r.proposal_id] ||= []).push(r);});
+    renderAdminProposals(proposals||[],revisionsByProposal);
     renderAdminCategoryRequests(categoryRequests||[]);
     renderAdminOpportunities(opps||[]);
   }
@@ -359,12 +453,34 @@
   }
 
 
-  function renderAdminProposals(rows){
+
+  function renderProposalRevisionHistory(revisions){
+    if(!revisions.length)return '';
+    const label=revisions.length===1?'earlier submission':'earlier submissions';
+    return '<details class="admin-proposal-history"><summary>Revision history ('+revisions.length+' '+label+')</summary><div class="admin-proposal-revision-list">'
+      + revisions.map(r=>{
+        const points=(r.key_learning_points||[]).map(x=>'<li>'+esc(x)+'</li>').join('')||'<li>Not stated</li>';
+        const previousStatus=String(r.previous_status||'UNKNOWN').replaceAll('_',' ');
+        return '<article class="admin-proposal-revision">'
+          + '<div class="admin-proposal-revision-head"><div><strong>Version '+esc(r.revision_no)+'</strong><div class="meta"><span>'+esc(r.category||'Not stated')+'</span><span>'+esc(r.training_type||'Not stated')+'</span><span>Previous status: '+esc(previousStatus)+'</span></div></div><span>'+fmtDateTime(r.changed_at)+'</span></div>'
+          + '<div class="admin-proposal-text-block"><strong>Previous title</strong><p>'+esc(r.title||'Not stated')+'</p></div>'
+          + '<div class="review-grid"><div><strong>Target participants</strong><p>'+esc(r.target_audience||'Not stated')+'</p></div><div><strong>Preferred location</strong><p>'+esc(r.preferred_location||'Not stated')+'</p></div><div><strong>Expected trainer fee</strong><p>'+money(r.expected_fee)+'</p></div><div><strong>Duration &amp; delivery method</strong><p>'+esc(r.duration||'Not stated')+' · '+esc(r.delivery_method||'Not stated')+'</p></div></div>'
+          + '<div class="admin-proposal-text-block"><strong>Problem this training addresses</strong><p>'+esc(r.problem_statement||'Not stated')+'</p></div>'
+          + '<div class="admin-proposal-text-block"><strong>Training summary</strong><p>'+esc(r.summary||'Not stated')+'</p></div>'
+          + '<div class="admin-proposal-text-block"><strong>Key learning points</strong><ul>'+points+'</ul></div>'
+          + '</article>';
+      }).join('')
+      + '</div></details>';
+  }
+
+  function renderAdminProposals(rows, revisionsByProposal={}){
     const holder=$('adminProposalList');if(!holder)return;
     holder.innerHTML=rows.length?rows.map(p=>{
       const fee=money(p.expected_fee);
       const learningPoints=(p.key_learning_points||[]).map(x=>`<li>${esc(x)}</li>`).join('')||'<li>Not stated</li>';
       const trainerName=p.profiles?.full_name||'Trainer';
+      const revisions=(revisionsByProposal[p.id]||[]).slice().sort((a,b)=>new Date(b.changed_at)-new Date(a.changed_at)||b.revision_no-a.revision_no);
+      const revisionHistory=renderProposalRevisionHistory(revisions);
       return `<div class="list-card admin-proposal-card">
         <div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><button type="button" class="admin-module-link" data-open-trainer-profile="${esc(p.trainer_id)}">${esc(trainerName)}</button><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span><span>Submitted ${fmtDate(p.submitted_at||p.created_at)}</span></div></div>${statusBadge(p.status)}</div>
         <div class="admin-proposal-quick"><span><strong>Expected trainer fee:</strong> ${fee}</span><span><strong>Duration:</strong> ${esc(p.duration||'Not stated')}</span><span><strong>Delivery:</strong> ${esc(p.delivery_method||'Not stated')}</span></div>
@@ -381,6 +497,7 @@
           <div class="admin-proposal-text-block"><strong>Training summary</strong><p>${esc(p.summary||'Not stated')}</p></div>
           <div class="admin-proposal-text-block"><strong>Key learning points</strong><ul>${learningPoints}</ul></div>
         </details>
+        ${revisionHistory}
         <div class="btn-row"><button class="btn btn-primary" data-approve="${p.id}">Approve to Collaborate</button><button class="btn btn-soft" data-clarify="${p.id}">Request Clarification</button><button class="btn btn-outline" data-shortlist="${p.id}">Shortlist</button><button class="btn btn-danger" data-reject="${p.id}">Reject</button><button class="btn btn-outline" data-note="${p.id}">Internal Note</button></div>
       </div>`;
     }).join(''):'<div class="empty">No proposals.</div>';

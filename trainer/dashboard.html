@@ -51,8 +51,8 @@
         <div class="panel-header"><div><h2>My Programme Proposals</h2><div class="muted">Maximum 5 active programme proposals at any one time.</div></div></div>
         <div id="proposalMessage" class="hidden"></div>
         <form id="proposalForm" class="form-card">
-          <h3>Submit a new programme idea</h3>
-          <p class="muted">Keep it concise. EasyLatih only needs enough information to assess market potential and fit at this stage.</p>
+          <h3 id="proposalFormTitle">Submit a new programme idea</h3>
+          <p id="proposalFormHelp" class="muted">Keep it concise. EasyLatih only needs enough information to assess market potential and fit at this stage.</p>
           <div class="form-grid">
             <div class="field full"><label>Training Title</label><input name="title" required maxlength="180" placeholder="e.g. Payroll Compliance for SME HR Executives"></div>
             <div class="field"><label>Category</label><select name="category" required><option value="">Select</option><option>Human Resource</option><option>Finance & Accounting</option><option>Leadership</option><option>Sales & Marketing</option><option>Digital & AI</option><option>Customer Service</option><option>Quality & Productivity</option><option>Safety & Technical</option><option>Administration</option><option>Communication</option><option>Entrepreneurship</option><option>Other</option></select></div>
@@ -66,7 +66,10 @@
             <div class="field"><label>Preferred Location <span class="muted">(optional)</span></label><input name="preferred_location" maxlength="120"></div>
             <div class="field"><label>Expected Trainer Fee <span class="muted">(optional)</span></label><input name="expected_fee" type="number" min="0" step="50" placeholder="RM"></div>
           </div>
-          <button id="proposalSubmitButton" class="btn btn-primary" type="submit">Submit Programme Idea</button>
+          <div class="btn-row">
+            <button id="proposalSubmitButton" class="btn btn-primary" type="submit">Submit Programme Idea</button>
+            <button id="cancelProposalEdit" class="btn btn-soft hidden" type="button">Cancel edit</button>
+          </div>
         </form>
         <div style="height:1rem"></div>
         <div id="proposalList" class="list"><div class="empty">Loading proposals…</div></div>
@@ -190,7 +193,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=4"></script>
 <script src="onboarding.js"></script>
 <script>EasyLatihPortal.initDashboard();</script>
 </body>
