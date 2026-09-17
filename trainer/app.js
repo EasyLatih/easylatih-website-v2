@@ -4,6 +4,7 @@
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   const ACTIVE_PROPOSAL_STATUSES = ['SUBMITTED','UNDER_REVIEW','CLARIFICATION_REQUIRED','SHORTLISTED','APPROVED_TO_COLLAB','ONBOARDING','FULL_DETAILS_SUBMITTED','APPROVED_FOR_ETRIS'];
   const EDITABLE_PROPOSAL_STATUSES = ['SUBMITTED','CLARIFICATION_REQUIRED'];
+  const INITIAL_REVIEW_PROPOSAL_STATUSES = ['SUBMITTED','UNDER_REVIEW','CLARIFICATION_REQUIRED','SHORTLISTED'];
 
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? '').replace(/[&<>'\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[ch]));
@@ -190,6 +191,18 @@
     if ($('approvedCategoryList')) $('approvedCategoryList').innerHTML = (pref.categories || []).length ? (pref.categories || []).map(x=>`<span class="tag">${esc(x)}</span>`).join('') : '<span class="muted">No approved category yet.</span>';
   }
 
+
+  function trainerProposalActions(proposal) {
+    const canEdit = EDITABLE_PROPOSAL_STATUSES.includes(proposal.status);
+    const approvedMessage = proposal.status === 'APPROVED_TO_COLLAB'
+      ? '<span class="muted">This proposal has been approved. Editing is locked unless EasyLatih returns the full module for amendment.</span>'
+      : '';
+    return `<div class="btn-row">
+      ${canEdit ? `<button type="button" class="btn btn-primary" data-edit-proposal="${esc(proposal.id)}">Edit &amp; Resubmit</button>` : approvedMessage}
+      <button type="button" class="btn btn-soft" data-open-comments="${esc(proposal.id)}">View comments</button>
+    </div>`;
+  }
+
   async function loadProposals() {
     const { data, error } = await client.from('programme_proposals').select('*').eq('trainer_id',currentUser.id).order('created_at',{ascending:false});
     if (error) throw error;
@@ -205,10 +218,7 @@
         <div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span><span>${esc(p.duration)}</span></div></div>${statusBadge(p.status)}</div>
         <div class="muted">Target: ${esc(p.target_audience)}</div>
         <div class="tag-wrap">${(p.key_learning_points || []).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>
-        <div class="btn-row">
-          ${EDITABLE_PROPOSAL_STATUSES.includes(p.status) ? `<button type="button" class="btn btn-primary" data-edit-proposal="${p.id}">Edit &amp; Resubmit</button>` : ''}
-          <button type="button" class="btn btn-soft" data-open-comments="${p.id}">View comments</button>
-        </div>
+        ${trainerProposalActions(p)}
       </div>`).join('') : '<div class="empty">No programme proposal yet. You may submit up to 5 active proposals.</div>';
     holder.querySelectorAll('[data-open-comments]').forEach(btn => btn.addEventListener('click',() => loadProposalComments(btn.dataset.openComments)));
     holder.querySelectorAll('[data-edit-proposal]').forEach(btn => btn.addEventListener('click',() => startProposalEdit(btn.dataset.editProposal)));
@@ -473,6 +483,18 @@
       + '</div></details>';
   }
 
+
+  function adminProposalActions(proposal) {
+    const id = esc(proposal.id);
+    if (INITIAL_REVIEW_PROPOSAL_STATUSES.includes(proposal.status)) {
+      return `<div class="btn-row"><button class="btn btn-primary" data-approve="${id}">Approve to Collaborate</button><button class="btn btn-soft" data-clarify="${id}">Request Clarification</button><button class="btn btn-outline" data-shortlist="${id}">Shortlist</button><button class="btn btn-danger" data-reject="${id}">Reject</button><button class="btn btn-outline" data-note="${id}">Internal Note</button></div>`;
+    }
+    const message = proposal.status === 'APPROVED_TO_COLLAB'
+      ? 'Original proposal is approved. Use <strong>Return for Amendment</strong> under the full module if changes are required.'
+      : 'This proposal is no longer in the initial review stage.';
+    return `<div class="btn-row"><span class="muted">${message}</span><button class="btn btn-outline" data-note="${id}">Internal Note</button></div>`;
+  }
+
   function renderAdminProposals(rows, revisionsByProposal={}){
     const holder=$('adminProposalList');if(!holder)return;
     holder.innerHTML=rows.length?rows.map(p=>{
@@ -498,7 +520,7 @@
           <div class="admin-proposal-text-block"><strong>Key learning points</strong><ul>${learningPoints}</ul></div>
         </details>
         ${revisionHistory}
-        <div class="btn-row"><button class="btn btn-primary" data-approve="${p.id}">Approve to Collaborate</button><button class="btn btn-soft" data-clarify="${p.id}">Request Clarification</button><button class="btn btn-outline" data-shortlist="${p.id}">Shortlist</button><button class="btn btn-danger" data-reject="${p.id}">Reject</button><button class="btn btn-outline" data-note="${p.id}">Internal Note</button></div>
+        ${adminProposalActions(p)}
       </div>`;
     }).join(''):'<div class="empty">No proposals.</div>';
     holder.querySelectorAll('[data-approve]').forEach(b=>b.addEventListener('click',()=>adminProposalAction(b.dataset.approve,'APPROVED_TO_COLLAB','Congratulations. EasyLatih would like to invite you to collaborate. Please complete your trainer onboarding and collaboration terms in the portal.')));
@@ -509,14 +531,23 @@
   }
 
   async function adminProposalAction(id,status,comment){
-    if(status){const{error}=await client.from('programme_proposals').update({status,updated_at:new Date().toISOString()}).eq('id',id);if(error)return alert(error.message);}
+    if(status==='APPROVED_TO_COLLAB'&&!confirm('Approve this trainer proposal for collaboration?')) return;
+    if(status){
+      const{data,error}=await client.from('programme_proposals').update({status,updated_at:new Date().toISOString()}).eq('id',id).in('status',INITIAL_REVIEW_PROPOSAL_STATUSES).select('id').maybeSingle();
+      if(error)return alert(error.message);
+      if(!data)return alert('This proposal is no longer in initial review. Refresh the page and use Return for Amendment for a full module if needed.');
+    }
     if(comment){const{error}=await client.from('proposal_comments').insert({proposal_id:id,author_id:(await getSession()).user.id,author_role:'ADMIN',visibility:'TRAINER',body:comment});if(error)return alert(error.message);}
     await refreshAdmin();
   }
 
   async function adminPromptComment(id,status,visibility){
     const body=prompt(visibility==='INTERNAL'?'Internal note (trainer cannot see this):':'Comment to trainer:','');if(!body)return;
-    if(status){const{error}=await client.from('programme_proposals').update({status,updated_at:new Date().toISOString()}).eq('id',id);if(error)return alert(error.message);}
+    if(status){
+      const{data,error}=await client.from('programme_proposals').update({status,updated_at:new Date().toISOString()}).eq('id',id).in('status',INITIAL_REVIEW_PROPOSAL_STATUSES).select('id').maybeSingle();
+      if(error)return alert(error.message);
+      if(!data)return alert('This proposal is no longer in initial review. Refresh the page and use Return for Amendment for a full module if needed.');
+    }
     const session=await getSession();
     const{error}=await client.from('proposal_comments').insert({proposal_id:id,author_id:session.user.id,author_role:'ADMIN',visibility,body});if(error)return alert(error.message);
     await refreshAdmin();
