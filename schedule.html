@@ -233,15 +233,24 @@ const monthNames = [
 
 function loadPublishedPrograms() {
   const callbackName = "publishedProgramsCallback_" + Date.now();
-
-window[callbackName] = function(data) {
-  events2026 = data || [];
-  populateStateFilter();
-  renderCalendar();
-};
-
   const script = document.createElement("script");
-  script.src = WEBAPP + "?action=getPublishedPrograms&callback=" + callbackName;
+
+  window[callbackName] = function(data) {
+    events2026 = Array.isArray(data) ? data : [];
+    delete window[callbackName];
+    script.remove();
+    populateStateFilter();
+    renderCalendar();
+  };
+
+  script.onerror = function() {
+    delete window[callbackName];
+    script.remove();
+    monthsContainer.innerHTML = '<div class="calendar-empty-state">Unable to load the training schedule. Please refresh and try again.</div>';
+  };
+
+  // Cache-bust JSONP so newly published programmes appear immediately.
+  script.src = WEBAPP + "?action=getPublishedPrograms&callback=" + callbackName + "&_=" + Date.now();
   document.body.appendChild(script);
 }
 function populateStateFilter() {
@@ -298,9 +307,14 @@ const selectedCourse = params.get("course");
 
   return events2026.filter(ev => {
     const d = getEventDate(ev);
+    if (Number.isNaN(d.getTime())) return false;
     const evMonth = d.getMonth() + 1;
 
     if (selectedCourse && ev.courseId !== selectedCourse) return false;
+
+    // Default view: upcoming programmes only.
+    // Direct ?course= links can still open a specific historical programme.
+    if (!selectedCourse && ev.programmeStarted) return false;
 
     if (monthVal !== "all" && evMonth !== Number(monthVal)) return false;
     if (stateVal !== "all" && ev.state !== stateVal) return false;
@@ -308,7 +322,7 @@ const selectedCourse = params.get("course");
     if (searchVal && !String(ev.programName || "").toLowerCase().includes(searchVal)) return false;
 
     return true;
-  });
+  }).sort((a,b) => getEventDate(a) - getEventDate(b));
 }
 
 function getProgrammeAvailabilityUI(ev) {
@@ -412,7 +426,7 @@ function renderCalendar() {
   const months = Object.keys(map).sort((a,b) => Number(a) - Number(b));
 
   if (months.length === 0) {
-    monthsContainer.innerHTML = `<div class="calendar-empty-state">No scheduled training found.</div>`;
+    monthsContainer.innerHTML = `<div class="calendar-empty-state">No upcoming training found.</div>`;
     return;
   }
 
