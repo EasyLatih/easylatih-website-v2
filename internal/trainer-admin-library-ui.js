@@ -247,9 +247,15 @@
     };
     buildGroupedIndex(wrapper.querySelector('.apple-library-index'),entries,selected,'module',choose);
 
+    const detail=wrapper.querySelector('.apple-library-detail');
+    detail?.querySelector('[data-library-empty]')?.remove();
     if(selected) choose(selected);
-    else {
-      wrapper.querySelector('.apple-library-detail').innerHTML='<div class="apple-library-detail-empty">No modules in this category/status.</div>';
+    else if(detail){
+      const empty=document.createElement('div');
+      empty.className='apple-library-detail-empty';
+      empty.dataset.libraryEmpty='1';
+      empty.textContent='No modules in this category/status.';
+      detail.appendChild(empty);
     }
   }
 
@@ -324,6 +330,8 @@
         if(directChange)scheduleRefresh();
       }).observe(node,{childList:true});
     });
+    const consultancyMount=$('adminConsultancyLibraryMount');
+    if(consultancyMount)new MutationObserver(()=>scheduleRefresh()).observe(consultancyMount,{childList:true,subtree:true});
 
     document.addEventListener('admin-dashboard-view',e=>{
       if(['trainers','modules','consultancy'].includes(e.detail?.view)) setTimeout(refreshAll,40);
