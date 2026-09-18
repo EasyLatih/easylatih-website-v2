@@ -39,7 +39,7 @@
 
   function moduleCards() {
     const unified=$('adminUnifiedModuleLibrary');
-    const cleanCards=unified ? [...unified.querySelectorAll('.apple-library-detail > .list-card[data-module-source]')] : [];
+    const cleanCards=unified ? [...unified.querySelectorAll('.apple-library-detail > .list-card[data-module-source]')].filter(card=>card.dataset.moduleDuplicate!=='1') : [];
     return cleanCards.length ? cleanCards : [...directCards('adminProposalList'), ...directCards('adminProgrammeList')];
   }
 
@@ -54,9 +54,15 @@
   }
 
   function setTrainerStatusFilter(status) {
+    const target=status || 'ALL';
+    document.querySelectorAll('[data-trainer-library-tab]').forEach(button=>{
+      const active=button.dataset.trainerLibraryTab===target;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-selected',active?'true':'false');
+    });
     const select = $('trainerStatusFilter');
     if (!select) return;
-    select.value = status || 'ALL';
+    select.value = target;
     select.dispatchEvent(new Event('change',{bubbles:true}));
   }
 
@@ -129,17 +135,12 @@
     const consultancyMount = $('adminConsultancyLibraryMount');
     if (consultancy && consultancyMount && consultancy.parentElement !== consultancyMount) consultancyMount.appendChild(consultancy);
 
-    const scheduled = $('adminScheduledTrainingSection');
-    const scheduledMount = $('adminScheduledTrainingMount');
-    if (scheduled && scheduledMount && scheduled.parentElement !== scheduledMount) scheduledMount.appendChild(scheduled);
-
     const source = $('adminTalentPoolsBlock');
     if (source && !source.children.length) source.style.display = 'none';
   }
 
   function sync() {
     moveDynamicBlocks();
-    setModuleFilter(state.moduleFilter);
     updateActionCounts();
   }
 
@@ -194,12 +195,6 @@
     }));
 
     document.querySelectorAll('[data-module-library-filter]').forEach(button => button.addEventListener('click', () => setModuleFilter(button.dataset.moduleLibraryFilter)));
-
-    document.querySelectorAll('[data-admin-start-schedule]').forEach(button => button.addEventListener('click', () => {
-      setView('modules', true);
-      setModuleFilter('published');
-      setTimeout(() => $('adminProgrammePanel')?.scrollIntoView({behavior:'smooth',block:'start'}), 140);
-    }));
 
     document.querySelectorAll('[data-admin-collapse-toggle]').forEach(button => button.addEventListener('click', () => {
       const panel = $(button.dataset.adminCollapseToggle);
