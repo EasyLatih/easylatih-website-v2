@@ -41,6 +41,58 @@
     }
   }
 
+  function safeFileName(value) {
+    return String(value || 'trainer')
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 120) || 'trainer';
+  }
+
+  function photoExtension(url, contentType = '') {
+    const type = String(contentType || '').toLowerCase();
+    if (type.includes('png')) return 'png';
+    if (type.includes('webp')) return 'webp';
+    if (type.includes('jpeg') || type.includes('jpg')) return 'jpg';
+    try {
+      const path = new URL(url).pathname.toLowerCase();
+      if (path.endsWith('.png')) return 'png';
+      if (path.endsWith('.webp')) return 'webp';
+      if (path.endsWith('.jpeg')) return 'jpeg';
+    } catch {}
+    return 'jpg';
+  }
+
+  async function downloadProfilePhoto(url, trainerName, button) {
+    const oldLabel = button?.textContent || '';
+    try {
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Preparing…';
+      }
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Unable to download trainer photo.');
+      const blob = await response.blob();
+      const extension = photoExtension(url, blob.type);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = safeFileName(trainerName) + '-EasyLatih-Trainer-Photo.' + extension;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    } catch (error) {
+      alert(error.message || 'Unable to download trainer photo.');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldLabel;
+      }
+    }
+  }
+
   function make(tag, className, text) {
     const element = document.createElement(tag);
     if (className) element.className = className;
@@ -270,10 +322,34 @@
     onboardingSection.appendChild(onboardingGrid);
     const photoUrl = safeUrl(onboarding?.profile_photo_url);
     if (photoUrl) {
+      const photoBlock = make('div', 'admin-trainer-photo-block');
+
       const photo = make('img', 'admin-trainer-detail-photo');
       photo.src = photoUrl;
       photo.alt = (profile.full_name || 'Trainer') + ' profile photo';
-      onboardingSection.appendChild(photo);
+      photo.loading = 'lazy';
+      photoBlock.appendChild(photo);
+
+      const photoActions = make('div', 'btn-row admin-trainer-photo-actions');
+
+      const viewPhoto = make('a', 'btn btn-soft', 'View Original');
+      viewPhoto.href = photoUrl;
+      viewPhoto.target = '_blank';
+      viewPhoto.rel = 'noopener';
+      photoActions.appendChild(viewPhoto);
+
+      const downloadPhoto = make('button', 'btn btn-primary', 'Download Photo');
+      downloadPhoto.type = 'button';
+      downloadPhoto.addEventListener('click', () => downloadProfilePhoto(photoUrl, profile.full_name || 'Trainer', downloadPhoto));
+      photoActions.appendChild(downloadPhoto);
+
+      photoBlock.appendChild(photoActions);
+
+      if (onboarding?.photo_consent_at) {
+        photoBlock.appendChild(make('div', 'muted admin-photo-consent-note', 'Marketing photo consent recorded · ' + fmtDateTime(onboarding.photo_consent_at)));
+      }
+
+      onboardingSection.appendChild(photoBlock);
     }
 
     const etrisSection = addSection(block, 'Restricted eTRiS profile', 'admin-restricted-section');
