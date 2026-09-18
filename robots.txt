@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /internal/
-Disallow: /tna/
 
 Sitemap: https://www.easylatih.my/sitemap.xml
