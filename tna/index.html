@@ -2048,7 +2048,7 @@
     const levelLabel = `LEVEL ${levelNumber} UNLOCKED`;    const badgeAccent = totalScore >= 75 ? '#D6A84B' : totalScore >= 50 ? '#E45B0B' : '#0E6C8A';
     const badgeSoft = totalScore >= 75 ? '#FFF8E7' : totalScore >= 50 ? '#FFF3EA' : '#EAF7FA';
     const reportDate = new Date().toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
-    const reportRef = '{{REPORT_ID}}';
+    const reportRef = '__EASYLATIH_REPORT_ID__';
 
     const statusMeta = (score) => {
       if (score >= 25) return { label: 'Strong Practice', bg: '#EAF7F0', color: '#176B43', border: '#B7E0CA' };
