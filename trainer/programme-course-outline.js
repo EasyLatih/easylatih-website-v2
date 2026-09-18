@@ -354,6 +354,7 @@
       setMessage('Generating editable EasyLatih Course Outline in Google Docs…','info');
       await generateCourseOutline(programmeId);
       setMessage('Programme submitted successfully. EasyLatih has received the programme and an editable Google Docs Course Outline has been generated for internal review and finalisation.','success');
+      window.dispatchEvent(new CustomEvent('easylatih:programme-status-refresh'));
       const msg=$('programmeFormMessage');
       if(msg){msg.className='alert alert-success';msg.textContent='Full programme submitted. EasyLatih will review the generated Google Docs Course Outline before eTRiS registration and publication.';}
       form.querySelectorAll('input,select,textarea,button').forEach(el=>{el.disabled=true});
