@@ -1,5 +1,5 @@
 /**
- * EasyLatih public homepage impact metrics.
+ * EasyLatih V2 public homepage impact metrics.
  *
  * Add this file to the existing EasyLatih Apps Script project that owns the
  * deployed public web app, then add this route near the top of doGet(e):
@@ -8,11 +8,11 @@
  *     return getImpactStatsResponse_(e);
  *   }
  *
- * The Master Database remains private. Only the three rows from ImpactStats
+ * The EasyLatih Master Database V2 - STAGING remains private. Only the three rows from ImpactStats
  * are returned publicly.
  */
 
-const EASYLATIH_MASTER_DATABASE_ID_ = '1GjiC8RJF189_nK8T-3SM64xrR6yo5v4HtEC248Xl7DQ';
+const EASYLATIH_MASTER_DATABASE_ID_ = '1W6mLl9U2xdlfrlWHTs7VYmmRk34BcfaKTBo7gJatGsc';
 
 function getImpactStats_() {
   const sheet = SpreadsheetApp
