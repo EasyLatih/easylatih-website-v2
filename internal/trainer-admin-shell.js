@@ -107,7 +107,8 @@
   }
 
   function updateActionCounts() {
-    const trainerCount = directCards('adminTrainerList').filter(card => badges(card).includes('APPLICANT')).length;
+    const applicantCount=Number($('trainerTabApplicantCount')?.textContent || 0);
+    const trainerCount = applicantCount || directCards('adminTrainerList').filter(card => badges(card).includes('APPLICANT')).length;
     const profileChangeCount = directCards('adminCategoryRequestList').length;
     const moduleCounts = updateModuleCounts();
     const opportunityCount = document.querySelectorAll('#adminOpportunityList [data-award-response]').length;
@@ -121,6 +122,10 @@
   }
 
   function moveDynamicBlocks() {
+    // Scheduled Training is intentionally managed in the legacy Google Sheet.
+    // Remove any stale beta section if an old cached script ever injects it.
+    $('adminScheduledTrainingSection')?.remove();
+
     const trainerMount = $('adminTrainerReviewMount');
     ['adminSupportingDocsBlock','adminActivationChecklistBlock'].forEach(id => {
       const block = $(id);
