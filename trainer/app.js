@@ -392,10 +392,9 @@
 
   async function acceptCollaborationTerms() {
     if(!confirm('I confirm that I have read and accept the EasyLatih Trainer Collaboration Terms.')) return;
-    const {error}=await client.from('trainer_agreements').insert({trainer_id:currentUser.id,agreement_type:'TRAINER_COLLABORATION',version:cfg.collaborationTermsVersion,accepted_at:new Date().toISOString()});
-    if(error)return alert(error.message);
-    await client.from('profiles').update({terms_accepted_at:new Date().toISOString(),terms_version:cfg.collaborationTermsVersion,collaboration_status:'ONBOARDING'}).eq('id',currentUser.id);
-    alert('Terms accepted. You can now complete the onboarding details.');
+    const {data,error}=await client.rpc('accept_trainer_collaboration_terms',{p_version:cfg.collaborationTermsVersion});
+    if(error)return alert(`Unable to confirm the terms: ${error.message}`);
+    alert(data?.already_accepted ? 'Terms were already accepted. You can continue with onboarding.' : 'Terms accepted. You can now complete the onboarding details.');
     await loadProfile();
   }
 
