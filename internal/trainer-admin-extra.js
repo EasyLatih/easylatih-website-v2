@@ -204,8 +204,8 @@
     try{
       const {data,error}=await client.rpc('admin_delete_programme_everywhere',{p_programme_id:id});
       if(error)throw error;
-      const title=data?.title?\` "\${data.title}"\`:'';
-      alert(\`Module\${title} deleted from admin and trainer side.\`);
+      const title=data?.title ? ' "'+data.title+'"' : '';
+      alert('Module'+title+' deleted from admin and trainer side.');
       await refresh();
     }catch(e){
       alert(e.message||'Unable to delete this module. If it is linked to Scheduled Training, remove or reassign that scheduled training first.');
