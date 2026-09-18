@@ -81,6 +81,18 @@
       </div>`).join('') || '<div class="muted">No categories configured.</div>';
   }
 
+  function trainerAccessMessage(error) {
+    const message=String(error?.message||error||'').trim();
+    if(/banned|inactive/i.test(message)) return 'This trainer account is inactive. Please contact EasyLatih if you need the account reactivated.';
+    return message || 'Unable to sign in.';
+  }
+
+  async function trainerAccessAllowed(userId) {
+    const {data,error}=await client.from('profiles').select('collaboration_status').eq('id',userId).single();
+    if(error) throw error;
+    return !['INACTIVE','REJECTED'].includes(String(data?.collaboration_status||'').toUpperCase());
+  }
+
   async function initRegistration() {
     setupBanner();
     await Promise.all([loadPublicStats(), loadCategoryIntake()]);
@@ -139,10 +151,16 @@
       const btn = $('loginButton'); btn.disabled=true;
       showMessage('loginMessage','Signing in…','info');
       try {
-        const { error } = await client.auth.signInWithPassword({email:String(form.get('email')).trim(),password:String(form.get('password'))});
+        const { data, error } = await client.auth.signInWithPassword({email:String(form.get('email')).trim(),password:String(form.get('password'))});
         if (error) throw error;
+        const allowed=await trainerAccessAllowed(data.user.id);
+        if(!allowed){
+          await client.auth.signOut();
+          showMessage('loginMessage','This trainer account is inactive. Please contact EasyLatih if you need the account reactivated.','danger');
+          return;
+        }
         location.href='./dashboard.html';
-      } catch (err) { showMessage('loginMessage',err.message || 'Unable to sign in.','danger'); }
+      } catch (err) { showMessage('loginMessage',trainerAccessMessage(err),'danger'); }
       finally { btn.disabled=false; }
     });
   }
@@ -403,6 +421,16 @@
     if(!client){ switchSection('overview'); return; }
     const session=await requireSession(); if(!session)return;
     currentUser=session.user;
+    try{
+      const allowed=await trainerAccessAllowed(currentUser.id);
+      if(!allowed){
+        await client.auth.signOut();
+        location.replace('./index.html?login=1&status=inactive');
+        return;
+      }
+    }catch(err){
+      console.error('Unable to verify trainer access.',err);
+    }
     $('userEmail').textContent=currentUser.email;
     document.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>switchSection(btn.dataset.nav)));
     $('logoutButton')?.addEventListener('click',async()=>{await client.auth.signOut();location.replace('./index.html');});
