@@ -182,3 +182,25 @@
 }
 
 .apple-library-detail .list-card.admin-record-hidden{display:none!important}
+
+
+/* Scalable library pagination and compact action queues */
+.admin-trainer-toolbar{grid-template-columns:minmax(260px,1.5fr) minmax(180px,.8fr)}
+.apple-library-index{display:flex;flex-direction:column}
+.apple-library-index-list{min-height:0}
+.apple-library-row-end{display:flex;align-items:center;gap:.5rem}
+.apple-library-pagination{margin-top:.65rem;padding:.75rem .65rem .2rem;border-top:1px solid #e5e5ea;display:grid;gap:.55rem}
+.apple-library-page-count{font-size:.75rem;color:#8b8b92}
+.apple-library-page-actions{display:flex;align-items:center;justify-content:space-between;gap:.45rem;color:#6e6e73;font-size:.75rem}
+.apple-library-page-actions .btn{padding:.45rem .65rem;font-size:.75rem}
+.apple-library-index-empty{padding:1.1rem .75rem;color:#8b8b92;font-size:.84rem}
+.admin-linked-proposal-label{margin:1.15rem 0 .65rem;padding-top:1rem;border-top:1px solid #e5e5ea;color:#6e6e73;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.admin-pending-activation-list{display:grid;gap:.45rem}
+.admin-compact-action-card{padding:0!important;overflow:hidden}
+.admin-compact-action-card>summary{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:.8rem .9rem;cursor:pointer;list-style:none}
+.admin-compact-action-card>summary::-webkit-details-marker{display:none}
+.admin-compact-action-card>summary:after{content:"›";color:#9a9aa1;font-size:1.1rem}
+.admin-compact-action-card[open]>summary:after{transform:rotate(90deg)}
+.admin-compact-action-card .card-details{padding:0 .9rem .9rem}
+.admin-activation-checklist{margin:.65rem 0}
+.trainer-library-tabs{margin-bottom:.7rem}
