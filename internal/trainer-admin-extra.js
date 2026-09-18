@@ -70,7 +70,7 @@
   async function loadTrainers(){
     const holder=$('adminTrainerList');if(!holder)return;
     const [profileRes,proposalRes,programmeRes]=await Promise.all([
-      client.from('profiles').select('*,trainer_onboarding(*),trainer_preferences(categories)').order('created_at',{ascending:false}).limit(300),
+      client.from('profiles').select('*,trainer_onboarding(*),trainer_preferences(categories)').order('created_at',{ascending:false}).limit(1000),
       client.from('programme_proposals').select('id,trainer_id,title,status,category,updated_at').order('updated_at',{ascending:false}).limit(1200),
       client.from('programmes').select('id,trainer_id,title,publish_status,category,updated_at').order('updated_at',{ascending:false}).limit(1200)
     ]);
@@ -97,6 +97,7 @@
           ||(statusFilter==='ACTIVE'&&t.collaboration_status==='ACTIVE')
           ||(statusFilter==='INACTIVE'&&['INACTIVE','REJECTED'].includes(t.collaboration_status));
         const matchingCategory=categoryFilter==='ALL'||categories.includes(categoryFilter)||(modulesByTrainer[t.id]||[]).some(item=>item.category===categoryFilter);
+        const onboarding=Array.isArray(t.trainer_onboarding)?t.trainer_onboarding[0]:t.trainer_onboarding;
         const searchable=[
           t.full_name,t.email,t.phone,t.state,t.expertise_summary,t.professional_bio,
           onboarding?.academic_qualification,onboarding?.professional_certifications,onboarding?.training_experience,
