@@ -502,7 +502,7 @@
       const trainerName=p.profiles?.full_name||'Trainer';
       const revisions=(revisionsByProposal[p.id]||[]).slice().sort((a,b)=>new Date(b.changed_at)-new Date(a.changed_at)||b.revision_no-a.revision_no);
       const revisionHistory=renderProposalRevisionHistory(revisions);
-      return `<div class="list-card admin-proposal-card">
+      return `<div class="list-card admin-proposal-card" data-module-source="proposal" data-proposal-id="${esc(p.id)}" data-category="${esc(p.category||'Other')}" data-record-status="${esc(p.status||'')}">
         <div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><button type="button" class="admin-module-link" data-open-trainer-profile="${esc(p.trainer_id)}">${esc(trainerName)}</button><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span><span>Submitted ${fmtDate(p.submitted_at||p.created_at)}</span></div></div>${statusBadge(p.status)}</div>
         <div class="admin-proposal-quick"><span><strong>Expected trainer fee:</strong> ${fee}</span><span><strong>Duration:</strong> ${esc(p.duration||'Not stated')}</span><span><strong>Delivery:</strong> ${esc(p.delivery_method||'Not stated')}</span></div>
         <p class="muted">${esc(p.summary||'No summary provided.')}</p>
