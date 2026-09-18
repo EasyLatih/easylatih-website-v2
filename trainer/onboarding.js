@@ -331,6 +331,69 @@
     holder.querySelectorAll('[data-edit-programme]').forEach(b=>b.addEventListener('click',()=>openProgramme(b.dataset.editProgramme)));
   }
 
+  function renderProgrammeSubmissionStatus(programme,proposal){
+    const box=$('programmeSubmissionStatus');
+    const submitBtn=$('submitProgrammeReview');
+    if(!box)return;
+
+    const termsReady=['ONBOARDING','ACTIVE'].includes(profile?.collaboration_status);
+    let type='info';
+    let title='Not started';
+    let detail='Select an approved proposal and complete the programme details.';
+
+    if(!termsReady && proposal){
+      type='warning';
+      title='Action required';
+      detail='Accept the Trainer Collaboration Terms before you can submit the full programme.';
+    }else if(!proposal){
+      title='Not started';
+      detail='Select an approved proposal to begin the full programme submission.';
+    }else if(!programme){
+      title='Not submitted';
+      detail='Complete the programme details, save a draft if needed, then click Submit for EasyLatih Review.';
+    }else{
+      const status=String(programme.publish_status||'DRAFT').toUpperCase();
+      const isResubmission=status==='DRAFT' && Boolean(programme.course_outline_generated_at);
+      if(status==='DRAFT'){
+        type=isResubmission?'warning':'info';
+        title=isResubmission?'Amendment in progress':'Draft';
+        detail=isResubmission
+          ? 'EasyLatih has returned this programme for amendment. Update the required details, then click Resubmit to EasyLatih Review.'
+          : 'Your draft is saved but has not been submitted to EasyLatih yet.';
+      }else if(status==='UNDER_REVIEW'){
+        type='warning';
+        title='Submitted — under review';
+        detail='EasyLatih has received this programme. No further action is required unless the programme is returned for amendment.';
+      }else if(status==='APPROVED'){
+        type='success';
+        title='Approved';
+        detail='EasyLatih has approved the programme. It will proceed to the next eTRiS / publication stage as applicable.';
+      }else if(status==='PUBLISHED'){
+        type='success';
+        title='Published';
+        detail='This programme has been approved and published.';
+      }else if(status==='UNPUBLISHED'){
+        type='info';
+        title='Unpublished';
+        detail='This programme is currently not visible in the public catalogue.';
+      }else{
+        title=status.replaceAll('_',' ');
+        detail='Please refer to the latest EasyLatih review update for the next action.';
+      }
+
+      if(submitBtn){
+        submitBtn.textContent=isResubmission?'Resubmit to EasyLatih Review':'Submit for EasyLatih Review';
+      }
+    }
+
+    box.className=`alert alert-${type}`;
+    box.innerHTML=`<strong>Submission Status: ${esc(title)}</strong><br><span>${esc(detail)}</span>`;
+  }
+
+  window.addEventListener('easylatih:programme-status-refresh',async()=>{
+    try{await loadProgrammeEditor();}catch{}
+  });
+
   function setProgrammeForm(programme,proposal){
     const form=$('fullProgrammeForm'); if(!form)return;
     form.dataset.programmeId=programme?.id||'';
@@ -360,6 +423,7 @@
     if($('programmeProposal')) $('programmeProposal').disabled=false;
     if($('saveProgrammeDraft')) $('saveProgrammeDraft').disabled=Boolean(locked);
     if($('submitProgrammeReview')) $('submitProgrammeReview').disabled=Boolean(locked);
+    renderProgrammeSubmissionStatus(programme,proposal);
 
     if(!termsReady){
       msg('programmeFormMessage','Approved proposal found. Please accept the Trainer Collaboration Terms first to continue with full programme details.','warning');
