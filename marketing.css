@@ -118,3 +118,68 @@
   .marketing .logo img { width: 126px; height: 126px; }
   .marketing .hrdcorp-logos img { width: 40px; height: 40px; }
 }
+
+
+/* Homepage impact metrics */
+.marketing .hidden{display:none!important}
+.marketing .impact-section{padding:2rem 0 0;background:#fff}
+.marketing .impact-section .container{padding-bottom:1rem}
+.marketing .impact-heading{display:flex;align-items:end;justify-content:space-between;gap:2rem;margin-bottom:1.25rem}
+.marketing .impact-heading h2{margin:0;max-width:38rem}
+.marketing .impact-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  background:#fff;
+  border:1px solid #dce4ea;
+  border-radius:18px;
+  box-shadow:0 18px 46px rgba(0,62,111,.08);
+  overflow:hidden
+}
+.marketing .impact-stat{
+  display:grid;
+  justify-items:center;
+  text-align:center;
+  gap:.45rem;
+  padding:2rem 1.25rem;
+  position:relative
+}
+.marketing .impact-stat:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:20%;
+  bottom:20%;
+  right:0;
+  width:1px;
+  background:#dce4ea
+}
+.marketing .impact-icon{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#f0f5f9;
+  color:#003e6f;
+  font-size:1.05rem
+}
+.marketing .impact-number{
+  display:block;
+  color:#003e6f;
+  font-size:clamp(2.1rem,4.2vw,3.4rem);
+  line-height:1;
+  letter-spacing:-.04em
+}
+.marketing .impact-label{
+  color:#233c50;
+  font-weight:600;
+  line-height:1.4;
+  max-width:16rem
+}
+@media(max-width:700px){
+  .marketing .impact-heading{display:block}
+  .marketing .impact-grid{grid-template-columns:1fr}
+  .marketing .impact-stat{padding:1.5rem}
+  .marketing .impact-stat:not(:last-child)::after{
+    top:auto;left:12%;right:12%;bottom:0;width:auto;height:1px
+  }
+}
