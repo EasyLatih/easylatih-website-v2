@@ -125,9 +125,8 @@
   }
 
   function injectProposalNotes() {
-    const holder = document.getElementById('adminProposalList');
-    if (!holder) return;
-    holder.querySelectorAll(':scope > .list-card').forEach(card => {
+    const cards = document.querySelectorAll('#adminProposalList > .list-card, #adminUnifiedModuleLibrary .list-card[data-module-source="proposal"]');
+    cards.forEach(card => {
       const noteButton = card.querySelector('[data-note]');
       const proposalId = noteButton?.dataset.note;
       const html = noteHtml(internalNotes[proposalId]);
@@ -142,9 +141,8 @@
   }
 
   function injectProgrammeNotes() {
-    const holder = document.getElementById('adminProgrammeList');
-    if (!holder) return;
-    holder.querySelectorAll(':scope > .list-card').forEach(card => {
+    const cards = document.querySelectorAll('#adminProgrammeList > .list-card, #adminUnifiedModuleLibrary .list-card[data-module-source="programme"]');
+    cards.forEach(card => {
       const programmeId = programmeIdFromCard(card);
       const proposalId = programmeProposalMap[programmeId];
       const html = noteHtml(internalNotes[proposalId]);
@@ -161,7 +159,7 @@
 
   function observeHolders() {
     disconnectObservers();
-    ['adminProposalList','adminTrainerList','adminProgrammeList'].forEach(id => {
+    ['adminProposalList','adminTrainerList','adminProgrammeList','adminUnifiedModuleLibrary'].forEach(id => {
       const holder = document.getElementById(id);
       if (!holder) return;
       const observer = new MutationObserver(() => scheduleRefresh());
