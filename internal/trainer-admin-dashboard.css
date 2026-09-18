@@ -118,3 +118,65 @@
 .admin-proposal-revision-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;color:var(--muted);font-size:.8rem}
 .admin-proposal-revision-head strong{color:var(--navy);font-size:.9rem}
 .admin-proposal-revision-head .meta{margin-top:.25rem}
+
+
+/* Clean Apple-inspired master/detail libraries */
+.admin-library-source{display:none}
+.admin-unified-module-panel{padding:0;overflow:hidden}
+.apple-library{display:grid;grid-template-columns:minmax(250px,330px) minmax(0,1fr);min-height:560px;background:#fff;border:1px solid #e5e5ea;border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(15,23,42,.05)}
+.apple-library-index{background:#f7f7f9;border-right:1px solid #e5e5ea;padding:.65rem;overflow:auto;max-height:72vh}
+.apple-library-detail{background:#fff;padding:1.15rem 1.2rem;overflow:auto;max-height:72vh}
+.apple-library-detail-empty{min-height:320px;display:grid;place-items:center;text-align:center;color:#8b8b92;padding:2rem}
+.apple-library-group{margin:.35rem 0 .85rem}
+.apple-library-group-title{padding:.35rem .65rem;color:#8b8b92;font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.apple-library-row{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:center;border:0;border-radius:12px;background:transparent;padding:.7rem .75rem;text-align:left;color:#1d1d1f;cursor:pointer;transition:background .14s ease}
+.apple-library-row:hover{background:#ededf0}
+.apple-library-row.active{background:#e9eef7}
+.apple-library-row-main{min-width:0;display:grid;gap:.18rem}
+.apple-library-row-title{font-size:.9rem;font-weight:650;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.apple-library-row-meta{font-size:.74rem;color:#8b8b92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.apple-library-chevron{color:#9a9aa1;font-size:1rem}
+.apple-library-detail .list-card{display:none!important;border:0!important;box-shadow:none!important;padding:0!important;margin:0!important;background:#fff!important}
+.apple-library-detail .list-card.apple-selected{display:block!important}
+.apple-library-detail details.list-card>summary{display:none!important}
+.apple-library-detail .card-details{display:block!important;padding:0!important}
+.apple-library-detail .list-card-top{padding-bottom:.9rem;border-bottom:1px solid #ececf0;margin-bottom:.9rem}
+.apple-library-detail .review-grid{background:#f7f7f9;border:0;border-radius:14px}
+.apple-library-detail .admin-trainer-data-section,
+.apple-library-detail .admin-proposal-details,
+.apple-library-detail .admin-proposal-history{background:#fbfbfc;border-color:#e7e7eb}
+.apple-library-detail .btn-row{gap:.5rem}
+.apple-library-detail .btn{border-radius:10px}
+.apple-library-detail .badge{font-size:.68rem}
+.admin-library-panel>#adminTrainerList.apple-library-ready,
+#adminConsultancyPool.apple-library-ready{display:block}
+.admin-library-enhanced #adminWaitingListMount{display:none!important}
+.admin-library-enhanced #adminTrainerList.list,
+.admin-library-enhanced #adminConsultancyPool.list,
+.admin-library-enhanced #adminUnifiedModuleLibrary.list{display:block}
+.admin-library-enhanced #adminConsultancyPoolSection>.panel-header{margin-top:0!important}
+.admin-library-enhanced #adminConsultancyLibraryMount>section{padding:0;overflow:hidden}
+.admin-library-enhanced #adminConsultancyLibraryMount>section>.panel-header{padding:1.1rem 1.1rem .2rem}
+.admin-library-enhanced #adminConsultancyLibraryMount>section>#adminConsultancyPool{margin:0 1.1rem 1.1rem}
+.admin-library-enhanced .admin-module-panel.admin-library-source{display:none!important}
+.admin-unified-module-panel:has(.apple-library){padding:0}
+.apple-library-row-status{display:inline-flex;align-items:center;justify-content:center;min-width:.5rem;width:.5rem;height:.5rem;border-radius:999px;background:#9ca3af}
+.apple-library-row-status.green{background:#34c759}
+.apple-library-row-status.amber{background:#ff9f0a}
+.apple-library-row-status.red{background:#ff3b30}
+.apple-library-row-status.blue{background:#0a84ff}
+.apple-library-count{margin-left:.35rem;color:#9a9aa1;font-weight:600}
+.apple-library-detail h3{font-size:1.15rem;letter-spacing:-.01em}
+.apple-library-detail .meta{color:#6e6e73}
+.apple-library-detail .admin-module-link{text-decoration:none;color:#0066cc}
+.apple-library-detail .admin-module-link:hover{text-decoration:underline}
+
+@media(max-width:900px){
+  .apple-library{grid-template-columns:minmax(210px,280px) minmax(0,1fr)}
+}
+@media(max-width:720px){
+  .apple-library{grid-template-columns:1fr;min-height:auto}
+  .apple-library-index{max-height:310px;border-right:0;border-bottom:1px solid #e5e5ea}
+  .apple-library-detail{max-height:none;min-height:380px}
+  .apple-library-row{padding:.8rem}
+}
