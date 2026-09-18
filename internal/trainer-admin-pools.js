@@ -48,7 +48,7 @@
     const { data: auth } = await client.auth.getUser();
     if (!auth?.user || auth.user.app_metadata?.role !== 'admin') return;
     const [pRes,oRes,cRes,dRes] = await Promise.all([
-      client.from('profiles').select('id,full_name,email,phone,state,collaboration_status').limit(500),
+      client.from('profiles').select('id,full_name,email,phone,state,collaboration_status,trainer_preferences(categories)').limit(500),
       client.from('trainer_onboarding').select('trainer_id,ttt_status,onboarding_completed_at').limit(500),
       client.from('trainer_consultancy_profiles').select('*').limit(500),
       client.from('trainer_documents').select('trainer_id,document_type,programme_id,verification_status,created_at').is('programme_id',null).order('created_at',{ascending:false}).limit(2000)
@@ -94,7 +94,9 @@
             const c = consultancyById[p.id];
             const o = onboardingById[p.id];
             const phone=whatsAppNumber(p.phone);
-            return `<details class="list-card collapsible-card" data-trainer-id="${esc(p.id)}"><summary><strong>${esc(p.full_name || 'Consultant')}</strong><span>${badge('CONSULTANT POOL','green')}</span></summary><div class="card-details"><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div><div class="meta"><span>Trainer status: <strong>${esc(String(p.collaboration_status || '').replaceAll('_',' '))}</strong></span><span>TTT: <strong>${esc(qualificationLabel(o?.ttt_status))}</strong></span><span>Indicative rate: <strong>${esc(rateText(c))}</strong></span></div><div class="admin-detail-section"><strong>Consultancy services offered</strong><p>${esc(c.consultancy_summary || '-')}</p><strong>Typical deliverables</strong><p>${esc(c.deliverables_summary || '-')}</p>${c.rate_notes ? `<strong>Rate notes</strong><p>${esc(c.rate_notes)}</p>` : ''}</div><div class="btn-row admin-consultancy-card-actions"><button type="button" class="btn btn-soft" data-open-trainer-profile="${esc(p.id)}">View trainer profile</button>${phone?`<a class="btn admin-trainer-whatsapp" href="https://wa.me/${phone}" target="_blank" rel="noopener">WhatsApp trainer</a>`:''}</div></div></details>`;
+            const pref=Array.isArray(p.trainer_preferences)?p.trainer_preferences[0]:p.trainer_preferences;
+            const primaryCategory=Array.isArray(pref?.categories)&&pref.categories.length?pref.categories[0]:'Other';
+            return `<details class="list-card collapsible-card" data-trainer-id="${esc(p.id)}" data-consultancy-category="${esc(primaryCategory)}"><summary><strong>${esc(p.full_name || 'Consultant')}</strong><span>${badge('CONSULTANT POOL','green')}</span></summary><div class="card-details"><div class="meta"><span>${esc(p.email || '')}</span><span>${esc(p.phone || '')}</span><span>${esc(p.state || '')}</span></div><div class="meta"><span>Trainer status: <strong>${esc(String(p.collaboration_status || '').replaceAll('_',' '))}</strong></span><span>TTT: <strong>${esc(qualificationLabel(o?.ttt_status))}</strong></span><span>Indicative rate: <strong>${esc(rateText(c))}</strong></span></div><div class="admin-detail-section"><strong>Consultancy services offered</strong><p>${esc(c.consultancy_summary || '-')}</p><strong>Typical deliverables</strong><p>${esc(c.deliverables_summary || '-')}</p>${c.rate_notes ? `<strong>Rate notes</strong><p>${esc(c.rate_notes)}</p>` : ''}</div><div class="btn-row admin-consultancy-card-actions"><button type="button" class="btn btn-soft" data-open-trainer-profile="${esc(p.id)}">View trainer profile</button>${phone?`<a class="btn admin-trainer-whatsapp" href="https://wa.me/${phone}" target="_blank" rel="noopener">WhatsApp trainer</a>`:''}</div></div></details>`;
           }).join('') : '<div class="empty">No trainers have opted into the consultancy pool yet.</div>'}
         </div>
       </section>`;
