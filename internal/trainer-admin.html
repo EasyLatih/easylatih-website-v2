@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex,nofollow">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
   <link rel="stylesheet" href="../trainer/portal.css">
-  <link rel="stylesheet" href="trainer-admin-dashboard.css?v=4">
+  <link rel="stylesheet" href="trainer-admin-dashboard.css?v=5">
 </head>
 <body>
 <header class="portal-topbar">
@@ -89,13 +89,19 @@
           <button type="button" data-module-library-filter="all">All modules</button>
         </div>
 
-        <section class="panel admin-module-panel" id="adminProposalPanel">
+        <section class="panel admin-library-panel admin-unified-module-panel">
+          <div id="adminUnifiedModuleLibrary" class="list">
+            <div class="empty">Loading module library…</div>
+          </div>
+        </section>
+
+        <section class="panel admin-module-panel admin-library-source" id="adminProposalPanel">
           <div class="panel-header"><div><h2>Proposed modules</h2><div class="muted">Initial programme ideas sent by trainers. Approve only ideas that EasyLatih wants to develop further.</div></div></div>
           <div class="alert alert-info">Internal Notes are hidden from trainers. Clarification and rejection comments are visible in their portal.</div>
           <div id="adminProposalList" class="list"><div class="empty">Loading proposals…</div></div>
         </section>
 
-        <section class="panel admin-module-panel" id="adminProgrammePanel">
+        <section class="panel admin-module-panel admin-library-source" id="adminProgrammePanel">
           <div class="panel-header"><div><h2>Full module details &amp; course outline</h2><div class="muted">A Google Docs Course Outline is generated when the trainer submits full details. Review, edit, approve for eTRiS and then decide whether to publish it.</div></div></div>
           <div id="adminProgrammeList" class="list"><div class="empty">Loading programme submissions…</div></div>
         </section>
@@ -158,6 +164,7 @@
 <script src="trainer-admin-profile-details.js?v=1"></script>
 <script src="trainer-admin-shell.js?v=1"></script>
 <script src="trainer-admin-review-details.js"></script>
+<script src="trainer-admin-library-ui.js?v=1"></script>
 <script src="trainer-admin-document-verification.js"></script>
 <script src="trainer-admin-public-schedule-bridge.js?v=2"></script>
 <script>EasyLatihPortal.initAdmin();</script>
