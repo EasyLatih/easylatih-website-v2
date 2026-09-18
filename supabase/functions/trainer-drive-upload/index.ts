@@ -39,6 +39,20 @@ async function getUser(req: Request) {
   return data.user;
 }
 
+function errorMessage(value: unknown, fallback = 'Unexpected error.') {
+  if (value instanceof Error && value.message) return value.message;
+  if (value && typeof value === 'object') {
+    const v = value as Record<string, unknown>;
+    for (const key of ['message','error_description','details','hint','code']) {
+      const item = v[key];
+      if (typeof item === 'string' && item.trim()) return item.trim();
+    }
+    try { return JSON.stringify(value); } catch {}
+  }
+  const text = String(value ?? '').trim();
+  return text && text !== '[object Object]' ? text : fallback;
+}
+
 async function callDriveBridge(params: Record<string, string>) {
   if (!appsScriptUrl || !bridgeSecret) throw new Error('Google Drive bridge is not configured.');
   const body = new URLSearchParams({ ...params, bridgeSecret });
@@ -51,7 +65,7 @@ async function callDriveBridge(params: Record<string, string>) {
   const text = await response.text();
   let data: any;
   try { data = JSON.parse(text); } catch { throw new Error('Google Drive bridge returned an invalid response.'); }
-  if (!response.ok || !data?.ok) throw new Error(data?.error || `Google Drive bridge failed (${response.status}).`);
+  if (!response.ok || !data?.ok) throw new Error(errorMessage(data?.error, `Google Drive bridge failed (${response.status}).`));
   return data;
 }
 
@@ -112,7 +126,7 @@ Deno.serve(async (req) => {
         const drive = await callDriveBridge({ action: 'trainerDocumentDownload', fileId: doc.file_id });
         return json({ ok: true, file_name: drive.fileName || doc.file_name, mime_type: drive.mimeType, base64: drive.base64 });
       } catch (e) {
-        return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 502);
+        return json({ ok: false, error: errorMessage(e) }, 502);
       }
     }
 
@@ -135,45 +149,61 @@ Deno.serve(async (req) => {
         if (!Array.isArray(programme.schedule) || !programme.schedule.length) throw new Error('Training Schedule is required before Course Outline generation.');
         if (!Number(programme.total_contact_hours || 0)) throw new Error('Total contact hours must be greater than 0.');
 
-        const drive = await callDriveBridge({
-          action: 'trainerDocumentCourseOutlineGenerate',
-          trainerId: user.id,
-          trainerName: profile.full_name,
-          programmeJson: JSON.stringify(programme)
-        });
+        // A previous retry may already have generated the Google Doc but failed
+        // while finalising the programme. Reuse that document so retries are idempotent.
+        const { data: existingDocs, error: existingDocsError } = await db
+          .from('trainer_documents')
+          .select('id,programme_id,document_type,file_name,file_id,file_url,verification_status,created_at')
+          .eq('trainer_id', user.id)
+          .eq('programme_id', programme.id)
+          .eq('document_type', 'COURSE_CONTENT')
+          .eq('provider', 'GOOGLE_DRIVE')
+          .like('file_name', 'COURSE OUTLINE - %')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (existingDocsError) throw new Error(errorMessage(existingDocsError, 'Unable to check existing Course Outline documents.'));
 
-        await saveDriveFolderMap(user.id, drive);
+        let document = existingDocs?.[0] || null;
+        let drive: any = document ? {
+          fileId: document.file_id,
+          fileUrl: document.file_url || null,
+          fileName: document.file_name
+        } : null;
 
-        const { data: document, error: documentError } = await db.from('trainer_documents').insert({
-          trainer_id: user.id,
-          programme_id: programme.id,
-          document_type: 'COURSE_CONTENT',
-          provider: 'GOOGLE_DRIVE',
-          file_name: drive.fileName || `Course Outline - ${programme.title}`,
-          file_id: drive.fileId,
-          file_url: drive.fileUrl || null,
-          verification_status: 'PENDING',
-          updated_at: new Date().toISOString()
-        }).select('id,programme_id,document_type,file_name,file_id,file_url,verification_status,created_at').single();
-        if (documentError) throw documentError;
+        if (!document || !drive?.fileId) {
+          drive = await callDriveBridge({
+            action: 'trainerDocumentCourseOutlineGenerate',
+            trainerId: user.id,
+            trainerName: profile.full_name,
+            programmeJson: JSON.stringify(programme)
+          });
+
+          await saveDriveFolderMap(user.id, drive);
+
+          const inserted = await db.from('trainer_documents').insert({
+            trainer_id: user.id,
+            programme_id: programme.id,
+            document_type: 'COURSE_CONTENT',
+            provider: 'GOOGLE_DRIVE',
+            file_name: drive.fileName || `Course Outline - ${programme.title}`,
+            file_id: drive.fileId,
+            file_url: drive.fileUrl || null,
+            verification_status: 'PENDING',
+            updated_at: new Date().toISOString()
+          }).select('id,programme_id,document_type,file_name,file_id,file_url,verification_status,created_at').single();
+          if (inserted.error) throw new Error(errorMessage(inserted.error, 'Unable to save the generated Course Outline record.'));
+          document = inserted.data;
+        }
 
         const now = new Date().toISOString();
-        const programmeUpdate = await db.from('programmes').update({
-          course_outline_doc_id: drive.fileId,
-          course_outline_doc_url: drive.fileUrl || null,
-          course_outline_generated_at: now,
-          publish_status: 'UNDER_REVIEW',
-          updated_at: now
-        }).eq('id', programme.id).eq('trainer_id', user.id);
-        if (programmeUpdate.error) throw programmeUpdate.error;
-
-        if (programme.proposal_id) {
-          const proposalUpdate = await db.from('programme_proposals').update({
-            status: 'FULL_DETAILS_SUBMITTED',
-            updated_at: now
-          }).eq('id', programme.proposal_id).eq('trainer_id', user.id);
-          if (proposalUpdate.error) throw proposalUpdate.error;
-        }
+        const finalised = await db.rpc('finalize_generated_course_outline', {
+          p_programme_id: programme.id,
+          p_trainer_id: user.id,
+          p_file_id: drive.fileId,
+          p_file_url: drive.fileUrl || null,
+          p_generated_at: now
+        });
+        if (finalised.error) throw new Error(errorMessage(finalised.error, 'Unable to finalise the programme submission.'));
 
         return json({
           ok: true,
@@ -182,7 +212,7 @@ Deno.serve(async (req) => {
           publish_status: 'UNDER_REVIEW'
         });
       } catch (e) {
-        return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 502);
+        return json({ ok: false, error: errorMessage(e) }, 502);
       }
     }
 
@@ -195,7 +225,7 @@ Deno.serve(async (req) => {
   try {
     profile = await getTrainerProfile(user.id);
   } catch (e) {
-    return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 403);
+    return json({ ok: false, error: errorMessage(e) }, 403);
   }
 
   const form = await req.formData();
@@ -240,6 +270,6 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, document });
   } catch (e) {
-    return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 502);
+    return json({ ok: false, error: errorMessage(e) }, 502);
   }
 });
