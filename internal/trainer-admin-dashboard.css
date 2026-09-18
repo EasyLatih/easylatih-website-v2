@@ -204,3 +204,13 @@
 .admin-compact-action-card .card-details{padding:0 .9rem .9rem}
 .admin-activation-checklist{margin:.65rem 0}
 .trainer-library-tabs{margin-bottom:.7rem}
+
+.admin-trainer-photo-block{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.8rem 1rem;align-items:start;margin-top:.8rem;padding:.8rem;border:1px solid #e5e7eb;border-radius:14px;background:#fff}
+.admin-trainer-photo-block .admin-trainer-detail-photo{margin:0;width:120px;height:150px;object-fit:cover;border-radius:12px}
+.admin-trainer-photo-actions{margin:0;align-self:center}
+.admin-photo-consent-note{grid-column:1/-1;font-size:.75rem}
+@media(max-width:620px){
+  .admin-trainer-photo-block{grid-template-columns:1fr}
+  .admin-trainer-photo-block .admin-trainer-detail-photo{width:140px;height:175px}
+  .admin-photo-consent-note{grid-column:auto}
+}
