@@ -54,25 +54,32 @@
       anchor.insertAdjacentElement('afterend', block);
     }
 
-    // Active trainers are already past this stage. Keeping them here caused the
-    // Pending dashboard to show a phantom "Ready to activate" count.
-    const trainers = profiles.filter(p => p.id !== adminId && ['APPROVED_TO_COLLAB','ONBOARDING'].includes(p.collaboration_status));
+    const trainers = profiles
+      .filter(p => p.id !== adminId && ['APPROVED_TO_COLLAB','ONBOARDING'].includes(p.collaboration_status))
+      .sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||'')));
+    const visible = trainers.slice(0,10);
+
     const html = `
-      <div class="panel-header" style="margin-top:1rem"><div><h3 style="margin:0">Pending Activation</h3><div class="muted">Only trainers who have not yet been activated appear here.</div></div></div>
-      <div class="list">
-        ${trainers.length ? trainers.map(p => {
+      <div class="panel-header" style="margin-top:1rem"><div><h3 style="margin:0">Pending Activation</h3><div class="muted">Click a trainer to see exactly what is still incomplete.</div></div></div>
+      <div class="list admin-pending-activation-list">
+        ${visible.length ? visible.map(p => {
           const r = readiness(p.id);
-          return `<div class="list-card">
-            <div class="list-card-top"><div><h3>${esc(p.full_name || 'Trainer')}</h3><div class="meta"><span>${esc(p.email || '')}</span></div></div><span class="badge ${r.ready ? 'green' : 'amber'}">${r.ready ? 'READY TO ACTIVATE' : 'NOT READY'}</span></div>
-            <div style="margin-top:.65rem">
-              ${checkItem(r.terms, 'Trainer Collaboration Terms accepted')}
-              ${checkItem(r.completed, 'Onboarding completed')}
-              ${checkItem(r.ttt, 'TTT Certificate / Exemption Evidence verified')}
-              ${checkItem(r.resume, 'Resume / CV verified')}
+          return `<details class="list-card admin-compact-action-card" data-pending-activation-trainer="${esc(p.id)}">
+            <summary><strong>${esc(p.full_name || 'Trainer')}</strong><span class="badge ${r.ready ? 'green' : 'amber'}">${r.ready ? 'READY' : 'NOT READY'}</span></summary>
+            <div class="card-details">
+              <div class="meta"><span>${esc(p.email || '')}</span></div>
+              <div class="admin-activation-checklist">
+                ${checkItem(r.terms, 'Trainer Collaboration Terms accepted')}
+                ${checkItem(r.completed, 'Onboarding completed')}
+                ${checkItem(r.ttt, 'TTT Certificate / Exemption Evidence verified')}
+                ${checkItem(r.resume, 'Resume / CV verified')}
+              </div>
+              <div class="btn-row"><button type="button" class="btn btn-soft" data-open-trainer-profile="${esc(p.id)}">Open Trainer Details</button></div>
             </div>
-          </div>`;
+          </details>`;
         }).join('') : '<div class="empty">No trainers are currently pending activation.</div>'}
-      </div>`;
+      </div>
+      ${trainers.length > 10 ? `<div class="muted" style="margin-top:.7rem">Showing 10 of ${trainers.length}. Use Trainer Library → Onboarding to view the complete list.</div>` : ''}`;
 
     if (block.innerHTML !== html) block.innerHTML = html;
   }
