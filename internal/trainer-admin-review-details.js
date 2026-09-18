@@ -79,6 +79,13 @@
     if (block.dataset.renderSignature === signature) return;
 
     const docs = documents.filter(d => d.document_type !== 'COURSE_CONTENT' && d.verification_status !== 'VERIFIED');
+    if (!docs.length) {
+      block.innerHTML = '';
+      block.style.display = 'none';
+      block.dataset.renderSignature = signature;
+      return;
+    }
+    block.style.display = '';
     const byTrainer = {};
     docs.forEach(d => (byTrainer[d.trainer_id] ||= []).push(d));
     const trainerIds = Object.keys(byTrainer);
