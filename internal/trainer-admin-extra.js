@@ -55,6 +55,17 @@
   };
 
   function trainerNeedsReview(status){return ['APPLICANT','APPROVED_TO_COLLAB','ONBOARDING'].includes(status);}
+  function updateTrainerTabCounts(rows){
+    const counts={
+      ALL:rows.length,
+      APPLICANT:rows.filter(t=>t.collaboration_status==='APPLICANT').length,
+      ONBOARDING:rows.filter(t=>['APPROVED_TO_COLLAB','ONBOARDING'].includes(t.collaboration_status)).length,
+      ACTIVE:rows.filter(t=>t.collaboration_status==='ACTIVE').length,
+      INACTIVE:rows.filter(t=>['INACTIVE','REJECTED'].includes(t.collaboration_status)).length
+    };
+    const ids={ALL:'trainerTabAllCount',APPLICANT:'trainerTabApplicantCount',ONBOARDING:'trainerTabOnboardingCount',ACTIVE:'trainerTabActiveCount',INACTIVE:'trainerTabInactiveCount'};
+    Object.entries(ids).forEach(([key,id])=>{const el=$(id);if(el)el.textContent=String(counts[key]||0);});
+  }
 
   async function loadTrainers(){
     const holder=$('adminTrainerList');if(!holder)return;
@@ -66,6 +77,7 @@
     if(profileRes.error){holder.innerHTML=`<div class="alert alert-danger">${esc(profileRes.error.message)}</div>`;return}
     if(proposalRes.error||programmeRes.error){holder.innerHTML=`<div class="alert alert-danger">Unable to load linked trainer modules.</div>`;return}
     const trainers=(profileRes.data||[]).filter(t=>t.id!==admin?.id);
+    updateTrainerTabCounts(trainers);
     const modulesByTrainer={};
     [...(proposalRes.data||[]).map(item=>({...item,source:'Proposal'})),...(programmeRes.data||[]).map(item=>({...item,status:item.publish_status,source:'Module'}))].forEach(item=>{
       (modulesByTrainer[item.trainer_id]||=[]).push(item);
@@ -78,9 +90,19 @@
       const filtered=trainers.filter(t=>{
         const pref=Array.isArray(t.trainer_preferences)?t.trainer_preferences[0]:t.trainer_preferences;
         const categories=pref?.categories||[];
-        const matchingStatus=statusFilter==='ALL'||(statusFilter==='PENDING'&&trainerNeedsReview(t.collaboration_status))||(statusFilter==='ACTIVE'&&t.collaboration_status==='ACTIVE')||(statusFilter==='INACTIVE'&&['INACTIVE','REJECTED'].includes(t.collaboration_status));
+        const matchingStatus=statusFilter==='ALL'
+          ||(statusFilter==='APPLICANT'&&t.collaboration_status==='APPLICANT')
+          ||(statusFilter==='ONBOARDING'&&['APPROVED_TO_COLLAB','ONBOARDING'].includes(t.collaboration_status))
+          ||(statusFilter==='PENDING'&&trainerNeedsReview(t.collaboration_status))
+          ||(statusFilter==='ACTIVE'&&t.collaboration_status==='ACTIVE')
+          ||(statusFilter==='INACTIVE'&&['INACTIVE','REJECTED'].includes(t.collaboration_status));
         const matchingCategory=categoryFilter==='ALL'||categories.includes(categoryFilter)||(modulesByTrainer[t.id]||[]).some(item=>item.category===categoryFilter);
-        const searchable=[t.full_name,t.email,t.phone,t.state,t.expertise_summary,...categories,...(modulesByTrainer[t.id]||[]).map(item=>item.title)].join(' ').toLowerCase();
+        const searchable=[
+          t.full_name,t.email,t.phone,t.state,t.expertise_summary,t.professional_bio,
+          onboarding?.academic_qualification,onboarding?.professional_certifications,onboarding?.training_experience,
+          onboarding?.industry_experience,onboarding?.ttt_status,
+          ...categories,...(modulesByTrainer[t.id]||[]).map(item=>item.title)
+        ].join(' ').toLowerCase();
         return matchingStatus&&matchingCategory&&(!query||searchable.includes(query));
       });
       holder.innerHTML=filtered.length?filtered.map(t=>{
