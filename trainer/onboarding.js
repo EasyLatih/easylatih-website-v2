@@ -335,6 +335,7 @@
     const box=$('programmeSubmissionStatus');
     const submitBtn=$('submitProgrammeReview');
     if(!box)return;
+    if(submitBtn)submitBtn.textContent='Submit for EasyLatih Review';
 
     const termsReady=['ONBOARDING','ACTIVE'].includes(profile?.collaboration_status);
     let type='info';
