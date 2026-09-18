@@ -78,7 +78,7 @@
     const signature = docsSignature();
     if (block.dataset.renderSignature === signature) return;
 
-    const docs = documents.filter(d => d.document_type !== 'COURSE_CONTENT');
+    const docs = documents.filter(d => d.document_type !== 'COURSE_CONTENT' && d.verification_status !== 'VERIFIED');
     const byTrainer = {};
     docs.forEach(d => (byTrainer[d.trainer_id] ||= []).push(d));
     const trainerIds = Object.keys(byTrainer);
@@ -94,7 +94,7 @@
               <div class="btn-row" style="margin:0">${statusBadge(d.verification_status)}<button type="button" class="btn btn-soft" data-admin-view-document="${esc(d.id)}">View Document</button></div>
             </div>`).join('');
           return `<div class="list-card"><div class="list-card-top"><div><h3>${esc(trainer.full_name || 'Trainer')}</h3><div class="meta"><span>${esc(trainer.email || '')}</span></div></div></div>${rows}</div>`;
-        }).join('') : '<div class="empty">No supporting documents submitted yet.</div>'}
+        }).join('') : '<div class="empty">No trainer documents are waiting for verification.</div>'}
       </div>`;
     block.dataset.renderSignature = signature;
 
