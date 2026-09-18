@@ -198,6 +198,8 @@
       select(state.trainerSelected);
     }
 
+    wrapper._trainerRenderPage = renderPage;
+    wrapper._trainerEntries = entries;
     renderPage();
     holder.classList.add('apple-library-ready');
   }
@@ -417,12 +419,12 @@
     const holder = $('adminTrainerList');
     const wrapper = holder?.querySelector(':scope > .apple-library');
     if (!wrapper) return false;
-    const cards = [...wrapper.querySelectorAll('.apple-library-detail > .list-card')];
-    const index = cards.findIndex(card => String(card.dataset.trainerId) === String(id));
-    if (index < 0) return false;
-    state.trainerPage = Math.floor(index / PAGE_SIZE) + 1;
-    state.trainerSelected = id;
-    scheduleRefresh();
+    const entries=(wrapper._trainerEntries||[]).slice().sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+    const index=entries.findIndex(entry=>String(entry.id)===String(id));
+    if(index<0)return false;
+    state.trainerPage=Math.floor(index/PAGE_SIZE)+1;
+    state.trainerSelected=id;
+    wrapper._trainerRenderPage?.();
     return true;
   }
 
@@ -430,12 +432,25 @@
     if (!card) return false;
     const wrapper = $('adminUnifiedModuleLibrary')?.querySelector(':scope > .apple-library');
     if (!wrapper) return false;
-    const id = moduleKey(card);
-    state.moduleSelected = id;
-    if (state.moduleFilter !== 'all' && moduleState(card) !== state.moduleFilter) {
-      state.moduleFilter = 'all';
-      document.querySelectorAll('[data-module-library-filter]').forEach(btn => btn.classList.toggle('active',btn.dataset.moduleLibraryFilter === 'all'));
+    const entries=wrapper._moduleEntries||[];
+    let entry=entries.find(item=>item.cards?.includes(card));
+    if(!entry){
+      const id=moduleKey(card);
+      entry=entries.find(item=>String(item.id)===String(id));
     }
+    if(!entry)return false;
+    if(state.moduleFilter!=='all'&&entry.state!==state.moduleFilter){
+      state.moduleFilter='all';
+      document.querySelectorAll('[data-module-library-filter]').forEach(btn=>btn.classList.toggle('active',btn.dataset.moduleLibraryFilter==='all'));
+    }
+    const filtered=entries.filter(item=>state.moduleFilter==='all'||item.state===state.moduleFilter)
+      .slice().sort((a,b)=>{
+        const groupCompare=String(a.group||'').localeCompare(String(b.group||''));
+        return groupCompare||String(a.title||'').localeCompare(String(b.title||''));
+      });
+    const index=filtered.findIndex(item=>item===entry);
+    state.modulePage=index>=0?Math.floor(index/PAGE_SIZE)+1:1;
+    state.moduleSelected=entry.id;
     wrapper._moduleRenderPage?.();
     return true;
   }
