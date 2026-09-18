@@ -170,9 +170,8 @@
   }
 
   function injectButtons() {
-    const holder = document.getElementById('adminProgrammeList');
-    if (!holder) return;
-    holder.querySelectorAll('.list-card').forEach(card => {
+    const cards = document.querySelectorAll('#adminProgrammeList .list-card, #adminUnifiedModuleLibrary .list-card[data-module-source="programme"]');
+    cards.forEach(card => {
       if (card.querySelector('[data-admin-edit-programme]')) return;
       const programmeId = programmeIdFromCard(card);
       if (!programmeId) return;
@@ -199,7 +198,9 @@
     if (data?.user?.app_metadata?.role !== 'admin') return;
     ensureDialog();
     injectButtons();
-    const holder = document.getElementById('adminProgrammeList');
-    if (holder) new MutationObserver(scheduleInject).observe(holder,{childList:true,subtree:true});
+    ['adminProgrammeList','adminUnifiedModuleLibrary'].forEach(id=>{
+      const holder=document.getElementById(id);
+      if(holder)new MutationObserver(scheduleInject).observe(holder,{childList:true,subtree:true});
+    });
   });
 })();
