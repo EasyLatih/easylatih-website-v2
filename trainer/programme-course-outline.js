@@ -328,7 +328,13 @@
       body:JSON.stringify({action:'generate_course_outline',programme_id:programmeId})
     });
     const result=await response.json().catch(()=>({}));
-    if(!response.ok||!result.ok)throw new Error(result.error||'Unable to generate Google Docs Course Outline.');
+    if(!response.ok||!result.ok){
+      const raw=result?.error;
+      let message='';
+      if(typeof raw==='string')message=raw;
+      else if(raw&&typeof raw==='object')message=raw.message||raw.details||raw.hint||'';
+      throw new Error(message||'Unable to generate Google Docs Course Outline.');
+    }
     return result;
   }
 
