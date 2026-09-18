@@ -121,7 +121,7 @@
 
 
 /* Clean Apple-inspired master/detail libraries */
-.admin-library-source{display:none}
+ .admin-library-enhanced .admin-library-source{display:none}
 .admin-unified-module-panel{padding:0;overflow:hidden}
 .apple-library{display:grid;grid-template-columns:minmax(250px,330px) minmax(0,1fr);min-height:560px;background:#fff;border:1px solid #e5e5ea;border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(15,23,42,.05)}
 .apple-library-index{background:#f7f7f9;border-right:1px solid #e5e5ea;padding:.65rem;overflow:auto;max-height:72vh}
@@ -180,3 +180,5 @@
   .apple-library-detail{max-height:none;min-height:380px}
   .apple-library-row{padding:.8rem}
 }
+
+.apple-library-detail .list-card.admin-record-hidden{display:none!important}
