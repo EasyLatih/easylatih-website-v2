@@ -199,19 +199,17 @@
   }
 
   async function deleteProgramme(id){
-    const typed=prompt('This permanently deletes the module record. Type DELETE to continue:','');
+    const typed=prompt('This permanently deletes the approved module from BOTH the EasyLatih admin side and the trainer portal, including the originating proposal and its review history. Type DELETE to continue:','');
     if(typed!=='DELETE')return;
     try{
-      const programme=await proposalForProgramme(id);
-      const {error}=await client.from('programmes').delete().eq('id',id);
+      const {data,error}=await client.rpc('admin_delete_programme_everywhere',{p_programme_id:id});
       if(error)throw error;
-      if(programme.proposal_id){
-        const proposalUpdate=await client.from('programme_proposals').update({status:'APPROVED_TO_COLLAB',updated_at:new Date().toISOString()}).eq('id',programme.proposal_id);
-        if(proposalUpdate.error)throw proposalUpdate.error;
-        await addTrainerComment(programme.proposal_id,'EasyLatih removed the full module record. Please resubmit the corrected full programme details when requested.');
-      }
-      await loadProgrammes();
-    }catch(e){alert(e.message||'Unable to delete this module.');}
+      const title=data?.title?\` "\${data.title}"\`:'';
+      alert(\`Module\${title} deleted from admin and trainer side.\`);
+      await refresh();
+    }catch(e){
+      alert(e.message||'Unable to delete this module. If it is linked to Scheduled Training, remove or reassign that scheduled training first.');
+    }
   }
 
   async function refresh(){await Promise.all([loadTrainers(),loadProgrammes()])}
