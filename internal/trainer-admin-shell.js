@@ -5,7 +5,10 @@
 
   function directCards(id) {
     const holder = $(id);
-    return holder ? [...holder.children].filter(child => child.classList?.contains('list-card')) : [];
+    if (!holder) return [];
+    const direct=[...holder.children].filter(child => child.classList?.contains('list-card'));
+    if (direct.length) return direct;
+    return [...holder.querySelectorAll('.apple-library-detail > .list-card')];
   }
 
   function badges(card) {
@@ -18,13 +21,14 @@
 
   function moduleState(card) {
     const values = badges(card);
-    if (card.closest('#adminProposalList')) {
+    const source = card.dataset.moduleSource || '';
+    if (source === 'proposal' || card.closest('#adminProposalList')) {
       if (hasAny(values,['PUBLISHED'])) return 'published';
       if (hasAny(values,['REJECTED','WITHDRAWN','INACTIVE'])) return 'archive';
       if (hasAny(values,['APPROVED TO COLLAB','ONBOARDING','FULL DETAILS SUBMITTED','APPROVED FOR ETRIS'])) return 'approved';
       return 'pending';
     }
-    if (card.closest('#adminProgrammeList')) {
+    if (source === 'programme' || card.closest('#adminProgrammeList')) {
       if (hasAny(values,['PUBLISHED'])) return 'published';
       if (hasAny(values,['UNPUBLISHED'])) return 'archive';
       if (hasAny(values,['APPROVED'])) return 'approved';
@@ -34,7 +38,9 @@
   }
 
   function moduleCards() {
-    return [...directCards('adminProposalList'), ...directCards('adminProgrammeList')];
+    const unified=$('adminUnifiedModuleLibrary');
+    const cleanCards=unified ? [...unified.querySelectorAll('.apple-library-detail > .list-card[data-module-source]')] : [];
+    return cleanCards.length ? cleanCards : [...directCards('adminProposalList'), ...directCards('adminProgrammeList')];
   }
 
   function setView(view, shouldScroll = false) {
@@ -61,6 +67,10 @@
       button.classList.toggle('active', active);
       button.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+    if (window.EasyLatihAdminLibrary?.setModuleFilter) {
+      window.EasyLatihAdminLibrary.setModuleFilter(state.moduleFilter);
+      return;
+    }
     ['adminProposalPanel','adminProgrammePanel'].forEach(panelId => {
       const panel = $(panelId);
       if (!panel) return;
@@ -144,8 +154,9 @@
     setTimeout(() => {
       const card = document.querySelector(`#adminTrainerList [data-trainer-id="${trainerId}"]`);
       if (!card) return;
-      if (card.tagName === 'DETAILS') card.open = true;
-      card.scrollIntoView({behavior:'smooth',block:'center'});
+      if (window.EasyLatihAdminLibrary?.selectTrainer) window.EasyLatihAdminLibrary.selectTrainer(trainerId);
+      else if (card.tagName === 'DETAILS') card.open = true;
+      (document.querySelector('#adminTrainerList .apple-library') || card).scrollIntoView({behavior:'smooth',block:'center'});
     }, 160);
   }
 
@@ -155,7 +166,8 @@
     setTimeout(() => {
       const card = moduleCards().find(item => String(item.querySelector('h3')?.textContent || '').trim() === String(title || '').trim());
       if (!card) return;
-      card.scrollIntoView({behavior:'smooth',block:'center'});
+      if (window.EasyLatihAdminLibrary?.selectModuleCard) window.EasyLatihAdminLibrary.selectModuleCard(card);
+      (document.querySelector('#adminUnifiedModuleLibrary .apple-library') || card).scrollIntoView({behavior:'smooth',block:'center'});
       card.classList.add('admin-search-highlight');
       setTimeout(() => card.classList.remove('admin-search-highlight'), 1600);
     }, 120);
@@ -165,7 +177,7 @@
     if (card.closest('#adminOpportunityList')) return 'opportunities';
     if (card.closest('#archivedOpportunityList')) return 'archive';
     if (card.closest('#adminConsultancyPool')) return 'consultancy';
-    if (card.closest('#adminProposalList') || card.closest('#adminProgrammeList')) return 'modules';
+    if (card.dataset.moduleSource || card.closest('#adminUnifiedModuleLibrary') || card.closest('#adminProposalList') || card.closest('#adminProgrammeList')) return 'modules';
     return 'trainers';
   }
 
