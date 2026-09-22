@@ -341,7 +341,7 @@ function renderProgramme(data) {
     `;
 }
 
-function applyPromoCode() {
+async function applyPromoCode() {
   const promoCode = document.getElementById("promoCode").value.trim();
 
   if (!promoCode) {
@@ -349,32 +349,84 @@ function applyPromoCode() {
     return;
   }
 
-  const callbackName = "promoCallback_" + new Date().getTime();
+  const promoResult = document.getElementById("promoResult");
+  promoResult.textContent = "Checking promo code...";
+
+  try {
+    const response = await fetch(
+      MIRROR_SUPABASE_URL + "/rest/v1/rpc/validate_registration_promo_mirror",
+      {
+        method: "POST",
+        headers: {
+          apikey: MIRROR_SUPABASE_KEY,
+          Authorization: "Bearer " + MIRROR_SUPABASE_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          p_course_id: courseId,
+          p_promo_code: promoCode
+        })
+      }
+    );
+
+    const rows = await response.json().catch(() => []);
+    const result = Array.isArray(rows) ? rows[0] : null;
+
+    if (response.ok && result && result.valid === true) {
+      promoDiscount = Number(result.discount_amount || 0);
+      promoAgentId = "";
+      promoAgentName = "";
+      promoCodeApplied = promoCode.toUpperCase();
+
+      promoResult.innerHTML =
+        `<div class="success">✓ Promo Code Applied<br>Discount: RM ${promoDiscount.toLocaleString()}</div>`;
+      updateFinalFee();
+      return;
+    }
+  } catch (_) {
+    // Existing Google Sheets validation remains the safe fallback while promo codes are being mirrored.
+  }
+
+  applyPromoCodeFromAppsScript(promoCode);
+}
+
+function applyPromoCodeFromAppsScript(promoCode) {
+  const promoResult = document.getElementById("promoResult");
+  const callbackName = "promoCallback_" + Date.now();
+  const script = document.createElement("script");
 
   window[callbackName] = function(data) {
-    if (!data.valid) {
-      document.getElementById("promoResult").innerHTML =
-        `<div class="error">${data.message}</div>`;
+    delete window[callbackName];
+    script.remove();
+
+    if (!data || !data.valid) {
+      promoResult.innerHTML =
+        `<div class="error">${(data && data.message) || "Promo code is not valid."}</div>`;
       return;
     }
 
     promoDiscount = Number(data.discountAmount || 0);
     promoAgentId = data.agentId || "";
     promoAgentName = data.agentName || "";
-    promoCodeApplied = data.promoCode || "";
+    promoCodeApplied = data.promoCode || promoCode.toUpperCase();
 
-    document.getElementById("promoResult").innerHTML = `
+    promoResult.innerHTML = `
       <div class="success">
         ✓ Promo Code Applied<br>
         Discount: RM ${promoDiscount.toLocaleString()}<br>
-        Agent: ${promoAgentName}
+        ${promoAgentName ? "Agent: " + promoAgentName : ""}
       </div>
     `;
 
     updateFinalFee();
   };
 
-  const script = document.createElement("script");
+  script.onerror = function() {
+    delete window[callbackName];
+    script.remove();
+    promoResult.innerHTML = `<div class="error">Unable to validate promo code. Please try again.</div>`;
+  };
+
   script.src =
     WEBAPP +
     "?action=validatePromoCode" +
