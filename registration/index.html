@@ -260,6 +260,7 @@ function loadProgramme() {
     }
 
     currentProgram = data;
+    const isHrdClaimable = data.hrdClaimable !== false;
 
     document.getElementById("programCard").innerHTML = `
       <h2>${data.programName}</h2>
@@ -274,8 +275,13 @@ function loadProgramme() {
 
       <hr>
 
-      <p>HRD Fee</p>
-      <div class="price">RM ${Number(data.hrdFee).toLocaleString()}</div>
+      ${isHrdClaimable ? `
+        <div class="success" style="margin-bottom:1rem;">HRD CORP CLAIMABLE</div>
+        <p>HRD Fee</p>
+        <div class="price">RM ${Number(data.hrdFee).toLocaleString()}</div>
+      ` : `
+        <div class="error" style="margin-bottom:1rem;">NON-HRD CLAIMABLE</div>
+      `}
 
       <p>Self Payment Fee</p>
       <div class="price">RM ${Number(data.selfFee).toLocaleString()}</div>
@@ -293,13 +299,13 @@ function loadProgramme() {
 
       <h3>Payment Method</h3>
       <select id="paymentMethod" onchange="updateFinalFee()">
-        <option value="HRD">HRD Corp Grant</option>
+        ${isHrdClaimable ? '<option value="HRD">HRD Corp Grant</option>' : ''}
         <option value="SELF">Self Payment</option>
       </select>
 
       <p>Final Fee</p>
       <div class="price" id="finalPrice">
-        RM ${Number(data.hrdFee).toLocaleString()}
+        RM ${Number(isHrdClaimable ? data.hrdFee : data.selfFee).toLocaleString()}
       </div>
 
       <br>
@@ -368,8 +374,9 @@ function updateFinalFee() {
   if (!currentProgram) return;
 
   const paymentMethod = document.getElementById("paymentMethod").value;
+  const isHrdClaimable = currentProgram.hrdClaimable !== false;
 
-  const baseFee = paymentMethod === "HRD"
+  const baseFee = paymentMethod === "HRD" && isHrdClaimable
     ? Number(currentProgram.hrdFee || 0)
     : Number(currentProgram.selfFee || 0);
 
