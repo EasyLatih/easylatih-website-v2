@@ -530,3 +530,150 @@ function regV2DateKey_(value) {
 
   return Utilities.formatDate(parsed, EASYLATIH_REG_V2_TZ_, 'yyyy-MM-dd');
 }
+
+
+/**
+ * Run this once manually after deployment to install the authorised edit trigger.
+ * The trigger sends one confirmation email whenever RegistrationStatus is changed
+ * to CONFIRMED in the Registrations sheet.
+ */
+function createRegistrationConfirmationTriggerV2_() {
+  const handler = 'sendRegistrationConfirmationOnEditV2_';
+
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === handler)
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp.newTrigger(handler)
+    .forSpreadsheet(EASYLATIH_REG_V2_DATABASE_ID_)
+    .onEdit()
+    .create();
+}
+
+/**
+ * Installable spreadsheet edit trigger. Do not rename this function after
+ * creating the trigger.
+ */
+function sendRegistrationConfirmationOnEditV2_(e) {
+  if (!e || !e.range) return;
+
+  const editedSheet = e.range.getSheet();
+  if (editedSheet.getName() !== 'Registrations' || e.range.getRow() < 2) return;
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const lastColumn = editedSheet.getLastColumn();
+    const headers = editedSheet.getRange(1, 1, 1, lastColumn)
+      .getValues()[0]
+      .map(value => regV2String_(value));
+    const idx = regV2HeaderIndex_(headers);
+
+    const registrationStatusColumn = idx.RegistrationStatus;
+    if (registrationStatusColumn === undefined) return;
+
+    // Ignore edits that do not touch the confirmation-status column.
+    const firstEditedColumn = e.range.getColumn() - 1;
+    const lastEditedColumn = firstEditedColumn + e.range.getNumColumns() - 1;
+    if (
+      registrationStatusColumn < firstEditedColumn ||
+      registrationStatusColumn > lastEditedColumn
+    ) return;
+
+    const rowNumber = e.range.getRow();
+    const row = editedSheet.getRange(rowNumber, 1, 1, lastColumn).getValues()[0];
+    const registrationStatus =
+      regV2String_(regV2Cell_(row, idx, 'RegistrationStatus')).toUpperCase();
+    const emailStatus =
+      regV2String_(regV2Cell_(row, idx, 'ConfirmationEmailStatus')).toUpperCase();
+    const recipient = regV2String_(regV2Cell_(row, idx, 'PICEmail'));
+
+    if (registrationStatus !== 'CONFIRMED' || emailStatus === 'SENT' || !recipient) {
+      return;
+    }
+
+    const registrationId = regV2String_(regV2Cell_(row, idx, 'RegistrationID'));
+    const courseId = regV2String_(regV2Cell_(row, idx, 'CourseID'));
+    const companyName = regV2String_(regV2Cell_(row, idx, 'CompanyName'));
+    const picName = regV2String_(regV2Cell_(row, idx, 'PICName'));
+    const requestedPax = Number(regV2Cell_(row, idx, 'RequestedPax') || 0);
+
+    const ss = SpreadsheetApp.openById(EASYLATIH_REG_V2_DATABASE_ID_);
+    const programme = findProgramV2_(ss, courseId, false) || {};
+    const programmeName = regV2String_(programme.ProgramName) || courseId;
+    const programmeDate = formatProgrammeDateRegV2_(
+      programme.StartDate,
+      programme.EndDate
+    );
+    const venue = regV2String_(programme.Venue);
+
+    const greeting = picName || companyName || 'Customer';
+    const subject = 'Registration Confirmed: ' + programmeName;
+    const plainBody =
+      'Dear ' + greeting + ',\n\n' +
+      'Your registration has been confirmed.\n\n' +
+      'Programme: ' + programmeName + '\n' +
+      (programmeDate ? 'Date: ' + programmeDate + '\n' : '') +
+      (venue ? 'Venue: ' + venue + '\n' : '') +
+      (requestedPax ? 'Participants: ' + requestedPax + '\n' : '') +
+      (registrationId ? 'Registration reference: ' + registrationId + '\n' : '') +
+      '\nThank you.\nEasyLatih\nEasy Learning, Real Results!';
+    const htmlBody =
+      '<p>Dear ' + regV2EscapeHtml_(greeting) + ',</p>' +
+      '<p>Your registration has been <strong>confirmed</strong>.</p>' +
+      '<table cellpadding="6" cellspacing="0" border="0">' +
+      '<tr><td><strong>Programme</strong></td><td>' +
+      regV2EscapeHtml_(programmeName) + '</td></tr>' +
+      (programmeDate
+        ? '<tr><td><strong>Date</strong></td><td>' +
+          regV2EscapeHtml_(programmeDate) + '</td></tr>'
+        : '') +
+      (venue
+        ? '<tr><td><strong>Venue</strong></td><td>' +
+          regV2EscapeHtml_(venue) + '</td></tr>'
+        : '') +
+      (requestedPax
+        ? '<tr><td><strong>Participants</strong></td><td>' +
+          regV2EscapeHtml_(requestedPax) + '</td></tr>'
+        : '') +
+      (registrationId
+        ? '<tr><td><strong>Registration reference</strong></td><td>' +
+          regV2EscapeHtml_(registrationId) + '</td></tr>'
+        : '') +
+      '</table><p>Thank you.<br><strong>EasyLatih</strong><br>' +
+      'Easy Learning, Real Results!</p>';
+
+    MailApp.sendEmail({
+      to: recipient,
+      subject: subject,
+      body: plainBody,
+      htmlBody: htmlBody,
+      name: 'EasyLatih'
+    });
+
+    const updates = {};
+    updates.ConfirmationEmailStatus = 'SENT';
+    updates.ConfirmationEmailSentDate = new Date();
+    regV2UpdateRowByHeaders_(editedSheet, headers, rowNumber, updates);
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
+  }
+}
+
+function regV2UpdateRowByHeaders_(sheet, headers, rowNumber, updates) {
+  headers.forEach((header, index) => {
+    if (Object.prototype.hasOwnProperty.call(updates, header)) {
+      sheet.getRange(rowNumber, index + 1).setValue(updates[header]);
+    }
+  });
+}
+
+function regV2EscapeHtml_(value) {
+  return regV2String_(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
