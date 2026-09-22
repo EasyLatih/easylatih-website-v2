@@ -248,17 +248,25 @@ if (!courseId) {
 }
 
 function loadProgramme() {
-  const callbackName = "easyLatihCallback_" + new Date().getTime();
-
-  window[callbackName] = function(data) {
-    if (!data || data.error) {
+  fetch("/api/public-registration-details?course=" + encodeURIComponent(courseId))
+    .then(async response => {
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data.error) {
+        throw new Error((data && (data.message || data.error)) || "Programme not found.");
+      }
+      return data;
+    })
+    .then(renderProgramme)
+    .catch(error => {
       document.getElementById("programCard").innerHTML = `
-        <h2>Programme not found</h2>
-        <p>Please check your registration link.</p>
+        <h2>Unable to load programme</h2>
+        <p>Please refresh and try again.</p>
       `;
-      return;
-    }
+      console.warn("Programme loading error:", error);
+    });
+}
 
+function renderProgramme(data) {
     currentProgram = data;
     const isHrdClaimable = data.hrdClaimable !== false;
 
@@ -314,16 +322,6 @@ function loadProgramme() {
         Continue Registration
       </button>
     `;
-  };
-
-  const script = document.createElement("script");
-  script.src =
-    WEBAPP +
-    "?action=getProgramDetails" +
-    "&course=" + encodeURIComponent(courseId) +
-    "&callback=" + callbackName;
-
-  document.body.appendChild(script);
 }
 
 function applyPromoCode() {
