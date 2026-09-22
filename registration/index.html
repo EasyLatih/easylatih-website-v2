@@ -224,6 +224,7 @@ button{
 
 </div>
 
+<script src="../trainer/config.js"></script>
 <script>
 const WEBAPP =
 "https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
@@ -248,39 +249,39 @@ if (!courseId) {
 }
 
 function loadProgramme() {
+  const config = window.EASYLATIH_TRAINER_PORTAL || {};
+  if (!config.supabaseUrl || !config.supabasePublishableKey) return loadProgrammeFromAppsScript();
+
+  const url = config.supabaseUrl + "/rest/v1/public_registration_programme_mirror?course_id=eq." +
+    encodeURIComponent(courseId) + "&select=course_id,programme_name,programme_date,venue,duration,total_time,hrd_claimable,hrd_fee,self_fee";
+
+  fetch(url, { headers: { apikey: config.supabasePublishableKey } })
+    .then(async response => {
+      const rows = await response.json().catch(() => []);
+      if (!response.ok || !Array.isArray(rows) || !rows.length) throw new Error("Programme is not mirrored yet.");
+      const row = rows[0];
+      return { courseId: row.course_id, programName: row.programme_name, programDate: row.programme_date, venue: row.venue, duration: row.duration, totalTime: row.total_time, hrdClaimable: row.hrd_claimable, hrdFee: Number(row.hrd_fee || 0), selfFee: Number(row.self_fee || 0) };
+    })
+    .then(renderProgramme)
+    .catch(() => loadProgrammeFromAppsScript());
+}
+
+function loadProgrammeFromAppsScript() {
   const callbackName = "easyLatihCallback_" + Date.now();
   const script = document.createElement("script");
-
   window[callbackName] = function(data) {
-    delete window[callbackName];
-    script.remove();
-
+    delete window[callbackName]; script.remove();
     if (!data || data.error) {
-      document.getElementById("programCard").innerHTML = `
-        <h2>Programme not found</h2>
-        <p>Please check your registration link.</p>
-      `;
+      document.getElementById("programCard").innerHTML = `<h2>Programme not found</h2><p>Please check your registration link.</p>`;
       return;
     }
-
     renderProgramme(data);
   };
-
   script.onerror = function() {
-    delete window[callbackName];
-    script.remove();
-    document.getElementById("programCard").innerHTML = `
-      <h2>Unable to load programme</h2>
-      <p>Please refresh and try again.</p>
-    `;
+    delete window[callbackName]; script.remove();
+    document.getElementById("programCard").innerHTML = `<h2>Unable to load programme</h2><p>Please refresh and try again.</p>`;
   };
-
-  script.src =
-    WEBAPP +
-    "?action=getProgramDetails" +
-    "&course=" + encodeURIComponent(courseId) +
-    "&callback=" + callbackName;
-
+  script.src = WEBAPP + "?action=getProgramDetails&course=" + encodeURIComponent(courseId) + "&callback=" + callbackName;
   document.body.appendChild(script);
 }
 
