@@ -451,6 +451,7 @@
     if(session.user.app_metadata?.role!=='admin'){
       document.body.innerHTML='<div class="page"><div class="alert alert-danger"><strong>Access denied.</strong> This page requires an EasyLatih admin account.</div></div>';return;
     }
+    currentUser=session.user;
     $('adminEmail').textContent=session.user.email;
     $('adminLogout')?.addEventListener('click',async()=>{await client.auth.signOut();location.replace('../trainer/index.html');});
     await refreshAdmin();
