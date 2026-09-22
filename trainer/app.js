@@ -485,8 +485,40 @@
   async function reviewCategoryRequest(id,status){
     const admin_note=prompt(status==='APPROVED'?'Optional note to trainer:':'Reason for rejection:','') ?? '';
     if(status==='REJECTED'&&!admin_note.trim()) return;
-    const {error}=await client.from('trainer_category_change_requests').update({status,admin_note,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString()}).eq('id',id);
-    if(error)return alert(error.message); await refreshAdmin();
+
+    const {data:request,error:requestError}=await client
+      .from('trainer_category_change_requests')
+      .select('trainer_id,requested_categories')
+      .eq('id',id)
+      .eq('status','PENDING')
+      .maybeSingle();
+
+    if(requestError)return alert(requestError.message);
+    if(!request)return alert('This category request has already been reviewed. Please refresh the page.');
+
+    if(status==='APPROVED'){
+      const categories=(request.requested_categories||[]).map(String).map(x=>x.trim()).filter(Boolean).slice(0,3);
+      if(!categories.length)return alert('This request does not contain any valid categories.');
+
+      const {error:preferencesError}=await client
+        .from('trainer_preferences')
+        .upsert({
+          trainer_id:request.trainer_id,
+          categories,
+          updated_at:new Date().toISOString()
+        },{onConflict:'trainer_id'});
+
+      if(preferencesError)return alert(preferencesError.message);
+    }
+
+    const {error}=await client
+      .from('trainer_category_change_requests')
+      .update({status,admin_note,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString()})
+      .eq('id',id)
+      .eq('status','PENDING');
+
+    if(error)return alert(error.message);
+    await refreshAdmin();
   }
 
 
