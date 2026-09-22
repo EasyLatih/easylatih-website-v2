@@ -224,10 +224,11 @@ button{
 
 </div>
 
-<script src="../trainer/config.js"></script>
 <script>
 const WEBAPP =
 "https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
+const MIRROR_SUPABASE_URL = "https://uxplxejkegommcandldj.supabase.co";
+const MIRROR_SUPABASE_KEY = "sb_publishable_1AW0hE-8BHIHnzmo2sGDNg_n2kvWkvP";
 
 const params = new URLSearchParams(window.location.search);
 const courseId = params.get("course");
@@ -249,13 +250,10 @@ if (!courseId) {
 }
 
 function loadProgramme() {
-  const config = window.EASYLATIH_TRAINER_PORTAL || {};
-  if (!config.supabaseUrl || !config.supabasePublishableKey) return loadProgrammeFromAppsScript();
-
-  const url = config.supabaseUrl + "/rest/v1/public_registration_programme_mirror?course_id=eq." +
+  const url = MIRROR_SUPABASE_URL + "/rest/v1/public_registration_programme_mirror?course_id=eq." +
     encodeURIComponent(courseId) + "&select=course_id,programme_name,programme_date,venue,duration,total_time,hrd_claimable,hrd_fee,self_fee";
 
-  fetch(url, { headers: { apikey: config.supabasePublishableKey } })
+  fetch(url, { headers: { apikey: MIRROR_SUPABASE_KEY } })
     .then(async response => {
       const rows = await response.json().catch(() => []);
       if (!response.ok || !Array.isArray(rows) || !rows.length) throw new Error("Programme is not mirrored yet.");
