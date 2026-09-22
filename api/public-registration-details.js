@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     }
 
     // Programme details change infrequently. Availability is checked live again on submit.
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+    res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=60");
     return res.status(200).json(payload);
   } catch (error) {
     console.error("Public registration details error:", error);
