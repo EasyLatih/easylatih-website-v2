@@ -677,3 +677,63 @@ function regV2EscapeHtml_(value) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+
+/**
+ * Run this once manually after deployment to warm the shared registration cache
+ * whenever a public programme is published in the Programs sheet.
+ */
+function createProgrammeCacheWarmTriggerV2_() {
+  const handler = 'warmRegistrationCacheOnProgrammePublishV2_';
+
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === handler)
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp.newTrigger(handler)
+    .forSpreadsheet(EASYLATIH_REG_V2_DATABASE_ID_)
+    .onEdit()
+    .create();
+}
+
+function warmRegistrationCacheOnProgrammePublishV2_(e) {
+  if (!e || !e.range) return;
+
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== 'Programs' || e.range.getRow() < 2) return;
+
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn)
+    .getValues()[0]
+    .map(value => regV2String_(value));
+  const idx = regV2HeaderIndex_(headers);
+
+  const publishedColumn = idx.IsPublished;
+  if (publishedColumn === undefined) return;
+
+  const firstEditedColumn = e.range.getColumn() - 1;
+  const lastEditedColumn = firstEditedColumn + e.range.getNumColumns() - 1;
+  if (publishedColumn < firstEditedColumn || publishedColumn > lastEditedColumn) return;
+
+  const row = sheet.getRange(e.range.getRow(), 1, 1, lastColumn).getValues()[0];
+  const programType = regV2String_(regV2Cell_(row, idx, 'ProgramType')).toUpperCase();
+  const isPublished = regV2Bool_(regV2Cell_(row, idx, 'IsPublished'));
+  const isActive = regV2Bool_(regV2Cell_(row, idx, 'IsActive'));
+  const courseId = regV2String_(regV2Cell_(row, idx, 'CourseID'));
+
+  if (programType !== 'PUBLIC' || !isPublished || !isActive || !courseId) return;
+
+  const url =
+    'https://www.easylatih.my/api/public-registration-details?course=' +
+    encodeURIComponent(courseId);
+
+  try {
+    UrlFetchApp.fetch(url, {
+      method: 'get',
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+  } catch (error) {
+    console.warn('Unable to warm public registration cache for ' + courseId + ': ' + error);
+  }
+}
