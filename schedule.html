@@ -161,6 +161,8 @@
 
 <script>
 const WEBAPP = "https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec";
+const MIRROR_SUPABASE_URL = "https://uxplxejkegommcandldj.supabase.co";
+const MIRROR_SUPABASE_KEY = "sb_publishable_1AW0hE-8BHIHnzmo2sGDNg_n2kvWkvP";
 
 let events2026 = [];
 
@@ -176,16 +178,71 @@ const monthNames = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+function setPublishedPrograms(data) {
+  events2026 = Array.isArray(data) ? data : [];
+  populateStateFilter();
+  renderCalendar();
+}
+
 function loadPublishedPrograms() {
+  const url = MIRROR_SUPABASE_URL +
+    "/rest/v1/public_training_calendar_mirror?select=course_id,program_name,category,programme_started,start_date,end_date,start_date_raw,program_date,venue,state,duration,total_time,delivery_mode,programme_status,hrd_claimable,min_pax,max_pax,registered_pax,confirmed_pax,pending_pax,remaining_seats,is_full,registration_closed,registration_open,registration_close_date,course_content_url,trainer_profile_url,registration_link&order=start_date_raw.asc";
+
+  fetch(url, {
+    headers: {
+      apikey: MIRROR_SUPABASE_KEY,
+      Authorization: "Bearer " + MIRROR_SUPABASE_KEY
+    }
+  })
+    .then(async response => {
+      const rows = await response.json().catch(() => []);
+      if (!response.ok || !Array.isArray(rows) || rows.length === 0) {
+        throw new Error("Calendar mirror is not ready.");
+      }
+
+      return rows.map(row => ({
+        courseId: row.course_id,
+        programName: row.program_name,
+        category: row.category,
+        programmeStarted: row.programme_started,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        startDateRaw: row.start_date_raw,
+        programDate: row.program_date,
+        venue: row.venue,
+        state: row.state,
+        duration: row.duration,
+        totalTime: row.total_time,
+        deliveryMode: row.delivery_mode,
+        programmeStatus: row.programme_status,
+        hrdClaimable: row.hrd_claimable,
+        minPax: Number(row.min_pax || 0),
+        maxPax: Number(row.max_pax || 0),
+        registeredPax: Number(row.registered_pax || 0),
+        confirmedPax: Number(row.confirmed_pax || 0),
+        pendingPax: Number(row.pending_pax || 0),
+        remainingSeats: row.remaining_seats,
+        isFull: row.is_full,
+        registrationClosed: row.registration_closed,
+        registrationOpen: row.registration_open,
+        registrationCloseDate: row.registration_close_date,
+        courseContentUrl: row.course_content_url,
+        trainerProfileUrl: row.trainer_profile_url,
+        registrationLink: row.registration_link
+      }));
+    })
+    .then(setPublishedPrograms)
+    .catch(loadPublishedProgramsFromAppsScript);
+}
+
+function loadPublishedProgramsFromAppsScript() {
   const callbackName = "publishedProgramsCallback_" + Date.now();
   const script = document.createElement("script");
 
   window[callbackName] = function(data) {
-    events2026 = Array.isArray(data) ? data : [];
     delete window[callbackName];
     script.remove();
-    populateStateFilter();
-    renderCalendar();
+    setPublishedPrograms(data);
   };
 
   script.onerror = function() {
@@ -194,8 +251,7 @@ function loadPublishedPrograms() {
     monthsContainer.innerHTML = '<div class="calendar-empty-state">Unable to load the training schedule. Please refresh and try again.</div>';
   };
 
-  // Cache-bust JSONP so newly published programmes appear immediately.
-  script.src = WEBAPP + "?action=getPublishedPrograms&callback=" + callbackName + "&_=" + Date.now();
+  script.src = WEBAPP + "?action=getPublishedPrograms&callback=" + callbackName;
   document.body.appendChild(script);
 }
 function populateStateFilter() {
