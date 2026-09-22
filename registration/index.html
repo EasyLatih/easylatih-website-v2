@@ -383,6 +383,12 @@ async function applyPromoCode() {
       updateFinalFee();
       return;
     }
+
+    if (response.ok && result && result.mirror_ready === true) {
+      promoResult.textContent = result.message || "Promo code is not valid.";
+      promoResult.className = "error";
+      return;
+    }
   } catch (_) {
     // Existing Google Sheets validation remains the safe fallback while promo codes are being mirrored.
   }
