@@ -4,7 +4,7 @@
 
   const client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey);
   const APPS_SCRIPT_URL = cfg.publicTrainingAppsScriptUrl ||
-    'https://script.google.com/a/macros/easylatih.my/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec';
+    'https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec';
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   let currentProgramme = null;
   let timer = null;
