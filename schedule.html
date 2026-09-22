@@ -470,6 +470,12 @@ const copyBtn = `
             <div class="calendar-session-meta">${ev.programDate || ev.startDate || ""}</div>
             <div class="calendar-session-meta">${ev.venue || ""}</div>
 
+            <div class="calendar-session-meta">
+              ${ev.hrdClaimable === false
+                ? '<span class="calendar-badge">NON-HRD CLAIMABLE</span>'
+                : '<span class="calendar-badge">HRD CORP CLAIMABLE</span>'}
+            </div>
+
             <div class="calendar-status-row">
               ${availabilityUI.statusHtml}
               ${availabilityUI.availabilityHtml}
