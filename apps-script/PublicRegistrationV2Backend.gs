@@ -75,6 +75,11 @@ function doPost(e) {
 
     if (!program) throw new Error('Programme not found or not available for public registration.');
 
+    const hrdClaimable = regV2HrdClaimable_(program.HRDClaimable);
+    if (paymentMethod === 'HRD' && !hrdClaimable) {
+      throw new Error('This programme is non-HRD claimable. Please select Self Payment.');
+    }
+
     const availability = getRegistrationAvailabilityV2_(ss, program);
     if (!availability.registrationOpen) {
       if (availability.programmeStarted) throw new Error('Registration is closed because the programme has started.');
@@ -199,6 +204,7 @@ function getProgramDetailsV2_(courseId) {
     state: program.State,
     duration: program.Duration,
     totalTime: program.TotalTime,
+    hrdClaimable: regV2HrdClaimable_(program.HRDClaimable),
     hrdFee: Number(program.HRDFee || 0),
     selfFee: Number(program.SelfFee || 0),
     maxPax: availability.maxPax,
@@ -470,6 +476,12 @@ function regV2Cell_(row, idx, header) {
 
 function regV2String_(value) {
   return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function regV2HrdClaimable_(value) {
+  const s = regV2String_(value).toUpperCase();
+  // Backward-compatible: blank/missing means claimable; only explicit FALSE disables HRD.
+  return s !== 'FALSE' && s !== 'NO' && s !== 'N' && s !== '0';
 }
 
 function regV2Bool_(value) {
