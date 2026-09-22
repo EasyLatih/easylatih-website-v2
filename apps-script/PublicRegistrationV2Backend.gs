@@ -11,6 +11,7 @@
  */
 const EASYLATIH_REG_V2_DATABASE_ID_ = '1W6mLl9U2xdlfrlWHTs7VYmmRk34BcfaKTBo7gJatGsc';
 const EASYLATIH_REG_V2_TZ_ = 'Asia/Kuala_Lumpur';
+const EASYLATIH_REG_V2_DETAILS_CACHE_SECONDS_ = 60;
 
 function doGet(e) {
   const action = regV2String_(e && e.parameter && e.parameter.action);
@@ -131,7 +132,7 @@ function doPost(e) {
       DiscountCode: promo.promoCode || '',
       DiscountAmount: Number(promo.discountAmount || 0),
       TermsAccepted: 'YES',
-      RegistrationStatus: 'SUBMITTED',
+      RegistrationStatus: 'PENDING',
       GrantStatus: '',
       GrantRefNo: '',
       GrantApprovedDate: '',
@@ -187,6 +188,18 @@ function doPost(e) {
 function getProgramDetailsV2_(courseId) {
   if (!courseId) return { error: 'Course ID is required.' };
 
+  const cache = CacheService.getScriptCache();
+  const cacheKey = regV2DetailsCacheKey_(courseId);
+  const cached = cache.get(cacheKey);
+
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (_) {
+      cache.remove(cacheKey);
+    }
+  }
+
   const ss = SpreadsheetApp.openById(EASYLATIH_REG_V2_DATABASE_ID_);
   const program = findProgramV2_(ss, courseId, true);
 
@@ -194,7 +207,7 @@ function getProgramDetailsV2_(courseId) {
 
   const availability = getRegistrationAvailabilityV2_(ss, program);
 
-  return {
+  const details = {
     courseId: program.CourseID,
     programName: program.ProgramName,
     programDate: formatProgrammeDateRegV2_(program.StartDate, program.EndDate),
@@ -215,6 +228,9 @@ function getProgramDetailsV2_(courseId) {
     isFull: availability.isFull,
     registrationOpen: availability.registrationOpen
   };
+
+  cache.put(cacheKey, JSON.stringify(details), EASYLATIH_REG_V2_DETAILS_CACHE_SECONDS_);
+  return details;
 }
 
 function validatePromoCodeV2_(courseId, promoCode, optionalSs) {
@@ -355,15 +371,10 @@ function getRegisteredPaxV2_(ss, courseId) {
 
     const registrationStatus =
       regV2String_(regV2Cell_(row, idx, 'RegistrationStatus')).toUpperCase();
-    const status = regV2String_(regV2Cell_(row, idx, 'Status')).toUpperCase();
 
-    if (
-      registrationStatus === 'CANCELLED' ||
-      registrationStatus === 'CANCELED' ||
-      status === 'CANCELLED' ||
-      status === 'CANCELED' ||
-      status === 'INACTIVE'
-    ) continue;
+    // Pending applications do not occupy a seat. Update this field to CONFIRMED
+    // in the Registrations sheet only after payment is received or HRD grant is approved.
+    if (registrationStatus !== 'CONFIRMED') continue;
 
     total += Number(regV2Cell_(row, idx, 'RequestedPax') || 0) || 0;
   }
@@ -445,6 +456,12 @@ function formatProgrammeDateRegV2_(startKey, endKey) {
   return Utilities.formatDate(start, EASYLATIH_REG_V2_TZ_, 'd MMM yyyy') +
     ' – ' +
     Utilities.formatDate(end, EASYLATIH_REG_V2_TZ_, 'd MMM yyyy');
+}
+
+function regV2DetailsCacheKey_(courseId) {
+  return 'reg-v2-details-' +
+    Utilities.base64EncodeWebSafe(regV2String_(courseId))
+      .replace(/=+$/g, '');
 }
 
 function regV2Jsonp_(data, callback) {
