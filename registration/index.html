@@ -445,32 +445,46 @@ function submitRegistration() {
     return;
   }
 
-  const formData = new FormData();
-
-  formData.append("courseId", courseId);
-  formData.append("companyName", document.getElementById("companyName").value);
-  formData.append("companyAddress", document.getElementById("companyAddress").value);
-  formData.append("picName", document.getElementById("picName").value);
-  formData.append("picPosition", document.getElementById("picPosition").value);
-  formData.append("picEmail", document.getElementById("picEmail").value);
-  formData.append("picPhone", document.getElementById("picPhone").value);
-  formData.append("paymentMethod", document.getElementById("paymentMethod").value);
-  formData.append("requestedPax", participants.length);
-  formData.append("discountCode", promoCodeApplied);
-  formData.append("discountAmount", promoDiscount);
-  formData.append("participantsJson", JSON.stringify(participants));
+  const payload = {
+    courseId: courseId,
+    companyName: document.getElementById("companyName").value,
+    companyAddress: document.getElementById("companyAddress").value,
+    picName: document.getElementById("picName").value,
+    picPosition: document.getElementById("picPosition").value,
+    picEmail: document.getElementById("picEmail").value,
+    picPhone: document.getElementById("picPhone").value,
+    paymentMethod: document.getElementById("paymentMethod").value,
+    requestedPax: participants.length,
+    discountCode: promoCodeApplied,
+    discountAmount: promoDiscount,
+    participantsJson: JSON.stringify(participants)
+  };
 
   document.getElementById("submitResult").innerHTML =
     "Submitting registration...";
 
-  fetch(WEBAPP, {
+  fetch("/api/public-registration", {
     method: "POST",
-    body: formData
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
   })
-  .then(res => res.text())
-  .then(text => {
+  .then(async res => {
+    const data = await res.json().catch(() => ({
+      ok: false,
+      message: "Invalid response from registration server."
+    }));
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || "Registration submission failed.");
+    }
+
+    return data.message;
+  })
+  .then(message => {
     document.getElementById("submitResult").innerHTML =
-      `<div class="success">${text}</div>`;
+      `<div class="success">${message}</div>`;
   })
   .catch(err => {
     document.getElementById("submitResult").innerHTML =
