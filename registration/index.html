@@ -248,22 +248,40 @@ if (!courseId) {
 }
 
 function loadProgramme() {
-  fetch("/api/public-registration-details?course=" + encodeURIComponent(courseId))
-    .then(async response => {
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data || data.error) {
-        throw new Error((data && (data.message || data.error)) || "Programme not found.");
-      }
-      return data;
-    })
-    .then(renderProgramme)
-    .catch(error => {
+  const callbackName = "easyLatihCallback_" + Date.now();
+  const script = document.createElement("script");
+
+  window[callbackName] = function(data) {
+    delete window[callbackName];
+    script.remove();
+
+    if (!data || data.error) {
       document.getElementById("programCard").innerHTML = `
-        <h2>Unable to load programme</h2>
-        <p>Please refresh and try again.</p>
+        <h2>Programme not found</h2>
+        <p>Please check your registration link.</p>
       `;
-      console.warn("Programme loading error:", error);
-    });
+      return;
+    }
+
+    renderProgramme(data);
+  };
+
+  script.onerror = function() {
+    delete window[callbackName];
+    script.remove();
+    document.getElementById("programCard").innerHTML = `
+      <h2>Unable to load programme</h2>
+      <p>Please refresh and try again.</p>
+    `;
+  };
+
+  script.src =
+    WEBAPP +
+    "?action=getProgramDetails" +
+    "&course=" + encodeURIComponent(courseId) +
+    "&callback=" + callbackName;
+
+  document.body.appendChild(script);
 }
 
 function renderProgramme(data) {
