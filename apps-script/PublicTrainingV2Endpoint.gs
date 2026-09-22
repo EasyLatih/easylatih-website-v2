@@ -54,6 +54,8 @@ function getPublishedProgramsV2_() {
       const endDate = normalizeDateV2_(get('EndDate'));
       const closeDate = normalizeDateV2_(get('RegistrationCloseDate'));
       const maxPax = Number(get('MaxPax') || 0) || 0;
+      const hrdClaimableRaw = get('HRDClaimable');
+      const hrdClaimable = String(hrdClaimableRaw === '' ? 'TRUE' : hrdClaimableRaw).trim().toUpperCase() !== 'FALSE';
       const registeredPax = Number(registrationsByCourse[courseId] || 0);
       const remainingSeats = maxPax > 0 ? Math.max(maxPax - registeredPax, 0) : '';
 
@@ -77,6 +79,7 @@ function getPublishedProgramsV2_() {
         trainerProfileUrl: String(get('TrainerProfileURL') || '').trim(),
         registrationLink,
         programmeStatus: String(get('TrainerConfirmationStatus') || get('Status') || 'SCHEDULED').trim().toUpperCase(),
+        hrdClaimable,
         maxPax,
         registeredPax,
         remainingSeats,
