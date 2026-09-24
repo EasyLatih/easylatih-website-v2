@@ -86,10 +86,54 @@
           window.location.replace('./dashboard.html');
         }
       } catch (err) {
-        show('loginMessage',err?.message || 'Unable to sign in.','danger');
+        const code = String(err?.code || '');
+        const message = String(err?.message || '');
+        const needsVerification = code === 'email_not_confirmed' || /email not confirmed/i.test(message);
+        if (needsVerification) {
+          document.getElementById('resendVerificationWrap')?.classList.remove('hidden');
+          show('loginMessage','Your email has not been verified. Please resend the verification email and use the newest link.','danger');
+        } else {
+          show('loginMessage',message || 'Unable to sign in.','danger');
+        }
       } finally {
         if (button) button.disabled = false;
       }
     }, true);
+  }
+
+  const resendButton = document.getElementById('resendVerificationButton');
+  if (resendButton && loginForm) {
+    resendButton.addEventListener('click', async () => {
+      const emailInput = loginForm.querySelector('input[name="email"]');
+      const email = String(emailInput?.value || '').trim();
+      if (!email) {
+        show('loginMessage','Enter your email address first, then resend the verification email.','danger');
+        emailInput?.focus();
+        return;
+      }
+
+      resendButton.disabled = true;
+      show('loginMessage','Sending a new verification email…','info');
+      try {
+        const { error } = await client.auth.resend({
+          type: 'signup',
+          email,
+          options: {
+            emailRedirectTo: `${window.location.origin}/trainer/index.html?verified=1`
+          }
+        });
+        if (error) throw error;
+        show('loginMessage','Verification email sent. Please use the newest link in your inbox.','success');
+      } catch (err) {
+        const message = String(err?.message || '');
+        if (/rate limit|too many requests/i.test(message)) {
+          show('loginMessage','A verification email was requested recently. Please check your inbox before trying again.','warning');
+        } else {
+          show('loginMessage',message || 'Unable to resend the verification email.','danger');
+        }
+      } finally {
+        resendButton.disabled = false;
+      }
+    });
   }
 })();
