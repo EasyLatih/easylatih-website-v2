@@ -102,6 +102,10 @@
           <div class="field"><label>Email</label><input name="email" type="email" autocomplete="email" required></div>
           <div class="field"><label>Password</label><input name="password" type="password" autocomplete="current-password" required></div>
           <div style="margin:.45rem 0 1rem;text-align:right"><a href="forgot-password.html" style="color:#0d3b66;font-weight:600;font-size:.88rem">Forgot password?</a></div>
+          <div id="resendVerificationWrap" class="hidden" style="margin:0 0 1rem">
+            <button id="resendVerificationButton" class="btn btn-outline" type="button" style="width:100%">Resend Verification Email</button>
+            <div class="help" style="margin-top:.45rem">Use this if your verification link has expired or your email has not been confirmed.</div>
+          </div>
           <button id="loginButton" class="btn" type="submit" data-disable-without-backend>Log In</button>
         </form>
       </div>
@@ -141,7 +145,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
 <script src="config.js"></script>
 <script src="app.js?v=7"></script>
-<script src="login-override.js"></script>
+<script src="login-override.js?v=2"></script>
 <script>EasyLatihPortal.initRegistration();</script>
 </body>
 </html>
