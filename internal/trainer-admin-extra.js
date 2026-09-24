@@ -69,14 +69,31 @@
 
   async function loadTrainers(){
     const holder=$('adminTrainerList');if(!holder)return;
-    const [profileRes,proposalRes,programmeRes]=await Promise.all([
+    const verificationRequest=(async()=>{
+      try{
+        const response=await fetch(`${cfg.supabaseUrl}/functions/v1/admin-trainer-access`,{
+          method:'POST',
+          headers:await authHeaders({'Content-Type':'application/json'}),
+          body:JSON.stringify({action:'verification-status'})
+        });
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok||!result.ok)throw new Error(result.error||'Unable to load email verification status.');
+        return result;
+      }catch(error){
+        console.warn('Unable to load trainer email verification status.',error);
+        return {ok:false,unverified_user_ids:[]};
+      }
+    })();
+    const [profileRes,proposalRes,programmeRes,verificationStatus]=await Promise.all([
       client.from('profiles').select('*,trainer_onboarding(*),trainer_preferences(categories)').order('created_at',{ascending:false}).limit(1000),
       client.from('programme_proposals').select('id,trainer_id,title,status,category,updated_at').order('updated_at',{ascending:false}).limit(1200),
-      client.from('programmes').select('id,trainer_id,title,publish_status,category,updated_at').order('updated_at',{ascending:false}).limit(1200)
+      client.from('programmes').select('id,trainer_id,title,publish_status,category,updated_at').order('updated_at',{ascending:false}).limit(1200),
+      verificationRequest
     ]);
     if(profileRes.error){holder.innerHTML=`<div class="alert alert-danger">${esc(profileRes.error.message)}</div>`;return}
     if(proposalRes.error||programmeRes.error){holder.innerHTML=`<div class="alert alert-danger">Unable to load linked trainer modules.</div>`;return}
     const trainers=(profileRes.data||[]).filter(t=>t.id!==admin?.id);
+    const unverifiedTrainerIds=new Set(verificationStatus?.ok?(verificationStatus.unverified_user_ids||[]):[]);
     updateTrainerTabCounts(trainers);
     const modulesByTrainer={};
     [...(proposalRes.data||[]).map(item=>({...item,source:'Proposal'})),...(programmeRes.data||[]).map(item=>({...item,status:item.publish_status,source:'Module'}))].forEach(item=>{
@@ -118,7 +135,7 @@
           ['Qualification',onboarding?.academic_qualification],['Professional certifications',onboarding?.professional_certifications],
           ['Training experience',onboarding?.training_experience],['Industry experience',onboarding?.industry_experience],['TTT / eligibility',onboarding?.ttt_status]
         ].filter(([,value])=>value).map(([label,value])=>`<p><strong>${esc(label)}:</strong> ${esc(value)}</p>`).join('');
-        return `<details class="list-card collapsible-card" data-trainer-id="${esc(t.id)}"><summary><strong>${esc(t.full_name||'Trainer')}</strong><span>${badge(t.collaboration_status)}</span></summary><div class="card-details"><div class="meta"><span>${esc(t.email)}</span><span>${esc(t.phone)}</span><span>${esc(t.state)}</span></div><div class="tag-wrap">${categories.length?categories.map(c=>`<span class="tag">${esc(c)}</span>`).join(''):'<span class="muted">No approved category</span>'}</div><div class="admin-profile-grid"><div><p><strong>Main expertise</strong></p><p class="muted">${esc(t.expertise_summary||'-')}</p>${t.professional_bio?`<p><strong>Professional bio</strong></p><p class="muted">${esc(t.professional_bio)}</p>`:''}</div><div><p><strong>Onboarding:</strong> ${complete?'Complete':'Pending'}</p><p><strong>Availability:</strong> ${esc(t.availability_status||'-')}</p><p><strong>Joined:</strong> ${fmt(t.created_at)}</p>${profileDetails}</div></div>${onboarding?.profile_photo_url?`<div class="admin-photo"><img src="${esc(onboarding.profile_photo_url)}" alt="${esc(t.full_name)}"></div>`:''}<div class="admin-detail-section"><div class="admin-module-links"><strong>Proposed modules</strong>${linkedModules.length?linkedModules.map(item=>`<button type="button" class="admin-module-link" data-open-module="${esc(item.title)}">${esc(item.title)} <span class="muted">· ${esc(item.source)} · ${esc(String(item.status||'').replaceAll('_',' '))}</span></button>`).join(''):'<span class="muted">No proposed module yet.</span>'}</div></div><div class="btn-row">${phone?`<a class="btn admin-trainer-whatsapp" href="https://wa.me/${phone}" target="_blank" rel="noopener">WhatsApp trainer</a>`:''}${t.collaboration_status==='APPLICANT'?`<button class="btn btn-primary" data-approve-collaboration="${t.id}">Approve Trainer</button>`:''}${showActivate?`<button class="btn btn-primary" data-activate="${t.id}">Activate Trainer</button>`:''}${t.collaboration_status==='ACTIVE'?`<button class="btn btn-outline" data-inactivate="${t.id}">Set Inactive</button>`:''}${t.collaboration_status==='INACTIVE'?`<button class="btn btn-primary" data-reactivate="${t.id}">Reactivate Trainer</button>`:''}</div></div></details>`;
+        return `<details class="list-card collapsible-card" data-trainer-id="${esc(t.id)}"><summary><strong>${esc(t.full_name||'Trainer')}</strong><span>${badge(t.collaboration_status)}${unverifiedTrainerIds.has(t.id)?'<span class="badge amber">EMAIL NOT VERIFIED</span>':''}</span></summary><div class="card-details"><div class="meta"><span>${esc(t.email)}</span><span>${esc(t.phone)}</span><span>${esc(t.state)}</span></div><div class="tag-wrap">${categories.length?categories.map(c=>`<span class="tag">${esc(c)}</span>`).join(''):'<span class="muted">No approved category</span>'}</div><div class="admin-profile-grid"><div><p><strong>Main expertise</strong></p><p class="muted">${esc(t.expertise_summary||'-')}</p>${t.professional_bio?`<p><strong>Professional bio</strong></p><p class="muted">${esc(t.professional_bio)}</p>`:''}</div><div><p><strong>Onboarding:</strong> ${complete?'Complete':'Pending'}</p><p><strong>Availability:</strong> ${esc(t.availability_status||'-')}</p><p><strong>Joined:</strong> ${fmt(t.created_at)}</p>${profileDetails}</div></div>${onboarding?.profile_photo_url?`<div class="admin-photo"><img src="${esc(onboarding.profile_photo_url)}" alt="${esc(t.full_name)}"></div>`:''}<div class="admin-detail-section"><div class="admin-module-links"><strong>Proposed modules</strong>${linkedModules.length?linkedModules.map(item=>`<button type="button" class="admin-module-link" data-open-module="${esc(item.title)}">${esc(item.title)} <span class="muted">· ${esc(item.source)} · ${esc(String(item.status||'').replaceAll('_',' '))}</span></button>`).join(''):'<span class="muted">No proposed module yet.</span>'}</div></div><div class="btn-row">${phone?`<a class="btn admin-trainer-whatsapp" href="https://wa.me/${phone}" target="_blank" rel="noopener">WhatsApp trainer</a>`:''}${t.collaboration_status==='APPLICANT'?`<button class="btn btn-primary" data-approve-collaboration="${t.id}">Approve Trainer</button>`:''}${showActivate?`<button class="btn btn-primary" data-activate="${t.id}">Activate Trainer</button>`:''}${t.collaboration_status==='ACTIVE'?`<button class="btn btn-outline" data-inactivate="${t.id}">Set Inactive</button>`:''}${t.collaboration_status==='INACTIVE'?`<button class="btn btn-primary" data-reactivate="${t.id}">Reactivate Trainer</button>`:''}</div></div></details>`;
       }).join(''):'<div class="empty">No matching trainers.</div>';
       holder.querySelectorAll('[data-approve-collaboration]').forEach(button=>button.addEventListener('click',()=>setTrainerStatus(button.dataset.approveCollaboration,'APPROVED_TO_COLLAB')));
       holder.querySelectorAll('[data-activate]').forEach(button=>button.addEventListener('click',()=>setTrainerStatus(button.dataset.activate,'ACTIVE')));
