@@ -594,7 +594,7 @@ function normalizeManualCertificateIc_(value) {
   if (/^[\d\s-]+$/.test(text)) {
     const digits = text.replace(/\D/g, "");
 
-    if (digits.length >= 10 && digits.length <= 12) {
+    if (digits.length >= 9 && digits.length <= 12) {
       return digits.padStart(12, "0");
     }
   }
