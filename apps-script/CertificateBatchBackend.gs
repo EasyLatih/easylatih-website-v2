@@ -87,7 +87,7 @@ function importManualCertificateBatch(payload) {
     const participantName = cleanManualCertificateText_(raw && raw.participantName);
     const email = cleanManualCertificateText_(raw && raw.email).toLowerCase();
     const hrEmail = cleanManualCertificateText_(raw && raw.hrEmail).toLowerCase();
-    const icNo = cleanManualCertificateText_(raw && raw.icNo);
+    const icNo = normalizeManualCertificateIc_(raw && raw.icNo);
 
     if (!participantName) {
       rejected.push({
@@ -120,6 +120,14 @@ function importManualCertificateBatch(payload) {
   }
 
   const startRow = sheet.getLastRow() + 1;
+
+  // Keep Malaysian IC values as text so Google Sheets never drops a leading zero.
+  if (headerMap.ICNo !== undefined) {
+    sheet
+      .getRange(startRow, headerMap.ICNo + 1, createdRows.length, 1)
+      .setNumberFormat("@");
+  }
+
   sheet.getRange(startRow, 1, createdRows.length, headers.length).setValues(createdRows);
 
   return {
@@ -206,7 +214,9 @@ function generateManualCertificateBatch(batchId, chunkSize) {
 
       const pdfUrl = createCertificateFromSlides(certNo, {
         participantName: values[i][map.ParticipantName],
-        icNo: map.ICNo !== undefined ? values[i][map.ICNo] : "",
+        icNo: map.ICNo !== undefined
+          ? normalizeManualCertificateIc_(values[i][map.ICNo])
+          : "",
         programName: values[i][map.ProgramName],
         venue: values[i][map.Venue],
         programDate: programDate,
@@ -569,6 +579,22 @@ function safeManualCertificateCc_(email) {
 
 function safeManualCertificateSubject_(subject) {
   return typeof getEmailSubject === "function" ? getEmailSubject(subject) : subject;
+}
+
+function normalizeManualCertificateIc_(value) {
+  const text = cleanManualCertificateText_(value);
+
+  if (!text) {
+    return "";
+  }
+
+  // MyKad is 12 digits. If Sheets/Excel previously treated an IC beginning
+  // with 0 as a number, it arrives here as 11 digits. Restore that zero.
+  if (/^\d{11}$/.test(text)) {
+    return "0" + text;
+  }
+
+  return text;
 }
 
 function cleanManualCertificateText_(value) {
