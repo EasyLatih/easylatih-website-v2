@@ -588,12 +588,18 @@ function normalizeManualCertificateIc_(value) {
     return "";
   }
 
-  // MyKad is 12 digits. If Sheets/Excel previously treated an IC beginning
-  // with 0 as a number, it arrives here as 11 digits. Restore that zero.
-  if (/^\d{11}$/.test(text)) {
-    return "0" + text;
+  // Treat numeric / hyphenated Malaysian IC values as MyKad.
+  // Google Sheets / Excel may strip one or more leading zeroes when the cell
+  // is numeric. Rebuild the 12-digit value before saving or generating cert.
+  if (/^[\d\s-]+$/.test(text)) {
+    const digits = text.replace(/\D/g, "");
+
+    if (digits.length >= 10 && digits.length <= 12) {
+      return digits.padStart(12, "0");
+    }
   }
 
+  // Passport / alphanumeric IDs are left untouched.
   return text;
 }
 
