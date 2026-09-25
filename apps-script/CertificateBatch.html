@@ -537,7 +537,7 @@
           participantName:String(row[0] || "").trim(),
           email:String(row[1] || "").trim(),
           hrEmail:String(row[2] || "").trim(),
-          icNo:String(row[3] || "").trim()
+          icNo:normalizeIc(row[3])
         }));
     }
 
@@ -547,8 +547,13 @@
         participantName:nameIndex >= 0 ? String(row[nameIndex] || "").trim() : "",
         email:emailIndex >= 0 ? String(row[emailIndex] || "").trim() : "",
         hrEmail:hrIndex >= 0 ? String(row[hrIndex] || "").trim() : "",
-        icNo:icIndex >= 0 ? String(row[icIndex] || "").trim() : ""
+        icNo:icIndex >= 0 ? normalizeIc(row[icIndex]) : ""
       }));
+  }
+
+  function normalizeIc(value){
+    const text = String(value === null || value === undefined ? "" : value).trim();
+    return /^\d{11}$/.test(text) ? "0" + text : text;
   }
 
   function normalizeKey(value){
@@ -684,7 +689,7 @@
         participantName:String(p.participantName || "").trim(),
         email:String(p.email || "").trim(),
         hrEmail:String(p.hrEmail || defaultHrEmail || "").trim(),
-        icNo:String(p.icNo || "").trim()
+        icNo:normalizeIc(p.icNo)
       }));
 
     if(!cleanRows.length){ showError("No participant with a valid name was found."); return; }
