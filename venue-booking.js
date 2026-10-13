@@ -15,7 +15,7 @@
   const iso = d => [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
   const parse = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
   const tmin = s => Number(s.slice(0,2))*60+Number(s.slice(3,5));
-  const pretty = s => s.slice(0,5);
+  const pretty = s => s.slice(0,5)==='24:00'?'12:00 AM (next day)':s.slice(0,5);
   let month = new Date(today.getFullYear(),today.getMonth(),1), selected = iso(today), rooms=[], occupied=[], isSending=false, loadingCalendar=false, calendarReady=false, quoteReady=false, quoteSerial=0, quoteAmount=null, holidays=new Map(), calendarSerial=0;
   function notice(text, kind='info') {
     const el=$('vrNotice'); el.textContent=text; el.dataset.kind=kind; el.hidden=!text;
@@ -23,36 +23,65 @@
   function dayBookings(day) { return occupied.filter(b=>b.booking_date===day); }
   function isClash(day,start,end) { return dayBookings(day).some(b=>tmin(b.start_time)<tmin(end) && tmin(b.end_time)>tmin(start)); }
   function coveredMinutes(day) {
-    let ranges = dayBookings(day).map(b=>[Math.max(540,tmin(b.start_time)),Math.min(1200,tmin(b.end_time))]).filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
-    let sum=0, end=540;
-    for (const [a,b] of ranges) { sum+=Math.max(0,b-Math.max(a,end)); end=Math.max(end,b); }
-    return sum;
+    // Count only rentable hours (09–17 and 20–24), excluding the evening break.
+    const busy=dayBookings(day).map(b=>[tmin(b.start_time),tmin(b.end_time)]);
+    return [[540,1020],[1200,1440]].reduce((total,[from,to])=>{
+      let end=from;
+      const ranges=busy.map(([a,b])=>[Math.max(a,from),Math.min(b,to)])
+        .filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
+      for(const [a,b] of ranges){
+        total+=Math.max(0,b-Math.max(a,end));
+        end=Math.max(end,b);
+      }
+      return total;
+    },0);
   }
 
   const ringgit=value=>'RM'+Number(value).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
   async function loadRates() {
     const {data,error}=await db.from('venue_rental_rates').select('code,weekday_price,weekend_holiday_price');
     if(error||!data?.length)return;
-    const codes={HALF_DAY:['vrRateHalfWeek','vrRateHalfEnd'],FULL_DAY:['vrRateFullWeek','vrRateFullEnd'],NIGHT:['vrRateNightWeek','vrRateNightEnd']};
+    const codes={DAY_HOURLY:['vrRateDayWeek','vrRateDayEnd'],HALF_DAY:['vrRateHalfWeek','vrRateHalfEnd'],FULL_DAY:['vrRateFullWeek','vrRateFullEnd'],NIGHT:['vrRateNightWeek','vrRateNightEnd']};
     data.forEach(row=>{
       const ids=codes[row.code];
       if(ids){$(ids[0]).textContent=ringgit(row.weekday_price);$(ids[1]).textContent=ringgit(row.weekend_holiday_price);}
     });
   }
+  const hours=(from,to)=>Array.from({length:to-from+1},(_,i)=>String(from+i).padStart(2,'0')+':00');
+  function setOptions(el,items,choice){
+    el.replaceChildren();
+    items.forEach(t=>{
+      const op=document.createElement('option');
+      op.value=t;op.textContent=t==='24:00'?'12:00 AM (midnight)':t;
+      if(t===choice)op.selected=true;
+      el.append(op);
+    });
+  }
+  function adjustHourlyEnd(){
+    const pkg=$('vrPackage').value;
+    if(pkg!=='DAY_HOURLY'&&pkg!=='NIGHT')return;
+    const start=tmin($('vrStart').value);
+    const maxEnd=pkg==='DAY_HOURLY'?1020:1440;
+    const maxHours=pkg==='DAY_HOURLY'?3:4;
+    const options=[];
+    for(let mins=start+60;mins<=maxEnd&&mins<=start+maxHours*60;mins+=60){
+      options.push(String(Math.floor(mins/60)).padStart(2,'0')+':00');
+    }
+    const current=$('vrEnd').value;
+    setOptions($('vrEnd'),options,options.includes(current)?current:options[0]);
+  }
   function applyPackage(){
     const pkg=$('vrPackage').value;
     const st=$('vrStart'),en=$('vrEnd');
-    let startTimes=[],endTimes=[];
-    if(pkg==='HALF_MORNING'){startTimes=['09:00'];endTimes=['13:00'];}
-    else if(pkg==='HALF_AFTERNOON'){startTimes=['13:00'];endTimes=['17:00'];}
-    else if(pkg==='FULL'){startTimes=['09:00'];endTimes=['17:00'];}
-    else{startTimes=['17:00','18:00','19:00'];endTimes=['18:00','19:00','20:00'];}
-    const fill=(el,times,selected)=>{
-      el.replaceChildren();
-      times.forEach(t=>{const op=document.createElement('option');op.value=t;op.textContent=t;if(t===selected)op.selected=true;el.append(op);});
-    };
-    fill(st,startTimes,startTimes[0]);fill(en,endTimes,endTimes[0]);
-    st.disabled=pkg!=='NIGHT';en.disabled=pkg!=='NIGHT';
+    if(pkg==='HALF_MORNING'){setOptions(st,['09:00'],'09:00');setOptions(en,['13:00'],'13:00');}
+    else if(pkg==='HALF_AFTERNOON'){setOptions(st,['13:00'],'13:00');setOptions(en,['17:00'],'17:00');}
+    else if(pkg==='FULL'){setOptions(st,['09:00'],'09:00');setOptions(en,['17:00'],'17:00');}
+    else {
+      setOptions(st,pkg==='DAY_HOURLY'?hours(9,16):hours(20,23),pkg==='DAY_HOURLY'?'09:00':'20:00');
+      adjustHourlyEnd();
+    }
+    st.disabled=pkg!=='NIGHT'&&pkg!=='DAY_HOURLY';
+    en.disabled=pkg!=='NIGHT'&&pkg!=='DAY_HOURLY';
     $('vrTimeHint').textContent='Select a date to check the estimated fee.';
     refreshQuote();
   }
@@ -89,7 +118,7 @@
     for(let i=0;i<offset;i++) { const blank=document.createElement('span'); blank.className='vr-empty';grid.append(blank); }
     for(let day=1;day<=days;day++) {
       const d=new Date(month.getFullYear(),month.getMonth(),day);
-      const id=iso(d), n=dayBookings(id).length, full=coveredMinutes(id)>=660;
+      const id=iso(d), n=dayBookings(id).length, full=coveredMinutes(id)>=720;
       const btn=document.createElement('button');
       btn.type='button';btn.className='vr-day';
       btn.textContent=String(day);
@@ -154,7 +183,7 @@
   $('vrPrevious').addEventListener('click',()=>{const prev=new Date(month.getFullYear(),month.getMonth()-1,1);if(prev<new Date(today.getFullYear(),today.getMonth(),1))return;month=prev;selected=iso(month<today?today:month);refreshCalendar();});
   $('vrNext').addEventListener('click',()=>{const next=new Date(month.getFullYear(),month.getMonth()+1,1);if(next>new Date(today.getFullYear(),today.getMonth()+12,1))return;month=next;selected=iso(month);refreshCalendar();});
   $('vrPackage').addEventListener('change',applyPackage);
-  $('vrStart').addEventListener('change',refreshQuote);
+  $('vrStart').addEventListener('change',()=>{adjustHourlyEnd();refreshQuote();});
   $('vrEnd').addEventListener('change',refreshQuote);
   $('vrForm').addEventListener('submit',async e=>{
     e.preventDefault();
