@@ -8,7 +8,7 @@ type Booking = {
   id:string; applicant_name:string; company_name:string; applicant_email:string;
   applicant_phone:string; programme_title:string; participants:number;
   booking_date:string; start_time:string; end_time:string; notes:string;
-  status:string; venue_rooms:{name:string} | {name:string}[] | null;
+  status:string; booking_package:string|null; estimated_price:number|null; venue_rooms:{name:string} | {name:string}[] | null;
 };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -32,7 +32,9 @@ function emailFor(row:QueueRow, b:Booking) {
     ['Reference',ref],['Applicant',b.applicant_name],['Organisation',b.company_name||'—'],
     ['Programme / event',b.programme_title],['Room',room],['Date',dateMY(b.booking_date)],
     ['Time',clean(b.start_time).slice(0,5)+' – '+clean(b.end_time).slice(0,5)],
-    ['Participants',String(b.participants)]
+    ['Participants',String(b.participants)],
+    ['Rental Package',b.booking_package==='HALF_DAY'?'Half Day':b.booking_package==='FULL_DAY'?'Full Day':b.booking_package==='NIGHT'?'Evening (hourly)':'To be confirmed'],
+    ['Estimated Rental Fee',b.estimated_price==null?'To be confirmed':'RM'+Number(b.estimated_price).toFixed(2)+' (excluding optional add-ons)']
   ];
   let recipient=b.applicant_email;
   let subject='',heading='',message='';
@@ -85,7 +87,7 @@ Deno.serve(async (req:Request)=>{
   for(const row of (queue??[]) as QueueRow[]){
     try{
       const {data:booking,error:bookingError}=await db.from('venue_bookings')
-        .select('id,applicant_name,company_name,applicant_email,applicant_phone,programme_title,participants,booking_date,start_time,end_time,notes,status,venue_rooms(name)')
+        .select('id,applicant_name,company_name,applicant_email,applicant_phone,programme_title,participants,booking_date,start_time,end_time,notes,status,booking_package,estimated_price,venue_rooms(name)')
         .eq('id',row.booking_id).single();
       if(bookingError||!booking)throw new Error('Booking information unavailable');
       const msg=emailFor(row,booking as Booking);
