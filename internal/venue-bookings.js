@@ -63,7 +63,7 @@
   }
 
   function renderRates(){
-    const map={HALF_DAY:['rateHalfWeek','rateHalfEnd'],FULL_DAY:['rateFullWeek','rateFullEnd'],NIGHT:['rateNightWeek','rateNightEnd']};
+    const map={DAY_HOURLY:['rateDayWeek','rateDayEnd'],HALF_DAY:['rateHalfWeek','rateHalfEnd'],FULL_DAY:['rateFullWeek','rateFullEnd'],NIGHT:['rateNightWeek','rateNightEnd']};
     rates.forEach(r=>{const ids=map[r.code];if(!ids)return;$(ids[0]).value=r.weekday_price;$(ids[1]).value=r.weekend_holiday_price;});
   }
   function renderHolidays(){
@@ -74,6 +74,7 @@
   async function saveRates(event){
     event.preventDefault();if(busy)return;
     const entries=[
+      {code:'DAY_HOURLY',ids:['rateDayWeek','rateDayEnd']},
       {code:'HALF_DAY',ids:['rateHalfWeek','rateHalfEnd']},
       {code:'FULL_DAY',ids:['rateFullWeek','rateFullEnd']},
       {code:'NIGHT',ids:['rateNightWeek','rateNightEnd']}
