@@ -132,6 +132,7 @@
         <strong id="vrMonth">Loading calendar</strong>
         <button type="button" class="vr-nav" id="vrNext" aria-label="Next month">&#8250;</button>
       </div>
+      <p class="vr-session-key">Each date shows <strong>AM</strong> · <strong>PM</strong> · <strong>N</strong> (night). Tap a date to view individual availability.</p>
       <div class="vr-week" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
       <div id="vrCalendar" class="vr-calendar" aria-label="Select your booking date"></div>
       <div class="vr-legend">
@@ -140,10 +141,10 @@
         <span><i class="vr-dot red"></i>Fully booked</span>
       </div>
       <div class="vr-slots">
-        <span class="vr-muted">Confirmed bookings on:</span>
+        <span class="vr-muted">Session availability for:</span>
         <div id="vrChosenDate" class="vr-date-title">Select a date</div>
-        <div id="vrOccupied" class="vr-chipset"></div>
-        <p class="vr-muted" style="margin-top:12px">Day bookings: 9:00 AM – 5:00 PM; night bookings: 8:00 PM – midnight (12:00 AM next day). 5:00–8:00 PM is not available for online booking. Pending enquiries do not block the calendar until confirmed.</p>
+        <div id="vrOccupied" class="vr-chipset" aria-live="polite"></div>
+        <p class="vr-muted" style="margin-top:12px">Day bookings: 9:00 AM – 5:00 PM; night bookings: 8:00 PM – midnight (12:00 AM next day). 5:00–8:00 PM is not available for online booking. A session only becomes booked when the request is confirmed. Different sessions on the same date can be reserved separately.</p>
       </div>
     </div>
     <div class="vr-card">
