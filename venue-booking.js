@@ -16,7 +16,7 @@
   const parse = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
   const tmin = s => Number(s.slice(0,2))*60+Number(s.slice(3,5));
   const pretty = s => s.slice(0,5);
-  let month = new Date(today.getFullYear(),today.getMonth(),1), selected = iso(today), rooms=[], occupied=[], isSending=false, loadingCalendar=false;
+  let month = new Date(today.getFullYear(),today.getMonth(),1), selected = iso(today), rooms=[], occupied=[], isSending=false, loadingCalendar=false, calendarReady=false;
   function notice(text, kind='info') {
     const el=$('vrNotice'); el.textContent=text; el.dataset.kind=kind; el.hidden=!text;
   }
@@ -63,19 +63,19 @@
     const hint=$('vrTimeHint');
     hint.textContent=!valid?'End time must be later than start time.':clash?'This time overlaps an existing confirmed booking. Please choose another time.':'Selected time is available for a booking request.';
     hint.dataset.kind=valid&&!clash?'success':'danger';
-    $('vrSubmit').disabled=!valid||clash||isSending||loadingCalendar;
+    $('vrSubmit').disabled=!valid||clash||isSending||loadingCalendar||!calendarReady;
     return valid&&!clash;
   }
   async function refreshCalendar() {
     const room=$('vrRoom').value;
     if(!room) return;
-    loadingCalendar=true;renderCalendar();$('vrSubmit').disabled=true;
+    loadingCalendar=true;calendarReady=false;renderCalendar();$('vrSubmit').disabled=true;
     notice('Checking available dates…');
     const first=iso(month), last=iso(new Date(month.getFullYear(),month.getMonth()+1,0));
     const {data,error}=await db.rpc('venue_get_calendar',{p_room_id:room,p_from:first,p_to:last});
     loadingCalendar=false;
     if(error) { occupied=[];notice('Unable to check availability. Please try again or contact us.', 'danger'); }
-    else {occupied=data||[]; notice('');}
+    else {occupied=data||[]; calendarReady=true; notice('');}
     renderCalendar();renderSlots();
     if(error)$('vrSubmit').disabled=true;
   }
@@ -96,7 +96,7 @@
   $('vrEnd').addEventListener('change',validateTime);
   $('vrForm').addEventListener('submit',async e=>{
     e.preventDefault();
-    if(isSending||!validateTime())return;
+    if(isSending||!calendarReady||!validateTime())return;
     const r=rooms.find(x=>x.id===$('vrRoom').value);
     const pax=Number($('vrPax').value);
     if(!r||!Number.isInteger(pax)||pax<1||pax>r.capacity){notice('Number of participants exceeds room capacity.','danger');return;}
@@ -115,8 +115,8 @@
       notice('Your booking request has been received. EasyLatih will review and contact you. This is not yet a confirmed booking.','success');
     } catch(err) {
       const msg=/already booked/i.test(err.message||'')?'This slot has just been booked. Please choose another time.':'Unable to submit right now. Please check the details or contact EasyLatih.';
-      notice(msg,'danger');
       await refreshCalendar();
+      notice(msg,'danger');
     } finally {isSending=false;validateTime();}
   });
   loadRooms();
