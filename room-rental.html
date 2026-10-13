@@ -114,11 +114,12 @@
   </div>
 
   <div class="vr-rate-panel" aria-label="Rental rate card">
-    <div><p class="vr-kicker">TRANSPARENT RENTAL RATES</p><h3>Training room rental rates</h3><p class="vr-muted">Half Day: 4 hours · Full Day: 9:00 AM – 5:00 PM · Evening: hourly after 5:00 PM</p></div>
+    <div><p class="vr-kicker">TRANSPARENT RENTAL RATES</p><h3>Training room rental rates</h3><p class="vr-muted">Hourly daytime: 9:00 AM–5:00 PM (1–3 hours) · Half Day: 4 hours · Full Day: 8 hours · Night: 8:00 PM–12:00 AM</p></div>
     <div class="vr-rate-grid" id="vrRateCards">
+      <div class="vr-rate-tile"><strong>Hourly Daytime</strong><small>1–3 hours · 9:00 AM – 5:00 PM</small><div>Mon–Fri <b id="vrRateDayWeek">RM80</b>/hr</div><div>Weekend / PH <b id="vrRateDayEnd">RM110</b>/hr</div></div>
       <div class="vr-rate-tile"><strong>Half Day</strong><small>4 hours</small><div>Mon–Fri <b id="vrRateHalfWeek">RM250</b></div><div>Weekend / PH <b id="vrRateHalfEnd">RM350</b></div></div>
       <div class="vr-rate-tile"><strong>Full Day</strong><small>9:00 AM – 5:00 PM</small><div>Mon–Fri <b id="vrRateFullWeek">RM350</b></div><div>Weekend / PH <b id="vrRateFullEnd">RM450</b></div></div>
-      <div class="vr-rate-tile"><strong>Evening</strong><small>Per hour after 5:00 PM</small><div>Mon–Fri <b id="vrRateNightWeek">RM75</b></div><div>Weekend / PH <b id="vrRateNightEnd">RM100</b></div></div>
+      <div class="vr-rate-tile"><strong>Night</strong><small>Per hour · 8:00 PM – 12:00 AM</small><div>Mon–Fri <b id="vrRateNightWeek">RM75</b></div><div>Weekend / PH <b id="vrRateNightEnd">RM100</b></div></div>
     </div>
     <p class="vr-muted vr-rate-disclaimer">Weekend rates apply on Saturday and Sunday. Public holiday rates apply on dates marked by EasyLatih. Other services (for example catering) are quoted separately.</p>
   </div>
@@ -142,7 +143,7 @@
         <span class="vr-muted">Confirmed bookings on:</span>
         <div id="vrChosenDate" class="vr-date-title">Select a date</div>
         <div id="vrOccupied" class="vr-chipset"></div>
-        <p class="vr-muted" style="margin-top:12px">Day packages: 9:00 AM – 5:00 PM. Evening requests: 5:00 PM – 8:00 PM (Malaysia time). Pending enquiries do not block the calendar until confirmed.</p>
+        <p class="vr-muted" style="margin-top:12px">Day bookings: 9:00 AM – 5:00 PM; night bookings: 8:00 PM – midnight (12:00 AM next day). 5:00–8:00 PM is not available for online booking. Pending enquiries do not block the calendar until confirmed.</p>
       </div>
     </div>
     <div class="vr-card">
@@ -157,10 +158,11 @@
         </div>
         <div class="vr-field"><label for="vrTitle">Programme / event title *</label><input id="vrTitle" name="title" required minlength="3" maxlength="180" placeholder="e.g. Leadership Workshop"></div>
         <div class="vr-field"><label for="vrPackage">Rental package *</label><select id="vrPackage" required>
+          <option value="DAY_HOURLY">Hourly Daytime (1–3 hours · 9:00 AM – 5:00 PM)</option>
           <option value="HALF_MORNING">Half Day · Morning (9:00 AM – 1:00 PM)</option>
           <option value="HALF_AFTERNOON">Half Day · Afternoon (1:00 PM – 5:00 PM)</option>
           <option value="FULL">Full Day (9:00 AM – 5:00 PM)</option>
-          <option value="NIGHT">Evening / Night (hourly after 5:00 PM)</option>
+          <option value="NIGHT">Night (hourly · 8:00 PM – 12:00 AM)</option>
         </select></div>
         <div class="vr-form-grid">
           <div class="vr-field"><label for="vrStart">Start time *</label><select id="vrStart"><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00" selected>09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="11:30">11:30</option><option value="12:00">12:00</option><option value="12:30">12:30</option><option value="13:00">13:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option></select></div>
