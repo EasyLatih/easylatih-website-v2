@@ -21,6 +21,7 @@
 <meta name="twitter:title" content="Training Room Rental Kuantan | EasyLatih Training Venue">
 <meta name="twitter:description" content="Rent a training room in Kuantan at EasyLatih, Bandar Indera Mahkota. Suitable for training, workshops and meetings with Wi-Fi, projector, sound system and classroom seating.">
 <meta name="twitter:image" content="https://www.easylatih.my/assets/room1.JPG">
+<link rel="stylesheet" href="venue-booking.css?v=1">
 </head>
 <body class="marketing">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -36,7 +37,7 @@
 </nav></div></header>
 
 <main id="main">
-<section class="page-hero"><div class="container"><p class="eyebrow">VENUE RENTAL · KUANTAN</p><h1>A space for your next<br>workshop or meeting.</h1><p class="lead">EasyLatih Training Room · Bandar Indera Mahkota</p><div class="actions"><a class="btn" href="#venue-enquiry">Check Availability &amp; Rates</a><a class="btn btn-outline" href="#gallery">View Gallery</a></div></div></section>
+<section class="page-hero"><div class="container"><p class="eyebrow">VENUE RENTAL · KUANTAN</p><h1>A space for your next<br>workshop or meeting.</h1><p class="lead">EasyLatih Training Room · Bandar Indera Mahkota</p><div class="actions"><a class="btn" href="#venueBookingApp">Check Availability &amp; Rates</a><a class="btn btn-outline" href="#gallery">View Gallery</a></div></div></section>
     <!-- Room Rental Section -->
     <section class="container">
         <h2 class="section-title">Training Room Rental</h2>
@@ -105,9 +106,66 @@
         <img src="assets/room4.JPG" loading="lazy" alt="Training Room View 4" style="width:100%; border-radius:10px;">
     </div>
 
-        <div id="venue-enquiry" class="content-panel" style="margin-top:2rem;"><h2>Check availability &amp; request a quotation</h2><p>Share your event date, start and end time, participant count, preferred layout and catering needs.</p><div class="actions"><a class="btn" href="https://wa.me/60109202811?text=Hi%20EasyLatih%2C%20I%20would%20like%20to%20enquire%20about%20venue%20rental.%20Event%20date%3A%20__%3B%20Start%20and%20end%20time%3A%20__%3B%20Number%20of%20participants%3A%20__%3B%20Room%20layout%3A%20__%3B%20Catering%20required%3A%20__.%20Please%20confirm%20availability%2C%20capacity%20and%20rates." target="_blank" rel="noopener noreferrer">Enquire on WhatsApp</a></div></div><p style="margin-top:2rem;">To book our training room or enquire about availability and rates, please contact us at
-           <a href="mailto:sales@easylatih.my">sales@easylatih.my</a> or call <a href="tel:+6095604273">+60 9 560 4273</a>.
-           We look forward to hosting your next event!</p>
+
+<section id="venueBookingApp" class="section-space" aria-labelledby="vrHeading">
+  <div class="vr-heading">
+    <div><p class="vr-kicker">ONLINE ROOM BOOKING</p>
+    <h2 id="vrHeading">Check dates &amp; request your venue</h2>
+    <p class="vr-muted">Select your training room and preferred date. Confirmed bookings are shown as unavailable slots; your request will be reviewed by the EasyLatih team.</p></div>
+  </div>
+  <div class="vr-shell">
+    <div class="vr-card" aria-label="Training room availability calendar">
+      <p class="vr-kicker">STEP 01</p><h3>Find an available date</h3>
+      <div class="vr-field"><label for="vrRoom">Training room</label><select id="vrRoom" aria-label="Select a training room"><option value="">Loading rooms…</option></select></div>
+      <div class="vr-monthbar">
+        <button type="button" class="vr-nav" id="vrPrevious" aria-label="Previous month">&#8249;</button>
+        <strong id="vrMonth">Loading calendar</strong>
+        <button type="button" class="vr-nav" id="vrNext" aria-label="Next month">&#8250;</button>
+      </div>
+      <div class="vr-week" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div id="vrCalendar" class="vr-calendar" aria-label="Select your booking date"></div>
+      <div class="vr-legend">
+        <span><i class="vr-dot green"></i>Available</span>
+        <span><i class="vr-dot amber"></i>Partially booked</span>
+        <span><i class="vr-dot red"></i>Fully booked</span>
+      </div>
+      <div class="vr-slots">
+        <span class="vr-muted">Confirmed bookings on:</span>
+        <div id="vrChosenDate" class="vr-date-title">Select a date</div>
+        <div id="vrOccupied" class="vr-chipset"></div>
+        <p class="vr-muted" style="margin-top:12px">Operating hours: 8:00 AM – 8:00 PM (Malaysia time). Pending enquiries do not block the calendar until confirmed.</p>
+      </div>
+    </div>
+    <div class="vr-card">
+      <p class="vr-kicker">STEP 02</p><h3>Submit your booking request</h3>
+      <p class="vr-muted" style="margin-bottom:16px">No payment is collected here. Our team will contact you about availability, room layout and rates.</p>
+      <form id="vrForm">
+        <div class="vr-field"><label for="vrName">Applicant name *</label><input id="vrName" name="name" autocomplete="name" required minlength="2" maxlength="120" placeholder="Full name"></div>
+        <div class="vr-field"><label for="vrCompany">Company / organisation</label><input id="vrCompany" name="company" maxlength="150" placeholder="Optional"></div>
+        <div class="vr-form-grid">
+          <div class="vr-field"><label for="vrEmail">Email *</label><input id="vrEmail" name="email" type="email" autocomplete="email" maxlength="180" required placeholder="name@company.com"></div>
+          <div class="vr-field"><label for="vrPhone">Contact number *</label><input id="vrPhone" name="phone" type="tel" autocomplete="tel" minlength="7" maxlength="30" required placeholder="012-3456789"></div>
+        </div>
+        <div class="vr-field"><label for="vrTitle">Programme / event title *</label><input id="vrTitle" name="title" required minlength="3" maxlength="180" placeholder="e.g. Leadership Workshop"></div>
+        <div class="vr-form-grid">
+          <div class="vr-field"><label for="vrStart">Start time *</label><select id="vrStart"><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00" selected>09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="11:30">11:30</option><option value="12:00">12:00</option><option value="12:30">12:30</option><option value="13:00">13:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option></select></div>
+          <div class="vr-field"><label for="vrEnd">End time *</label><select id="vrEnd"><option value="08:00">08:00</option><option value="08:30">08:30</option><option value="09:00">09:00</option><option value="09:30">09:30</option><option value="10:00">10:00</option><option value="10:30">10:30</option><option value="11:00">11:00</option><option value="11:30">11:30</option><option value="12:00">12:00</option><option value="12:30">12:30</option><option value="13:00">13:00</option><option value="13:30">13:30</option><option value="14:00">14:00</option><option value="14:30">14:30</option><option value="15:00">15:00</option><option value="15:30">15:30</option><option value="16:00">16:00</option><option value="16:30">16:30</option><option value="17:00" selected>17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option></select></div>
+        </div>
+        <div id="vrTimeHint" class="vr-hint" aria-live="polite">Select a date and time.</div>
+        <div class="vr-field"><label for="vrPax">Number of participants *</label><input id="vrPax" name="participants" type="number" min="1" max="26" value="10" required></div>
+        <div class="vr-field"><label for="vrNotes">Notes / room arrangement</label><textarea id="vrNotes" rows="3" maxlength="1000" placeholder="Preferred seating layout, catering needs, etc."></textarea></div>
+        <div class="vr-hp" aria-hidden="true"><label for="vrWebsite">Leave this empty</label><input id="vrWebsite" tabindex="-1" autocomplete="off"></div>
+        <button id="vrSubmit" type="submit" class="vr-submit" disabled>Request Booking</button>
+        <p class="vr-muted" style="margin-top:12px">Submitting this form is an enquiry, not an instant reservation. Your contact details are used for venue booking follow-up. See our <a href="privacy.html">Privacy Notice</a>.</p>
+      </form>
+      <div id="vrNotice" class="vr-notice" aria-live="polite" hidden></div>
+    </div>
+  </div>
+</section>
+<div class="content-panel" style="margin-top:2rem;"><h3>Need a quotation or assistance?</h3>
+  <p>Contact <a href="mailto:sales@easylatih.my">sales@easylatih.my</a> or use WhatsApp for urgent enquiries.</p>
+  <div class="actions"><a class="btn btn-outline" href="https://wa.me/60109202811?text=Hi%20EasyLatih%2C%20I%20would%20like%20to%20enquire%20about%20training%20room%20rental." target="_blank" rel="noopener noreferrer">Enquire on WhatsApp</a></div>
+</div>
     </section>
 
 </main>
@@ -153,6 +211,9 @@
         </div>
     </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
+<script src="trainer/config.js"></script>
+<script src="venue-booking.js?v=1" defer></script>
 <script src="marketing.js"></script>
 </body>
 </html>
