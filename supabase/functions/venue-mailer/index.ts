@@ -33,7 +33,7 @@ function emailFor(row:QueueRow, b:Booking) {
     ['Programme / event',b.programme_title],['Room',room],['Date',dateMY(b.booking_date)],
     ['Time',clean(b.start_time).slice(0,5)+' – '+clean(b.end_time).slice(0,5)],
     ['Participants',String(b.participants)],
-    ['Rental Package',b.booking_package==='HALF_DAY'?'Half Day':b.booking_package==='FULL_DAY'?'Full Day':b.booking_package==='NIGHT'?'Evening (hourly)':'To be confirmed'],
+    ['Rental Package',b.booking_package==='DAY_HOURLY'?'Daytime (hourly)':b.booking_package==='HALF_DAY'?'Half Day':b.booking_package==='FULL_DAY'?'Full Day':b.booking_package==='NIGHT'?'Night (hourly)':'To be confirmed'],
     ['Estimated Rental Fee',b.estimated_price==null?'To be confirmed':'RM'+Number(b.estimated_price).toFixed(2)+' (excluding optional add-ons)']
   ];
   let recipient=b.applicant_email;
