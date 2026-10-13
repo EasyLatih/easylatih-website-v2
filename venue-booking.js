@@ -22,19 +22,79 @@
   }
   function dayBookings(day) { return occupied.filter(b=>b.booking_date===day); }
   function isClash(day,start,end) { return dayBookings(day).some(b=>tmin(b.start_time)<tmin(end) && tmin(b.end_time)>tmin(start)); }
-  function coveredMinutes(day) {
-    // Count only rentable hours (09–17 and 20–24), excluding the evening break.
-    const busy=dayBookings(day).map(b=>[tmin(b.start_time),tmin(b.end_time)]);
-    return [[540,1020],[1200,1440]].reduce((total,[from,to])=>{
-      let end=from;
-      const ranges=busy.map(([a,b])=>[Math.max(a,from),Math.min(b,to)])
-        .filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
-      for(const [a,b] of ranges){
-        total+=Math.max(0,b-Math.max(a,end));
-        end=Math.max(end,b);
+  const SESSION_PERIODS=[
+    {key:'am',short:'AM',name:'Morning',from:540,to:780,package:'HALF_MORNING'},
+    {key:'pm',short:'PM',name:'Afternoon',from:780,to:1020,package:'HALF_AFTERNOON'},
+    {key:'night',short:'Night',name:'Night',from:1200,to:1440,package:'NIGHT'}
+  ];
+  function coveredMinutes(day,from,to) {
+    const ranges=dayBookings(day)
+      .map(b=>[Math.max(from,tmin(b.start_time)),Math.min(to,tmin(b.end_time))])
+      .filter(([a,b])=>b>a)
+      .sort((a,b)=>a[0]-b[0]);
+    let covered=0,mergedEnd=from;
+    for(const [a,b] of ranges) {
+      covered+=Math.max(0,b-Math.max(a,mergedEnd));
+      mergedEnd=Math.max(mergedEnd,b);
+    }
+    return covered;
+  }
+  function sessionState(day,period) {
+    const covered=coveredMinutes(day,period.from,period.to);
+    return covered===0?'available':covered>=period.to-period.from?'full':'partial';
+  }
+  function findFreeHour(day,from,to) {
+    for(let start=from;start+60<=to;start+=60) {
+      const st=String(Math.floor(start/60)).padStart(2,'0')+':00';
+      const en=String(Math.floor((start+60)/60)).padStart(2,'0')+':00';
+      if(!isClash(day,st,en))return st;
+    }
+    return null;
+  }
+  const timeDisplay=minutes=>minutes===1440?'12:00 AM (next day)':String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
+  function sessionIsBookable(day,period) {
+    return findFreeHour(day,period.from,period.to)!==null;
+  }
+  function updatePackageAvailability(){
+    const kinds={
+      HALF_MORNING:!isClash(selected,'09:00','13:00'),
+      HALF_AFTERNOON:!isClash(selected,'13:00','17:00'),
+      FULL:!isClash(selected,'09:00','17:00'),
+      DAY_HOURLY:findFreeHour(selected,540,1020)!==null,
+      NIGHT:findFreeHour(selected,1200,1440)!==null
+    };
+    const pkg=$('vrPackage'),previous=pkg.value;
+    for(const option of pkg.options) {
+      option.disabled=!kinds[option.value];
+    }
+    if(!kinds[previous]){
+      const preferred=SESSION_PERIODS.find(p=>kinds[p.package])?.package;
+      const fallback=preferred||Object.keys(kinds).find(k=>kinds[k]);
+      if(fallback) {
+        pkg.value=fallback;
+        applyPackage();
+      } else {
+        pkg.selectedIndex=-1;
       }
-      return total;
-    },0);
+    }
+    pkg.disabled=!Object.values(kinds).some(Boolean);
+    return kinds;
+  }
+  function selectSession(period) {
+    if(!calendarReady||!sessionIsBookable(selected,period))return;
+    const state=sessionState(selected,period);
+    const pkg=state==='available'&&period.key!=='night'?period.package:(period.key==='night'?'NIGHT':'DAY_HOURLY');
+    $('vrPackage').value=pkg;
+    applyPackage();
+    if(pkg==='DAY_HOURLY'||pkg==='NIGHT') {
+      const first=findFreeHour(selected,period.from,period.to);
+      if(first) {
+        $('vrStart').value=first;
+        adjustHourlyEnd();
+        refreshQuote();
+      }
+    }
+    $('vrPackage').scrollIntoView({behavior:'smooth',block:'center'});
   }
 
   const ringgit=value=>'RM'+Number(value).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -114,31 +174,78 @@
     const grid=$('vrCalendar');
     grid.replaceChildren();
     $('vrMonth').textContent=month.toLocaleDateString('en-MY',{month:'long',year:'numeric'});
-    const offset=(month.getDay()+6)%7, days=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
-    for(let i=0;i<offset;i++) { const blank=document.createElement('span'); blank.className='vr-empty';grid.append(blank); }
+    const offset=(month.getDay()+6)%7,days=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
+    for(let i=0;i<offset;i++){
+      const blank=document.createElement('span');blank.className='vr-empty';grid.append(blank);
+    }
     for(let day=1;day<=days;day++) {
-      const d=new Date(month.getFullYear(),month.getMonth(),day);
-      const id=iso(d), n=dayBookings(id).length, full=coveredMinutes(id)>=720;
+      const d=new Date(month.getFullYear(),month.getMonth(),day),id=iso(d);
+      const statuses=SESSION_PERIODS.map(p=>sessionState(id,p));
+      const overall=statuses.every(x=>x==='full')?'full':statuses.every(x=>x==='available')?'available':'partial';
       const btn=document.createElement('button');
       btn.type='button';btn.className='vr-day';
-      btn.textContent=String(day);
-      btn.disabled=d<today || d>new Date(today.getFullYear(),today.getMonth(),today.getDate()+365) || loadingCalendar;
-      btn.dataset.state=n?(full?'full':'partial'):'available';
+      const number=document.createElement('span');
+      number.className='vr-day-number';number.textContent=String(day);btn.append(number);
+      const markerRow=document.createElement('span');markerRow.className='vr-day-markers';
+      SESSION_PERIODS.forEach((period,i)=>{
+        const marker=document.createElement('span');marker.className='vr-day-marker';
+        marker.dataset.state=loadingCalendar?'unknown':statuses[i];
+        marker.textContent=period.short==='Night'?'N':period.short;
+        marker.title=period.name+': '+(loadingCalendar?'Checking':statuses[i]==='full'?'Fully booked':statuses[i]==='partial'?'Partially booked':'Available');
+        markerRow.append(marker);
+      });
+      btn.append(markerRow);
+      btn.disabled=d<today || d>new Date(today.getFullYear(),today.getMonth(),today.getDate()+365) || loadingCalendar || !calendarReady;
+      btn.dataset.state=loadingCalendar||!calendarReady?'unknown':overall;
       btn.classList.toggle('selected',id===selected);
-      btn.setAttribute('aria-label', id + (full?' Fully booked':n?' Some slots booked':' Available'));
+      btn.setAttribute('aria-label',id+'; '+SESSION_PERIODS.map((p,i)=>p.name+' '+(loadingCalendar?'checking':statuses[i])).join(', '));
       btn.setAttribute('aria-pressed',String(id===selected));
-      btn.addEventListener('click',()=>{ selected=id;renderCalendar();renderSlots(); });
+      btn.addEventListener('click',()=>{selected=id;renderCalendar();renderSlots();});
       grid.append(btn);
     }
   }
   function renderSlots() {
     $('vrChosenDate').textContent=parse(selected).toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     const slotList=$('vrOccupied');slotList.replaceChildren();
-    let b=dayBookings(selected);
-    if(!b.length) {const x=document.createElement('span');x.className='vr-slot-free';x.textContent='No confirmed bookings — available packages can be requested.';slotList.append(x);}
-    else b.forEach(item=>{const x=document.createElement('span');x.className='vr-slot';x.textContent=pretty(item.start_time)+' – '+pretty(item.end_time);slotList.append(x);});
+    if(!calendarReady) {
+      const empty=document.createElement('p');empty.className='vr-muted';
+      empty.textContent=loadingCalendar?'Checking session availability…':'Unable to confirm availability. Please refresh or contact EasyLatih.';
+      slotList.append(empty);
+      validateTime();return;
+    }
+    SESSION_PERIODS.forEach(period=>{
+      const state=sessionState(selected,period),canBook=sessionIsBookable(selected,period);
+      const card=document.createElement('div');card.className='vr-session-card';card.dataset.state=state;
+      const row=document.createElement('div');row.className='vr-session-head';
+      const title=document.createElement('strong');title.textContent=period.short+' · '+period.name;
+      const status=document.createElement('span');status.className='vr-session-status';status.dataset.state=state;
+      status.textContent=state==='available'?'Available':state==='full'?'Fully booked':'Partially booked';
+      row.append(title,status);card.append(row);
+      const hours=document.createElement('span');hours.className='vr-session-hours';
+      hours.textContent=timeDisplay(period.from)+' – '+timeDisplay(period.to);
+      card.append(hours);
+      const b=dayBookings(selected).filter(x=>tmin(x.start_time)<period.to&&tmin(x.end_time)>period.from);
+      const details=document.createElement('div');details.className='vr-session-details';
+      if(!b.length){details.textContent='No confirmed bookings';}
+      else {
+        details.textContent='Booked: '+b.map(x=>{
+          const from=Math.max(period.from,tmin(x.start_time));
+          const to=Math.min(period.to,tmin(x.end_time));
+          return timeDisplay(from)+' – '+timeDisplay(to);
+        }).join('; ');
+      }
+      card.append(details);
+      const btn=document.createElement('button');btn.type='button';btn.className='vr-session-choose';
+      btn.disabled=!canBook||!calendarReady;
+      btn.textContent=!canBook?'No hourly slots':state==='partial'?'Choose available hour':period.key==='night'?'Choose night hours':'Choose '+period.short;
+      btn.addEventListener('click',()=>selectSession(period));
+      card.append(btn);
+      slotList.append(card);
+    });
+    updatePackageAvailability();
     refreshQuote();
   }
+
   function validateTime() {
     const s=$('vrStart').value,e=$('vrEnd').value;
     const clash=isClash(selected,s,e), valid=tmin(e)>tmin(s);
