@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Venue Bookings | EasyLatih Admin</title><meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../assets/favicon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{font-family:Poppins,system-ui,sans-serif;margin:0;background:#f3f7fa;color:#233c50}a{color:#003e6f}
+header{background:#003e6f;color:#fff}header .bar{max-width:1300px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 24px}
+header img{width:120px;height:56px;object-fit:contain;background:white;border-radius:8px;padding:3px}
+header .brand{display:flex;align-items:center;gap:14px}header .brand strong{font-size:1.1rem}header .brand small{display:block;font-size:.75rem;color:#d1e3ee}header a{color:#fff}
+main{max-width:1300px;margin:auto;padding:30px 24px 70px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:clamp(1.6rem,3vw,2.5rem);color:#003e6f;margin:8px 0 5px}h2{font-size:1.2rem;color:#003e6f;margin:0 0 18px}p{margin:0 0 18px;color:#63788b}
+button{border:1px solid #c5d6e2;border-radius:8px;background:#fff;padding:9px 13px;cursor:pointer;color:#003e6f;font:inherit;font-size:.82rem;font-weight:600}button.primary{background:#bb4800;color:white;border-color:#bb4800}button.danger{color:#b14136;border-color:#ebc1b9}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:25px 0}.kpi{background:white;border:1px solid #e1e9ef;padding:19px;border-radius:12px}.kpi strong{display:block;font-size:2rem;color:#003e6f}.kpi span{font-size:.8rem;color:#6a7f90}
+.panel{background:#fff;border:1px solid #dae4eb;border-radius:12px;padding:22px;margin-bottom:22px;box-shadow:0 8px 26px #003e6f08}
+.toolbar{display:flex;flex-wrap:wrap;gap:11px;margin-bottom:18px}.toolbar input,.toolbar select,.room-create input{font:inherit;background:white;padding:10px 12px;border:1px solid #c7d6e2;border-radius:7px;min-width:140px}
+.toolbar input{flex:1}.table-scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.84rem;min-width:840px}
+th{text-align:left;color:#667b8b;background:#f3f7fa;font-size:.76rem;text-transform:uppercase;letter-spacing:.03em}
+th,td{padding:14px 12px;border-bottom:1px solid #e5edf2;vertical-align:top}td strong,td small{display:block}td small{color:#778899;line-height:1.6}
+td.actions{white-space:nowrap}td.actions button{margin:2px}
+.chip{display:inline-block;border-radius:100px;padding:3px 9px;background:#edf3f8;color:#35546d;font-size:.68rem;font-weight:700;margin-top:5px}
+.chip.pending{background:#fff2dd;color:#805200}.chip.confirmed{background:#e9f8f0;color:#226948}.chip.rejected,.chip.cancelled{background:#fcefed;color:#9a3b34}
+.room-create{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}.room-card{border-top:1px solid #e6edf2;padding:15px 0;display:flex;align-items:center;justify-content:space-between;gap:14px}.room-card small{display:block;color:#718698}.room-actions{display:flex;flex-wrap:wrap;gap:8px}
+.notice{padding:13px 16px;border-radius:9px;border:1px solid #c9dbea;background:#edf6fb;margin-bottom:19px}
+.notice[data-type=success]{background:#eaf8f0;color:#14673e}.notice[data-type=danger]{background:#fff1ef;color:#a63229}.empty{text-align:center;color:#718698}
+@media(max-width:800px){.kpis{grid-template-columns:repeat(2,1fr)}.room-card{align-items:flex-start;flex-direction:column}header .bar{padding:14px}main{padding:20px 14px}}
+</style></head><body>
+<header><div class="bar"><div class="brand"><a href="../index.html"><img src="../assets/logo.png" alt="EasyLatih"></a><div><strong>Venue Booking Admin</strong><small>Room reservations &amp; management</small></div></div><a href="trainer-admin.html">← Main Dashboard</a></div></header>
+<main>
+  <div id="loginState" class="notice">Checking EasyLatih administrator session…</div>
+  <div id="adminApp" hidden>
+    <div class="top"><div><span style="color:#bb4800;font-weight:700;font-size:.77rem;letter-spacing:.1em">EASYLATIH ADMIN</span><h1>Room Booking Dashboard</h1><p>Manage venue requests, approved dates and room availability.</p></div><div><span id="loggedUser" style="color:#718698;font-size:.8rem"></span> <button id="refreshData">↻ Refresh</button></div></div>
+    <div id="adminMessage" class="notice" role="status" hidden></div>
+    <section class="kpis">
+      <div class="kpi"><strong id="requestCount">0</strong><span>Total Requests</span></div>
+      <div class="kpi"><strong id="pendingCount">0</strong><span>Pending Review</span></div>
+      <div class="kpi"><strong id="confirmedCount">0</strong><span>Confirmed</span></div>
+      <div class="kpi"><strong id="roomCount">0</strong><span>Active Rooms</span></div>
+    </section>
+    <section class="panel"><h2>Booking Requests</h2>
+      <div class="toolbar"><input id="findBooking" type="search" placeholder="Search applicant / programme" aria-label="Search bookings"><select id="roomFilter" aria-label="Room filter"><option value="">All rooms</option></select><select id="statusFilter" aria-label="Status filter"><option value="">All statuses</option><option value="PENDING">Pending</option><option value="CONFIRMED">Confirmed</option><option value="REJECTED">Rejected</option><option value="CANCELLED">Cancelled</option></select></div>
+      <div class="table-scroll"><table><thead><tr><th>Programme</th><th>Room / Date</th><th>Applicant</th><th>Participants</th><th>Action</th></tr></thead><tbody id="bookingRows"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
+      <p style="font-size:.78rem;margin:14px 0 0">Only confirmed bookings block the public calendar. The database prevents overlapping confirmed bookings for the same room.</p>
+    </section>
+    <section class="panel"><h2>Room Management</h2>
+      <form id="addRoomForm" class="room-create"><input id="newRoom" placeholder="New room name" aria-label="Room name" minlength="2" maxlength="120" required><input id="newCapacity" type="number" aria-label="Capacity" min="1" max="200" value="26" required style="max-width:125px"><button type="submit" class="primary">+ Add Room</button></form>
+      <div id="roomCards"></div>
+      <p style="font-size:.78rem;margin:12px 0 0">Deactivate a room to hide it from new enquiries. Existing bookings stay in the records.</p>
+    </section>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
+<script src="../trainer/config.js"></script>
+<script src="venue-bookings.js"></script>
+</body></html>
