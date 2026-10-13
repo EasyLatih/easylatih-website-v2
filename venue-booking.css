@@ -100,3 +100,9 @@
   #venueBookingApp .vr-day-marker{width:12px;height:14px;font-size:.46rem;border-radius:3px}
   #venueBookingApp .vr-day-number{font-size:.8rem}
 }
+
+/* Closed or already elapsed sessions are neutral, never shown as fully booked. */
+#venueBookingApp .vr-day-marker[data-state=past] { background:#d4dce3;color:#435869; }
+#venueBookingApp .vr-session-card[data-state=past] {border-left:4px solid #9aabb6;background:#f4f6f8;}
+#venueBookingApp .vr-session-status[data-state=past] {background:#e5eaee;color:#54697a;}
+#venueBookingApp .vr-day[data-state=past] {background:#f0f3f6;color:#758796;}

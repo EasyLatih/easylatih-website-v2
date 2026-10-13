@@ -16,6 +16,20 @@
   const parse = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
   const tmin = s => Number(s.slice(0,2))*60+Number(s.slice(3,5));
   const pretty = s => s.slice(0,5)==='24:00'?'12:00 AM (next day)':s.slice(0,5);
+  // Always validate booking times against Malaysia time, regardless of visitor timezone.
+  const malaysiaNow=()=>{
+    const parts=new Intl.DateTimeFormat('en-GB',{
+      timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+    }).formatToParts(new Date());
+    const p=key=>Number(parts.find(item=>item.type===key)?.value);
+    const day=[p('year'),String(p('month')).padStart(2,'0'),String(p('day')).padStart(2,'0')].join('-');
+    return {day,minutes:p('hour')*60+p('minute')};
+  };
+  const hasStarted=(date,start)=>{
+    const now=malaysiaNow();
+    return date<now.day||(date===now.day&&tmin(start)<=now.minutes);
+  };
   let month = new Date(today.getFullYear(),today.getMonth(),1), selected = iso(today), rooms=[], occupied=[], isSending=false, loadingCalendar=false, calendarReady=false, quoteReady=false, quoteSerial=0, quoteAmount=null, holidays=new Map(), calendarSerial=0;
   function notice(text, kind='info') {
     const el=$('vrNotice'); el.textContent=text; el.dataset.kind=kind; el.hidden=!text;
@@ -41,13 +55,17 @@
   }
   function sessionState(day,period) {
     const covered=coveredMinutes(day,period.from,period.to);
-    return covered===0?'available':covered>=period.to-period.from?'full':'partial';
+    if(covered>=period.to-period.from)return 'full';
+    // All rentable hours have already started, even if the period itself ends later.
+    const latestStart=String(Math.floor((period.to-60)/60)).padStart(2,'0')+':00';
+    if(hasStarted(day,latestStart))return 'past';
+    return covered===0?'available':'partial';
   }
   function findFreeHour(day,from,to) {
     for(let start=from;start+60<=to;start+=60) {
       const st=String(Math.floor(start/60)).padStart(2,'0')+':00';
       const en=String(Math.floor((start+60)/60)).padStart(2,'0')+':00';
-      if(!isClash(day,st,en))return st;
+      if(!hasStarted(day,st)&&!isClash(day,st,en))return st;
     }
     return null;
   }
@@ -57,9 +75,9 @@
   }
   function updatePackageAvailability(){
     const kinds={
-      HALF_MORNING:!isClash(selected,'09:00','13:00'),
-      HALF_AFTERNOON:!isClash(selected,'13:00','17:00'),
-      FULL:!isClash(selected,'09:00','17:00'),
+      HALF_MORNING:!hasStarted(selected,'09:00')&&!isClash(selected,'09:00','13:00'),
+      HALF_AFTERNOON:!hasStarted(selected,'13:00')&&!isClash(selected,'13:00','17:00'),
+      FULL:!hasStarted(selected,'09:00')&&!isClash(selected,'09:00','17:00'),
       DAY_HOURLY:findFreeHour(selected,540,1020)!==null,
       NIGHT:findFreeHour(selected,1200,1440)!==null
     };
@@ -75,6 +93,17 @@
         applyPackage();
       } else {
         pkg.selectedIndex=-1;
+      }
+    } else if(previous==='DAY_HOURLY'||previous==='NIGHT') {
+      const from=previous==='DAY_HOURLY'?540:1200;
+      const to=previous==='DAY_HOURLY'?1020:1440;
+      const st=$('vrStart').value,en=$('vrEnd').value;
+      if(hasStarted(selected,st)||isClash(selected,st,en)){
+        const next=findFreeHour(selected,from,to);
+        if(next){
+          $('vrStart').value=next;
+          adjustHourlyEnd();
+        }
       }
     }
     pkg.disabled=!Object.values(kinds).some(Boolean);
@@ -152,8 +181,8 @@
     $('vrEstimated').textContent='Checking price…';
     $('vrPriceType').textContent='Subject to confirmation. No online payment.';
     validateTime();
-    if(!selected||!start||!end||tmin(end)<=tmin(start)){
-      $('vrEstimated').textContent='Select a valid time';
+    if(!selected||!start||!end||tmin(end)<=tmin(start)||hasStarted(selected,start)){
+      $('vrEstimated').textContent=hasStarted(selected,start)?'Time already passed':'Select a valid time';
       return;
     }
     const {data,error}=await db.rpc('venue_get_quote',{p_date:selected,p_start:start,p_end:end});
@@ -181,7 +210,7 @@
     for(let day=1;day<=days;day++) {
       const d=new Date(month.getFullYear(),month.getMonth(),day),id=iso(d);
       const statuses=SESSION_PERIODS.map(p=>sessionState(id,p));
-      const overall=statuses.every(x=>x==='full')?'full':statuses.every(x=>x==='available')?'available':'partial';
+      const overall=statuses.every(x=>x==='full')?'full':statuses.every(x=>x==='past')?'past':statuses.every(x=>x==='available')?'available':'partial';
       const btn=document.createElement('button');
       btn.type='button';btn.className='vr-day';
       const number=document.createElement('span');
@@ -191,11 +220,11 @@
         const marker=document.createElement('span');marker.className='vr-day-marker';
         marker.dataset.state=loadingCalendar?'unknown':statuses[i];
         marker.textContent=period.short==='Night'?'N':period.short;
-        marker.title=period.name+': '+(loadingCalendar?'Checking':statuses[i]==='full'?'Fully booked':statuses[i]==='partial'?'Partially booked':'Available');
+        marker.title=period.name+': '+(loadingCalendar?'Checking':statuses[i]==='past'?'Already passed':statuses[i]==='full'?'Fully booked':statuses[i]==='partial'?'Partially booked':'Available');
         markerRow.append(marker);
       });
       btn.append(markerRow);
-      btn.disabled=d<today || d>new Date(today.getFullYear(),today.getMonth(),today.getDate()+365) || loadingCalendar || !calendarReady;
+      btn.disabled=d<today || d>new Date(today.getFullYear(),today.getMonth(),today.getDate()+365) || loadingCalendar || !calendarReady || !SESSION_PERIODS.some(p=>sessionIsBookable(id,p));
       btn.dataset.state=loadingCalendar||!calendarReady?'unknown':overall;
       btn.classList.toggle('selected',id===selected);
       btn.setAttribute('aria-label',id+'; '+SESSION_PERIODS.map((p,i)=>p.name+' '+(loadingCalendar?'checking':statuses[i])).join(', '));
@@ -219,7 +248,7 @@
       const row=document.createElement('div');row.className='vr-session-head';
       const title=document.createElement('strong');title.textContent=period.short+' · '+period.name;
       const status=document.createElement('span');status.className='vr-session-status';status.dataset.state=state;
-      status.textContent=state==='available'?'Available':state==='full'?'Fully booked':'Partially booked';
+      status.textContent=state==='past'?'Session passed':state==='available'?'Available':state==='full'?'Fully booked':'Partially booked';
       row.append(title,status);card.append(row);
       const hours=document.createElement('span');hours.className='vr-session-hours';
       hours.textContent=timeDisplay(period.from)+' – '+timeDisplay(period.to);
@@ -237,7 +266,7 @@
       card.append(details);
       const btn=document.createElement('button');btn.type='button';btn.className='vr-session-choose';
       btn.disabled=!canBook||!calendarReady;
-      btn.textContent=!canBook?'No hourly slots':state==='partial'?'Choose available hour':period.key==='night'?'Choose night hours':'Choose '+period.short;
+      btn.textContent=!canBook?(state==='past'?'Time passed':'No hourly slots'):state==='partial'?'Choose available hour':period.key==='night'?'Choose night hours':'Choose '+period.short;
       btn.addEventListener('click',()=>selectSession(period));
       card.append(btn);
       slotList.append(card);
@@ -248,12 +277,12 @@
 
   function validateTime() {
     const s=$('vrStart').value,e=$('vrEnd').value;
-    const clash=isClash(selected,s,e), valid=tmin(e)>tmin(s);
+    const clash=isClash(selected,s,e), valid=tmin(e)>tmin(s), past=hasStarted(selected,s);
     const hint=$('vrTimeHint');
-    hint.textContent=!valid?'End time must be later than start time.':clash?'This time overlaps an existing confirmed booking. Please choose another time.':'Selected time is available for a booking request.';
-    hint.dataset.kind=valid&&!clash?'success':'danger';
-    $('vrSubmit').disabled=!valid||clash||isSending||loadingCalendar||!calendarReady||!quoteReady;
-    return valid&&!clash;
+    hint.textContent=!valid?'End time must be later than start time.':past?'This start time has already passed in Malaysia. Please choose a future session.':clash?'This time overlaps an existing confirmed booking. Please choose another time.':'Selected time is available for a booking request.';
+    hint.dataset.kind=valid&&!clash&&!past?'success':'danger';
+    $('vrSubmit').disabled=!valid||clash||past||isSending||loadingCalendar||!calendarReady||!quoteReady;
+    return valid&&!clash&&!past;
   }
   async function refreshCalendar() {
     const room=$('vrRoom').value;
@@ -313,7 +342,16 @@
       applyPackage();
       notice('Your booking request has been received. EasyLatih will review and contact you. This is not yet a confirmed booking.','success');
     } catch(err) {
-      const msg=/already booked/i.test(err.message||'')?'This slot has just been booked. Please choose another time.':'Unable to submit right now. Please check the details or contact EasyLatih.';
+      const raw=String(err?.message||'');
+      const msg=/date or time|already passed|future session/i.test(raw)
+        ?'This date or start time has already passed in Malaysia. Please choose a future session.'
+        :/already booked/i.test(raw)
+        ?'This slot has just been booked. Please choose another time.'
+        :/too many requests/i.test(raw)
+        ?'Too many booking requests. Please contact EasyLatih to proceed.'
+        :/check your booking information/i.test(raw)
+        ?'Please check your name, contact details and number of participants.'
+        :'Submission could not be completed. Please try again or WhatsApp EasyLatih.';
       await refreshCalendar();
       notice(msg,'danger');
     } finally {isSending=false;validateTime();}
