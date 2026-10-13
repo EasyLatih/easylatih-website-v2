@@ -4,16 +4,17 @@
   const cfg=window.EASYLATIH_TRAINER_PORTAL||{};
   const escape=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const db=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
-  let rooms=[], bookings=[], busy=false;
+  let rooms=[], bookings=[], emails=[], busy=false;
   function banner(message,type='info'){const el=$('adminMessage');el.textContent=message;el.dataset.type=type;el.hidden=!message;}
   function readableDate(s){return s?new Date(s+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}):'';}
   async function load(){
-    const [roomResult,bookingResult]=await Promise.all([
+    const [roomResult,bookingResult,mailResult]=await Promise.all([
       db.from('venue_rooms').select('id,name,capacity,is_active').order('created_at'),
-      db.from('venue_bookings').select('*,venue_rooms(name)').order('created_at',{ascending:false}).limit(500)
+      db.from('venue_bookings').select('*,venue_rooms(name)').order('created_at',{ascending:false}).limit(500),
+      db.from('venue_email_outbox').select('id,booking_id,notification_kind,status,created_at').order('created_at',{ascending:false}).limit(1000)
     ]);
-    if(roomResult.error||bookingResult.error)throw roomResult.error||bookingResult.error;
-    rooms=roomResult.data||[];bookings=bookingResult.data||[];
+    if(roomResult.error||bookingResult.error||mailResult.error)throw roomResult.error||bookingResult.error||mailResult.error;
+    rooms=roomResult.data||[];bookings=bookingResult.data||[];emails=mailResult.data||[];
     $('roomCount').textContent=rooms.filter(r=>r.is_active).length;
     $('requestCount').textContent=bookings.length;
     $('pendingCount').textContent=bookings.filter(b=>b.status==='PENDING').length;
@@ -21,7 +22,7 @@
     const roomFilter=$('roomFilter'),chosen=roomFilter.value;
     roomFilter.innerHTML='<option value="">All rooms</option>'+rooms.map(r=>'<option value="'+escape(r.id)+'">'+escape(r.name)+'</option>').join('');
     roomFilter.value=rooms.some(r=>r.id===chosen)?chosen:'';
-    renderBookings();renderRooms();
+    renderBookings();renderRooms();renderMail();
   }
   function renderBookings(){
     const term=$('findBooking').value.toLowerCase().trim(),stat=$('statusFilter').value,room=$('roomFilter').value;
@@ -37,6 +38,26 @@
       '<td>'+escape(b.participants)+' pax <small>'+escape(b.notes||'—')+'</small></td>'+
       '<td class="actions">'+buttons+'</td></tr>';
     }).join('')||'<tr><td colspan="5" class="empty">No bookings match this filter.</td></tr>';
+  }
+  function renderMail(){
+    const sent=emails.filter(e=>e.status==='SENT').length;
+    const queued=emails.filter(e=>['PENDING','PROCESSING'].includes(e.status)).length;
+    const failed=emails.filter(e=>e.status==='FAILED');
+    $('mailSummary').textContent='Sent: '+sent+'  ·  Queued: '+queued+'  ·  Failed: '+failed.length+' (most recent 1,000 notifications)';
+    $('mailFailures').innerHTML=failed.map(m=>{
+      const b=bookings.find(x=>x.id===m.booking_id);
+      return '<div class="room-card"><div><strong>'+escape(b?.programme_title||m.booking_id)+'</strong><small>'+
+        escape(m.notification_kind.replaceAll('_',' '))+' · '+escape(b?.applicant_name||'')+'</small></div>'+
+        '<button class="danger" type="button" data-email-retry="'+escape(m.id)+'">Retry Email</button></div>';
+    }).join('')||'<p style="font-size:.84rem;color:#48785c">No failed email notifications.</p>';
+  }
+  async function retryMail(id){
+    if(busy)return;
+    busy=true;banner('Retrying notification…');
+    const {data,error}=await db.rpc('venue_retry_failed_mail',{p_id:id});
+    busy=false;
+    if(error||!data){banner('Unable to retry this notification. Please refresh and try again.','danger');return;}
+    banner('Notification queued again for sending.','success');await load();
   }
   function renderRooms(){
     $('roomCards').innerHTML=rooms.map(r=>'<div class="room-card"><div><strong>'+escape(r.name)+'</strong><small>Capacity: '+escape(r.capacity)+' pax · '+(r.is_active?'Active':'Inactive')+'</small></div>'+
@@ -78,6 +99,7 @@
     $('refreshData').addEventListener('click',()=>load().catch(e=>banner(e.message,'danger')));
     ['statusFilter','roomFilter','findBooking'].forEach(id=>$(id).addEventListener(id==='findBooking'?'input':'change',renderBookings));
     $('bookingRows').addEventListener('click',e=>{const btn=e.target.closest('button[data-book]');if(btn)changeStatus(btn.dataset.book,btn.dataset.status);});
+    $('mailFailures').addEventListener('click',e=>{const btn=e.target.closest('button[data-email-retry]');if(btn)retryMail(btn.dataset.emailRetry);});
     $('roomCards').addEventListener('click',e=>{const btn=e.target.closest('button[data-room]');if(btn)changeRoom(btn.dataset.room,btn.dataset.roomAction);});
     $('addRoomForm').addEventListener('submit',async e=>{
       e.preventDefault();if(busy)return;
