@@ -42,6 +42,12 @@ td.actions{white-space:nowrap}td.actions button{margin:2px}
       <div class="table-scroll"><table><thead><tr><th>Programme</th><th>Room / Date</th><th>Applicant</th><th>Participants</th><th>Action</th></tr></thead><tbody id="bookingRows"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
       <p style="font-size:.78rem;margin:14px 0 0">Only confirmed bookings block the public calendar. The database prevents overlapping confirmed bookings for the same room.</p>
     </section>
+    <section class="panel" aria-labelledby="emailHeading">
+      <h2 id="emailHeading">Email Notifications</h2>
+      <p style="font-size:.86rem">Booking enquiries notify sales@easylatih.my and the customer. Confirmed, rejected or cancelled requests automatically notify the customer. Failed messages can be retried below.</p>
+      <div id="mailSummary" class="notice">Loading email delivery status…</div>
+      <div id="mailFailures" aria-live="polite"></div>
+    </section>
     <section class="panel"><h2>Room Management</h2>
       <form id="addRoomForm" class="room-create"><input id="newRoom" placeholder="New room name" aria-label="Room name" minlength="2" maxlength="120" required><input id="newCapacity" type="number" aria-label="Capacity" min="1" max="200" value="26" required style="max-width:125px"><button type="submit" class="primary">+ Add Room</button></form>
       <div id="roomCards"></div>
