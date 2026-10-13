@@ -54,9 +54,12 @@
     return covered;
   }
   function sessionState(day,period) {
-    if(hasStarted(day,String(Math.floor(period.to/60)).padStart(2,'0')+':00'))return 'past';
     const covered=coveredMinutes(day,period.from,period.to);
-    return covered===0?'available':covered>=period.to-period.from?'full':'partial';
+    if(covered>=period.to-period.from)return 'full';
+    // All rentable hours have already started, even if the period itself ends later.
+    const latestStart=String(Math.floor((period.to-60)/60)).padStart(2,'0')+':00';
+    if(hasStarted(day,latestStart))return 'past';
+    return covered===0?'available':'partial';
   }
   function findFreeHour(day,from,to) {
     for(let start=from;start+60<=to;start+=60) {
@@ -207,7 +210,7 @@
     for(let day=1;day<=days;day++) {
       const d=new Date(month.getFullYear(),month.getMonth(),day),id=iso(d);
       const statuses=SESSION_PERIODS.map(p=>sessionState(id,p));
-      const overall=statuses.every(x=>x==='full')?'full':statuses.every(x=>x==='available')?'available':'partial';
+      const overall=statuses.every(x=>x==='full')?'full':statuses.every(x=>x==='past')?'past':statuses.every(x=>x==='available')?'available':'partial';
       const btn=document.createElement('button');
       btn.type='button';btn.className='vr-day';
       const number=document.createElement('span');
