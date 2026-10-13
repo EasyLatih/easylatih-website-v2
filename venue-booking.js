@@ -23,8 +23,8 @@
   function dayBookings(day) { return occupied.filter(b=>b.booking_date===day); }
   function isClash(day,start,end) { return dayBookings(day).some(b=>tmin(b.start_time)<tmin(end) && tmin(b.end_time)>tmin(start)); }
   function coveredMinutes(day) {
-    let ranges = dayBookings(day).map(b=>[Math.max(480,tmin(b.start_time)),Math.min(1200,tmin(b.end_time))]).filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
-    let sum=0, end=480;
+    let ranges = dayBookings(day).map(b=>[Math.max(540,tmin(b.start_time)),Math.min(1200,tmin(b.end_time))]).filter(([a,b])=>b>a).sort((a,b)=>a[0]-b[0]);
+    let sum=0, end=540;
     for (const [a,b] of ranges) { sum+=Math.max(0,b-Math.max(a,end)); end=Math.max(end,b); }
     return sum;
   }
@@ -89,7 +89,7 @@
     for(let i=0;i<offset;i++) { const blank=document.createElement('span'); blank.className='vr-empty';grid.append(blank); }
     for(let day=1;day<=days;day++) {
       const d=new Date(month.getFullYear(),month.getMonth(),day);
-      const id=iso(d), n=dayBookings(id).length, full=coveredMinutes(id)>=720;
+      const id=iso(d), n=dayBookings(id).length, full=coveredMinutes(id)>=660;
       const btn=document.createElement('button');
       btn.type='button';btn.className='vr-day';
       btn.textContent=String(day);
@@ -106,7 +106,7 @@
     $('vrChosenDate').textContent=parse(selected).toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     const slotList=$('vrOccupied');slotList.replaceChildren();
     let b=dayBookings(selected);
-    if(!b.length) {const x=document.createElement('span');x.className='vr-slot-free';x.textContent='No confirmed bookings — all operating hours available.';slotList.append(x);}
+    if(!b.length) {const x=document.createElement('span');x.className='vr-slot-free';x.textContent='No confirmed bookings — available packages can be requested.';slotList.append(x);}
     else b.forEach(item=>{const x=document.createElement('span');x.className='vr-slot';x.textContent=pretty(item.start_time)+' – '+pretty(item.end_time);slotList.append(x);});
     refreshQuote();
   }
@@ -131,7 +131,7 @@
       db.from('venue_public_holidays').select('holiday_date,name').gte('holiday_date',first).lte('holiday_date',last)
     ]);
     if(thisCalendar!==calendarSerial)return;
-    holidays=new Map((!holidayError?holidayData:[]||[]).map(h=>[h.holiday_date,h.name]));
+    holidays=new Map((!holidayError?(holidayData||[]):[]).map(h=>[h.holiday_date,h.name]));
     loadingCalendar=false;
     if(error) { occupied=[];notice('Unable to check availability. Please try again or contact us.', 'danger'); }
     else {occupied=data||[]; calendarReady=true; notice('');}
