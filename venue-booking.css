@@ -1,0 +1,41 @@
+/* EasyLatih venue booking: scoped to the venue rental page */
+#venueBookingApp {--vr-navy:#003e6f;--vr-orange:#bb4800;--vr-line:#dce4ea;--vr-ink:#233c50;scroll-margin-top:120px}
+#venueBookingApp .vr-shell {display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.92fr);gap:24px;align-items:start}
+#venueBookingApp .vr-card {border:1px solid var(--vr-line);border-radius:14px;background:#fff;box-shadow:0 12px 38px rgba(0,62,111,.06);padding:26px}
+#venueBookingApp .vr-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px}
+#venueBookingApp h2,#venueBookingApp h3 {margin:0 0 9px}
+#venueBookingApp .vr-muted {color:#60758a;font-size:.9rem;line-height:1.6}
+#venueBookingApp .vr-kicker {font-size:.76rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--vr-orange);margin-bottom:6px}
+#venueBookingApp .vr-monthbar {display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 16px}
+#venueBookingApp .vr-monthbar strong {font-size:1.1rem;color:var(--vr-navy)}
+#venueBookingApp .vr-nav {border:1px solid var(--vr-line);border-radius:8px;background:#fff;width:37px;height:37px;cursor:pointer;color:var(--vr-navy);font-size:1.4rem}
+#venueBookingApp .vr-week,#venueBookingApp .vr-calendar {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
+#venueBookingApp .vr-week {font-size:.77rem;color:#60758a;text-align:center;font-weight:600;margin-bottom:8px}
+#venueBookingApp .vr-day {aspect-ratio:1.12;min-height:38px;display:grid;place-items:center;border:1px solid transparent;border-radius:9px;background:#eaf8f0;color:#14633c;cursor:pointer;font-weight:700}
+#venueBookingApp .vr-day[data-state=partial]{background:#fff3db;color:#8b5100}
+#venueBookingApp .vr-day[data-state=full]{background:#fce9e7;color:#a03027}
+#venueBookingApp .vr-day.selected {border:2px solid var(--vr-navy);box-shadow:0 0 0 2px #c8e0f2}
+#venueBookingApp .vr-day:disabled {opacity:.3;cursor:not-allowed}
+#venueBookingApp .vr-legend {display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:#60758a;margin-top:17px}
+#venueBookingApp .vr-dot {display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+#venueBookingApp .vr-dot.green{background:#49b887}#venueBookingApp .vr-dot.amber{background:#e2ae55}#venueBookingApp .vr-dot.red{background:#db8277}
+#venueBookingApp .vr-slots {border-top:1px solid var(--vr-line);margin-top:19px;padding-top:18px}
+#venueBookingApp .vr-date-title {font-weight:700;color:var(--vr-navy);margin:5px 0 8px}
+#venueBookingApp .vr-chipset {display:flex;flex-wrap:wrap;gap:8px}
+#venueBookingApp .vr-slot {background:#fce9e7;color:#9a332e;font-weight:600;padding:7px 10px;border-radius:7px;font-size:.82rem}
+#venueBookingApp .vr-slot-free {color:#267b52;font-size:.85rem}
+#venueBookingApp .vr-form-grid {display:grid;grid-template-columns:1fr 1fr;gap:13px}
+#venueBookingApp .vr-field {margin-bottom:15px;min-width:0}
+#venueBookingApp label {display:block;font-weight:650;color:var(--vr-navy);margin-bottom:6px;font-size:.86rem}
+#venueBookingApp input,#venueBookingApp select,#venueBookingApp textarea {display:block;width:100%;min-width:0;padding:11px 12px;border:1px solid #c9d7e2;border-radius:8px;font:inherit;color:#233c50;background:#fff}
+#venueBookingApp input:focus,#venueBookingApp select:focus,#venueBookingApp textarea:focus {outline:2px solid #bad9ef;outline-offset:1px}
+#venueBookingApp .vr-hint {font-size:.8rem;margin:8px 0;color:#64788b}
+#venueBookingApp .vr-hint[data-kind=success]{color:#167447}#venueBookingApp .vr-hint[data-kind=danger]{color:#ae3426}
+#venueBookingApp .vr-submit {background:var(--vr-orange);color:#fff;border:0;border-radius:9px;display:block;width:100%;font-weight:700;font-size:1rem;padding:13px;cursor:pointer}
+#venueBookingApp .vr-submit:disabled {opacity:.45;cursor:not-allowed}
+#venueBookingApp .vr-notice {border:1px solid #cbd9e5;border-radius:8px;background:#f0f6fa;padding:12px 14px;font-size:.9rem;margin-top:14px}
+#venueBookingApp .vr-notice[data-kind=success]{background:#ecfaf1;border-color:#9bd4b1;color:#16613b}
+#venueBookingApp .vr-notice[data-kind=danger]{background:#fff1ef;border-color:#e9b1a8;color:#9d3227}
+#venueBookingApp .vr-hp {position:absolute;left:-99999px;opacity:0;pointer-events:none}
+@media(max-width:950px){#venueBookingApp .vr-shell{grid-template-columns:1fr}}
+@media(max-width:540px){#venueBookingApp .vr-card{padding:19px}#venueBookingApp .vr-form-grid{grid-template-columns:1fr}#venueBookingApp .vr-week,#venueBookingApp .vr-calendar{gap:4px}#venueBookingApp .vr-day{min-height:32px;font-size:.85rem}}
