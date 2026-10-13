@@ -91,6 +91,17 @@
       } else {
         pkg.selectedIndex=-1;
       }
+    } else if(previous==='DAY_HOURLY'||previous==='NIGHT') {
+      const from=previous==='DAY_HOURLY'?540:1200;
+      const to=previous==='DAY_HOURLY'?1020:1440;
+      const st=$('vrStart').value,en=$('vrEnd').value;
+      if(hasStarted(selected,st)||isClash(selected,st,en)){
+        const next=findFreeHour(selected,from,to);
+        if(next){
+          $('vrStart').value=next;
+          adjustHourlyEnd();
+        }
+      }
     }
     pkg.disabled=!Object.values(kinds).some(Boolean);
     return kinds;
