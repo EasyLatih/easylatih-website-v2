@@ -16,7 +16,7 @@
   const parse = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
   const tmin = s => Number(s.slice(0,2))*60+Number(s.slice(3,5));
   const pretty = s => s.slice(0,5);
-  let month = new Date(today.getFullYear(),today.getMonth(),1), selected = iso(today), rooms=[], occupied=[], isSending=false, loadingCalendar=false, calendarReady=false;
+  let month = new Date(today.getFullYear(),today.getMonth(),1), selected = iso(today), rooms=[], occupied=[], isSending=false, loadingCalendar=false, calendarReady=false, quoteReady=false, quoteSerial=0, quoteAmount=null, holidays=new Map(), calendarSerial=0;
   function notice(text, kind='info') {
     const el=$('vrNotice'); el.textContent=text; el.dataset.kind=kind; el.hidden=!text;
   }
@@ -28,6 +28,59 @@
     for (const [a,b] of ranges) { sum+=Math.max(0,b-Math.max(a,end)); end=Math.max(end,b); }
     return sum;
   }
+
+  const ringgit=value=>'RM'+Number(value).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  async function loadRates() {
+    const {data,error}=await db.from('venue_rental_rates').select('code,weekday_price,weekend_holiday_price');
+    if(error||!data?.length)return;
+    const codes={HALF_DAY:['vrRateHalfWeek','vrRateHalfEnd'],FULL_DAY:['vrRateFullWeek','vrRateFullEnd'],NIGHT:['vrRateNightWeek','vrRateNightEnd']};
+    data.forEach(row=>{
+      const ids=codes[row.code];
+      if(ids){$(ids[0]).textContent=ringgit(row.weekday_price);$(ids[1]).textContent=ringgit(row.weekend_holiday_price);}
+    });
+  }
+  function applyPackage(){
+    const pkg=$('vrPackage').value;
+    const st=$('vrStart'),en=$('vrEnd');
+    let startTimes=[],endTimes=[];
+    if(pkg==='HALF_MORNING'){startTimes=['09:00'];endTimes=['13:00'];}
+    else if(pkg==='HALF_AFTERNOON'){startTimes=['13:00'];endTimes=['17:00'];}
+    else if(pkg==='FULL'){startTimes=['09:00'];endTimes=['17:00'];}
+    else{startTimes=['17:00','18:00','19:00'];endTimes=['18:00','19:00','20:00'];}
+    const fill=(el,times,selected)=>{
+      el.replaceChildren();
+      times.forEach(t=>{const op=document.createElement('option');op.value=t;op.textContent=t;if(t===selected)op.selected=true;el.append(op);});
+    };
+    fill(st,startTimes,startTimes[0]);fill(en,endTimes,endTimes[0]);
+    st.disabled=pkg!=='NIGHT';en.disabled=pkg!=='NIGHT';
+    $('vrTimeHint').textContent='Select a date to check the estimated fee.';
+    refreshQuote();
+  }
+  async function refreshQuote(){
+    const thisQuote=++quoteSerial;
+    quoteReady=false;quoteAmount=null;
+    const start=$('vrStart').value,end=$('vrEnd').value;
+    $('vrEstimated').textContent='Checking price…';
+    $('vrPriceType').textContent='Subject to confirmation. No online payment.';
+    validateTime();
+    if(!selected||!start||!end||tmin(end)<=tmin(start)){
+      $('vrEstimated').textContent='Select a valid time';
+      return;
+    }
+    const {data,error}=await db.rpc('venue_get_quote',{p_date:selected,p_start:start,p_end:end});
+    if(thisQuote!==quoteSerial)return;
+    if(error||!data||!Number.isFinite(Number(data.estimated_price))){
+      $('vrEstimated').textContent='Unable to calculate';
+      $('vrPriceType').textContent='Please contact EasyLatih for rates.';
+      validateTime();return;
+    }
+    quoteReady=true;quoteAmount=Number(data.estimated_price);
+    $('vrEstimated').textContent=ringgit(quoteAmount);
+    const isHoliday=holidays.has(selected);
+    $('vrPriceType').textContent=(isHoliday?'Public holiday · ':data.day_type==='WEEKEND_OR_HOLIDAY'?'Weekend / holiday · ':'Weekday · ')+data.hours+' hour(s). Subject to confirmation.';
+    validateTime();
+  }
+
   function renderCalendar() {
     const grid=$('vrCalendar');
     grid.replaceChildren();
@@ -55,7 +108,7 @@
     let b=dayBookings(selected);
     if(!b.length) {const x=document.createElement('span');x.className='vr-slot-free';x.textContent='No confirmed bookings — all operating hours available.';slotList.append(x);}
     else b.forEach(item=>{const x=document.createElement('span');x.className='vr-slot';x.textContent=pretty(item.start_time)+' – '+pretty(item.end_time);slotList.append(x);});
-    validateTime();
+    refreshQuote();
   }
   function validateTime() {
     const s=$('vrStart').value,e=$('vrEnd').value;
@@ -63,16 +116,22 @@
     const hint=$('vrTimeHint');
     hint.textContent=!valid?'End time must be later than start time.':clash?'This time overlaps an existing confirmed booking. Please choose another time.':'Selected time is available for a booking request.';
     hint.dataset.kind=valid&&!clash?'success':'danger';
-    $('vrSubmit').disabled=!valid||clash||isSending||loadingCalendar||!calendarReady;
+    $('vrSubmit').disabled=!valid||clash||isSending||loadingCalendar||!calendarReady||!quoteReady;
     return valid&&!clash;
   }
   async function refreshCalendar() {
     const room=$('vrRoom').value;
     if(!room) return;
-    loadingCalendar=true;calendarReady=false;renderCalendar();$('vrSubmit').disabled=true;
+    const thisCalendar=++calendarSerial;
+    loadingCalendar=true;calendarReady=false;quoteReady=false;renderCalendar();$('vrSubmit').disabled=true;
     notice('Checking available dates…');
     const first=iso(month), last=iso(new Date(month.getFullYear(),month.getMonth()+1,0));
-    const {data,error}=await db.rpc('venue_get_calendar',{p_room_id:room,p_from:first,p_to:last});
+    const [{data,error},{data:holidayData,error:holidayError}]=await Promise.all([
+      db.rpc('venue_get_calendar',{p_room_id:room,p_from:first,p_to:last}),
+      db.from('venue_public_holidays').select('holiday_date,name').gte('holiday_date',first).lte('holiday_date',last)
+    ]);
+    if(thisCalendar!==calendarSerial)return;
+    holidays=new Map((!holidayError?holidayData:[]||[]).map(h=>[h.holiday_date,h.name]));
     loadingCalendar=false;
     if(error) { occupied=[];notice('Unable to check availability. Please try again or contact us.', 'danger'); }
     else {occupied=data||[]; calendarReady=true; notice('');}
@@ -88,15 +147,18 @@
     for(const room of rooms) { const op=document.createElement('option');op.value=room.id;op.textContent=room.name+' (up to '+room.capacity+' pax)';sel.append(op);}
     sel.addEventListener('change',()=>{ const room=rooms.find(r=>r.id===sel.value);if(room)$('vrPax').max=room.capacity;refreshCalendar();});
     $('vrPax').max=rooms[0].capacity;
+    await loadRates();
+    applyPackage();
     await refreshCalendar();
   }
   $('vrPrevious').addEventListener('click',()=>{const prev=new Date(month.getFullYear(),month.getMonth()-1,1);if(prev<new Date(today.getFullYear(),today.getMonth(),1))return;month=prev;selected=iso(month<today?today:month);refreshCalendar();});
   $('vrNext').addEventListener('click',()=>{const next=new Date(month.getFullYear(),month.getMonth()+1,1);if(next>new Date(today.getFullYear(),today.getMonth()+12,1))return;month=next;selected=iso(month);refreshCalendar();});
-  $('vrStart').addEventListener('change',validateTime);
-  $('vrEnd').addEventListener('change',validateTime);
+  $('vrPackage').addEventListener('change',applyPackage);
+  $('vrStart').addEventListener('change',refreshQuote);
+  $('vrEnd').addEventListener('change',refreshQuote);
   $('vrForm').addEventListener('submit',async e=>{
     e.preventDefault();
-    if(isSending||!calendarReady||!validateTime())return;
+    if(isSending||!calendarReady||!quoteReady||!validateTime())return;
     const r=rooms.find(x=>x.id===$('vrRoom').value);
     const pax=Number($('vrPax').value);
     if(!r||!Number.isInteger(pax)||pax<1||pax>r.capacity){notice('Number of participants exceeds room capacity.','danger');return;}
@@ -112,6 +174,7 @@
       if(error)throw error;
       $('vrForm').reset();
       $('vrRoom').value=r.id;
+      applyPackage();
       notice('Your booking request has been received. EasyLatih will review and contact you. This is not yet a confirmed booking.','success');
     } catch(err) {
       const msg=/already booked/i.test(err.message||'')?'This slot has just been booked. Please choose another time.':'Unable to submit right now. Please check the details or contact EasyLatih.';
