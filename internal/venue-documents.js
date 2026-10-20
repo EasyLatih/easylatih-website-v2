@@ -88,13 +88,28 @@ function renderPreview(p,onlyWhenVisible){const root=$('vdLocalPreview');if(!roo
  '<p><b>Rental:</b> '+RM(p.rate)+' · <b>Add-ons:</b> '+RM(p.add_ons)+' · <b>Discount:</b> '+RM(p.discount)+' · <b>Tax:</b> '+RM(p.tax)+'</p>'+
  '<h3>Total Payable: '+RM(p.total??price(p))+'</h3><p>Full payment due by '+E(dateMY(dueDate(p.booking_date)))+'.<br><b>MAYBANK:</b> 5562 2647 8218 · EASY LATIH CONSULTANCY</p>'+
  '<p><small>Full Terms & Conditions, including 100% refund for cancellation before the rental date (no refund on the day), are in the approved Google Docs invoice template. This is a quick content preview; use Google Docs Draft for the final layout.</small></p></div>';}
-async function save(b){if(busy)return null;const p=viewPayload();if(!p.client_name||!p.booking_date||p.total<0)return notify('Complete all required fields.','bad');busy=true;try{
- const old=invoiceFor(b);
- if(old?.status==='FINAL')throw Error('Finalized invoices cannot be edited.');
- const q=old?db.from('venue_documents').update({payload:p,updated_at:new Date().toISOString()}).eq('id',old.id).eq('status','DRAFT').select().single():
- db.from('venue_documents').insert({booking_id:b.id,document_type:'INVOICE',status:'DRAFT',payload:p}).select().single();
- const {data,error}=await q;if(error)throw error;notify('Draft saved. Final invoice number has NOT been allocated.');await load();openBooking(b.id);return data;
- }catch(e){notify('Save error: '+e.message,true);return null;}finally{busy=false}}
+async function save(b){
+ if(busy)return null;
+ const p=viewPayload();
+ if(!p.client_name||!p.booking_date||p.total<0)return notify('Complete all required fields.',true);
+ busy=true;
+ try{
+  const old=invoiceFor(b);
+  if(old?.status==='FINAL')throw Error('Finalized invoices cannot be edited.');
+  const changed=!old||JSON.stringify(old.payload)!==JSON.stringify(p);
+  if(old&&!changed){notify('Draft is already saved.');return old;}
+  const clearDoc=Boolean(old?.google_doc_id);
+  if(clearDoc&&!confirm('Details have changed. Generate a fresh Google Docs draft? Your previous Google Doc remains in Drive, but its edits will NOT be used for the invoice. Click Cancel to keep the original.'))return null;
+  const q=old?db.from('venue_documents').update({
+   payload:p,google_doc_id:null,google_doc_url:null,updated_at:new Date().toISOString()
+  }).eq('id',old.id).eq('status','DRAFT').select().single():
+  db.from('venue_documents').insert({booking_id:b.id,document_type:'INVOICE',status:'DRAFT',payload:p}).select().single();
+  const {data,error}=await q;
+  if(error)throw error;
+  notify('Draft saved. Invoice running number not allocated yet.');
+  await load();openBooking(b.id);refreshActions();return data;
+ }catch(e){notify('Save error: '+e.message,true);return null;}finally{busy=false;}
+}
 async function bridge(action,documentId,more={}){const {data,error}=await db.functions.invoke('venue-documents',{body:{action,documentId,...more}});if(error){let msg=error.message;try{const body=await error.context?.json();msg=body?.error||msg}catch{}throw Error(msg)}if(!data?.ok)throw Error(data?.error||'Document service unavailable.');return data}
 async function generate(b){let doc=invoiceFor(b);if(!doc||doc.status!=='DRAFT'){doc=await save(b);if(!doc)return;}else{doc=await save(b);if(!doc)return;}if(busy)return;busy=true;try{notify('Creating Google Docs draft…');const res=await bridge('draft',doc.id);notify('Google Docs draft ready. Open the link to edit it.');await load();openBooking(b.id);if(res.googleDocUrl)window.open(res.googleDocUrl,'_blank','noopener');}catch(e){notify('Google Docs draft: '+e.message,true);}finally{busy=false;}}
 async function finalize(b){let doc=invoiceFor(b);if(!doc||doc.status!=='DRAFT'){notify('Save a draft first.');return;}const saved=await save(b);if(!saved)return;if(!confirm('Finalize invoice? A unique INVOICE running number will be taken from EasyLatih V2 STAGING. The official PDF cannot be edited.'))return;busy=true;try{notify('Finalizing invoice…');const r=await bridge('finalize',saved.id);notify('Invoice finalized: '+r.number);await load();openBooking(b.id);}catch(e){notify('Finalize error: '+e.message,true);}finally{busy=false;}}
