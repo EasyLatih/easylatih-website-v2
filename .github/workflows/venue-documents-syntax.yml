@@ -1,0 +1,22 @@
+name: Venue Documents JavaScript Syntax
+on:
+  push:
+    paths:
+      - "internal/venue-documents.js"
+      - "apps-script/VenueDocumentsBridge.gs"
+      - ".github/workflows/venue-documents-syntax.yml"
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check venue admin module
+        run: node --check internal/venue-documents.js
+      - name: Check Google Apps Script V8 module
+        run: |
+          cp apps-script/VenueDocumentsBridge.gs /tmp/VenueDocumentsBridge.js
+          node --check /tmp/VenueDocumentsBridge.js
