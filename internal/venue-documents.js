@@ -19,9 +19,27 @@ const fields=[
  ['tax','Tax (if applicable, RM)','number'],['inclusions','Package Inclusions (one per line)','textarea'],
  ['complimentary','Complimentary Items (leave blank if none)','textarea'],['notes','Remarks','textarea']
 ];
-let bookings=[],docs=[],selected=null,busy=false;
-const invoiceFor=b=>docs.find(d=>d.booking_id===b.id&&d.document_type==='INVOICE');
-const receiptFor=b=>docs.find(d=>d.booking_id===b.id&&d.document_type==='RECEIPT');
+let bookings=[],docs=[],selected=null,busy=false,draftLines=[];
+const hasBooking=(d,id)=>d.booking_id===id||(Array.isArray(d.booking_ids)&&d.booking_ids.includes(id));
+const invoiceFor=b=>docs.find(d=>d.document_type==='INVOICE'&&hasBooking(d,b.id));
+const receiptFor=b=>docs.find(d=>d.document_type==='RECEIPT'&&hasBooking(d,b.id));
+const lineFromBooking=b=>({
+ booking_id:b.id,booking_date:b.booking_date,
+ start_time:String(b.start_time||'').slice(0,5),end_time:String(b.end_time||'').slice(0,5),
+ session:String(b.booking_package||'Room Rental').replaceAll('_',' '),
+ programme_title:b.programme_title,rate:Number(b.estimated_price||0)
+});
+const ordered=items=>[...items].sort((a,b)=>String(a.booking_date).localeCompare(String(b.booking_date)));
+const isConsecutive=lines=>{const a=ordered(lines);if(a.length<2)return true;return a.every((x,i)=>i===0||Date.parse(x.booking_date+'T12:00:00Z')-Date.parse(a[i-1].booking_date+'T12:00:00Z')===86400000)};
+const activeGroup=()=>ordered(draftLines).filter(Boolean);
+function possibleGroup(b){
+ const current=invoiceFor(b);
+ return ordered(bookings.filter(other=>other.id===b.id||
+ (other.room_id===b.room_id&&String(other.applicant_email||'').trim().toLowerCase()===String(b.applicant_email||'').trim().toLowerCase()
+ &&!['CANCELLED','REJECTED'].includes(other.status)
+ &&(!invoiceFor(other)||invoiceFor(other)?.id===current?.id))));
+}
+
 function notify(msg,bad=false){const m=$('vdNotice');m.textContent=msg;m.hidden=false;m.style.background=bad?'#fff0ee':'#eaf6ed';m.style.color=bad?'#9b2823':'#176444';}
 function initial(b){return{
  client_name:b.company_name||b.applicant_name,client_address:'',
@@ -32,20 +50,41 @@ function initial(b){return{
  inclusions:'Training room (maximum 26 pax)\nTables & chairs\nAir-conditioned room\nLCD projector & screen\nWhiteboard & markers\nWi-Fi access',
  complimentary:'',notes:'',email:b.applicant_email,phone:b.applicant_phone
 };}
-const price=p=>money(p.rate)+money(p.add_ons)-money(p.discount)+money(p.tax);
-function viewPayload(){const data={};for(const [id] of fields){const el=$('vd_'+id);if(el)data[id]=el.value;}data.total=Math.max(0,price(data));return data;}
+const price=p=>(Array.isArray(p.lines)&&p.lines.length>1?p.lines.reduce((n,l)=>n+money(l.rate),0):money(p.rate))+money(p.add_ons)-money(p.discount)+money(p.tax);
+function viewPayload(){
+ const data={};for(const [id] of fields){const el=$('vd_'+id);if(el)data[id]=el.value;}
+ if(draftLines.length>1){
+  data.lines=ordered(draftLines).map(l=>({...l,rate:money($('vdDay_'+l.booking_id)?.value??l.rate)}));
+  data.rate=data.lines.reduce((n,l)=>n+money(l.rate),0);
+  data.booking_date=data.lines[0].booking_date;
+  data.start_time=data.lines[0].start_time;
+  data.end_time=data.lines[0].end_time;
+  data.session=data.lines.length+'-day rental';
+ }else{delete data.lines;}
+ data.total=Math.max(0,price(data));
+ return data;
+}
 function editorMarkup(p,doc,b){
  const disabled=doc?.status==='FINAL'?'disabled':'';
+ const multi=draftLines.length>1;
+ const group=ordered(draftLines);
+ const groupSelector=doc?.status==='FINAL'?'':('<div class="vd-group"><strong>Gabungkan Tarikh Dalam Satu Invoice</strong><small>Pilih tempahan pelanggan yang sama. Tarikh mesti berturut-turut; satu invoice sahaja.</small><div class="vd-group-options">'+
+ possibleGroup(b).map(x=>'<label><input type="checkbox" class="vdGroupDate" value="'+E(x.id)+'" '+(group.some(l=>l.booking_id===x.id)?'checked':'')+'><span>'+E(dateMY(x.booking_date))+' · '+E(x.start_time?.slice(0,5))+'–'+E(x.end_time?.slice(0,5))+' · '+RM(x.estimated_price)+'</span></label>').join('')+
+ '</div><button type="button" id="vdApplyGroup">Apply Selected Dates</button></div>');
+ const lineEditor=multi?'<div class="vd-group"><strong>Daily Rental Breakdown</strong><small>Edit each day rate before finalizing.</small><div class="vd-day-lines">'+group.map((l,i)=>
+ '<label><span>Day '+(i+1)+': '+E(dateMY(l.booking_date))+' · '+E(l.start_time)+'–'+E(l.end_time)+' · '+E(l.session)+'</span><input id="vdDay_'+E(l.booking_id)+'" type="number" step="0.01" min="0" value="'+E(l.rate)+'" '+disabled+'></label>'
+ ).join('')+'</div></div>':'';
  const cell=([id,label,type])=>{
   let val=p[id]??'';
-  const input=type==='textarea'?'<textarea '+disabled+' id="vd_'+id+'" rows="'+(id==='inclusions'?5:2)+'">'+E(val)+'</textarea>':
-   '<input '+disabled+' id="vd_'+id+'" type="'+type+'" value="'+E(val)+'" '+(type==='number'?'min="0" step="0.01"':'')+'>';
+  const lock=(disabled||(multi&&['booking_date','start_time','end_time','session','rate'].includes(id))?'disabled':'');
+  const input=type==='textarea'?'<textarea '+lock+' id="vd_'+id+'" rows="'+(id==='inclusions'?5:2)+'">'+E(val)+'</textarea>':
+   '<input '+lock+' id="vd_'+id+'" type="'+type+'" value="'+E(val)+'" '+(type==='number'?'min="0" step="0.01"':'')+'>';
   return '<label class="vd-field"><span>'+E(label)+'</span>'+input+'</label>';
  };
  const s=doc?.status||'NEW';
  return '<div class="vd-head"><div><strong>INVOICE · '+E(b.programme_title)+'</strong><small>'+E(dateMY(b.booking_date))+' · '+E(b.applicant_name)+'</small></div><span class="vd-pill '+(s==='FINAL'?'final':'')+'">'+E(s)+'</span></div>'+
- '<div class="vd-fields">'+fields.map(cell).join('')+'</div>'+
- '<div class="vd-total">Total Payable: <strong id="vdTotal">'+RM(p.total??price(p))+'</strong><small>Full payment due by '+E(dateMY(dueDate(p.booking_date)))+'</small></div>'+
+ groupSelector+lineEditor+'<div class="vd-fields">'+fields.map(cell).join('')+'</div>'+
+ '<div class="vd-total">Total Payable: <strong id="vdTotal">'+RM(p.total??price(p))+'</strong><small>Full payment due by '+E(dateMY(dueDate(multi?group[0].booking_date:p.booking_date)))+'</small></div>'+
  '<div class="vd-buttons">'+(s!=='FINAL'?'<button type="button" id="vdSave" class="primary">Save Draft</button><button type="button" id="vdGenerate">Generate / Open Google Docs Draft</button><button type="button" id="vdFinalize" class="primary">Finalize Invoice</button>':'<button type="button" id="vdPayment" class="primary">Verify Full Payment</button>')+
  '<button type="button" id="vdPreview">Preview</button>'+
  (doc?.google_doc_url?'<a class="vd-link" target="_blank" rel="noopener" href="'+E(doc.google_doc_url)+'">Open Google Doc ↗</a>':'')+
@@ -69,7 +108,31 @@ async function load(){const [a,b]=await Promise.all([
  db.from('venue_documents').select('*').order('created_at',{ascending:false}).limit(1000)
 ]);if(a.error||b.error)throw a.error||b.error;bookings=a.data||[];docs=b.data||[];renderTable();}
 function wireEditor(b,d){
- if(!d||d.status!=='FINAL')fields.forEach(([id])=>{const el=$('vd_'+id);el?.addEventListener('input',()=>{const p=viewPayload();$('vdTotal').textContent=RM(p.total);renderPreview(p,true);});});
+ if(!d||d.status!=='FINAL'){
+ const recalc=()=>{const p=viewPayload();$('vdTotal').textContent=RM(p.total);renderPreview(p,true);};
+ fields.forEach(([id])=>$('vd_'+id)?.addEventListener('input',recalc));
+ draftLines.forEach(l=>$('vdDay_'+l.booking_id)?.addEventListener('input',recalc));
+ $('vdApplyGroup')?.addEventListener('click',()=>{
+  const ids=[...document.querySelectorAll('.vdGroupDate:checked')].map(x=>x.value);
+  const matches=ordered(ids.map(id=>bookings.find(x=>x.id===id)).filter(Boolean));
+  if(!matches.length||!matches.some(x=>x.id===b.id))return notify('Primary booking must stay selected.',true);
+  if(matches.length>31||!isConsecutive(matches))return notify('Please select consecutive dates only (maximum 31 days).',true);
+  const current=viewPayload();
+  const rates=new Map(draftLines.map(l=>[l.booking_id,l]));
+  draftLines=matches.map(x=>rates.get(x.id)||lineFromBooking(x));
+  const p={...current};
+  if(draftLines.length>1){
+   p.lines=draftLines;p.rate=draftLines.reduce((n,l)=>n+money(l.rate),0);
+   p.booking_date=draftLines[0].booking_date;p.start_time=draftLines[0].start_time;p.end_time=draftLines[0].end_time;
+   p.session=draftLines.length+'-day rental';
+  }else{
+   delete p.lines;
+   const first=draftLines[0];p.booking_date=first.booking_date;p.start_time=first.start_time;p.end_time=first.end_time;p.session=first.session;p.rate=first.rate;
+  }
+  p.total=Math.max(0,price(p));$('vdEditor').innerHTML=editorMarkup(p,d,b);wireEditor(b,d);renderPreview(p,true);
+  notify('Selected '+matches.length+' date(s). Save Draft to keep this grouping.');
+ });
+ }
  $('vdSave')?.addEventListener('click',()=>save(b));
  $('vdGenerate')?.addEventListener('click',()=>generate(b));
  $('vdFinalize')?.addEventListener('click',()=>finalize(b));
@@ -77,12 +140,22 @@ function wireEditor(b,d){
  $('vdPayment')?.addEventListener('click',()=>verifyPayment(b));
  $('vdSend')?.addEventListener('click',()=>send(b,'INVOICE'));
 }
-function openBooking(id){const b=bookings.find(x=>x.id===id);if(!b)return;selected=id;$('vdBooking').value=id;const d=invoiceFor(b),p=d?.payload||initial(b);$('vdEditor').hidden=false;$('vdEditor').innerHTML=editorMarkup(p,d,b);wireEditor(b,d);renderPreview(p,true);$('vdEditor').scrollIntoView({block:'nearest',behavior:'smooth'});}
+function openBooking(id){
+ let b=bookings.find(x=>x.id===id);if(!b)return;
+ const d=invoiceFor(b);
+ if(d&&d.booking_id!==b.id)b=bookings.find(x=>x.id===d.booking_id)||b;
+ selected=b.id;$('vdBooking').value=b.id;
+ const p=d?.payload||initial(b);
+ draftLines=ordered(Array.isArray(p.lines)&&p.lines.length>1?p.lines:[lineFromBooking(b)]);
+ $('vdEditor').hidden=false;$('vdEditor').innerHTML=editorMarkup(p,d,b);
+ wireEditor(b,d);renderPreview(p,true);$('vdEditor').scrollIntoView({block:'nearest',behavior:'smooth'});
+}
 function renderPreview(p,onlyWhenVisible){const root=$('vdLocalPreview');if(!root||(onlyWhenVisible&&root.hidden))return;root.innerHTML='<div class="vd-page"><span class="vd-watermark">PREVIEW ONLY</span><strong class="vd-title">EASY LATIH CONSULTANCY</strong><h2>INVOICE · DRAFT</h2>'+
  '<p><b>Bill to:</b> '+E(p.client_name)+'<br>'+E(p.client_address).replaceAll('\n','<br>')+'</p>'+
  '<table><tr><td>Programme</td><td>'+E(p.programme_title)+'</td></tr><tr><td>Room</td><td>'+E(p.room_name)+'</td></tr>'+
- '<tr><td>Rental date / time</td><td>'+E(dateMY(p.booking_date))+' · '+E(p.start_time)+'–'+E(p.end_time)+'</td></tr>'+
+ '<tr><td>Rental date(s)</td><td>'+E(Array.isArray(p.lines)&&p.lines.length>1?dateMY(p.lines[0].booking_date)+' – '+dateMY(p.lines[p.lines.length-1].booking_date):dateMY(p.booking_date)+' · '+p.start_time+'–'+p.end_time)+'</td></tr>'+
  '<tr><td>Participants</td><td>'+E(p.participants)+' pax</td></tr><tr><td>Package</td><td>'+E(p.session)+'</td></tr></table>'+
+ (Array.isArray(p.lines)&&p.lines.length>1?'<p><b>Daily Rental Breakdown:</b><br>'+p.lines.map((l,i)=>'Day '+(i+1)+': '+E(dateMY(l.booking_date))+' · '+E(l.start_time)+'–'+E(l.end_time)+' · '+RM(l.rate)).join('<br>')+'</p>':'')+
  '<p><b>Package inclusions:</b><br>'+E(p.inclusions).replaceAll('\n','<br>')+'</p>'+
  (p.complimentary?'<p><b>Complimentary items (if applicable):</b><br>'+E(p.complimentary).replaceAll('\n','<br>')+'</p>':'')+
  '<p><b>Rental:</b> '+RM(p.rate)+' · <b>Add-ons:</b> '+RM(p.add_ons)+' · <b>Discount:</b> '+RM(p.discount)+' · <b>Tax:</b> '+RM(p.tax)+'</p>'+
@@ -101,10 +174,11 @@ async function save(b){
   if(old&&!changed){notify('Draft is already saved.');return old;}
   const clearDoc=Boolean(old?.google_doc_id);
   if(clearDoc&&!confirm('Details have changed. Generate a fresh Google Docs draft? Your previous Google Doc remains in Drive, but its edits will NOT be used for the invoice. Click Cancel to keep the original.'))return null;
+  const ids=Array.isArray(p.lines)&&p.lines.length>1?p.lines.map(l=>l.booking_id):[b.id];
   const q=old?db.from('venue_documents').update({
-   payload:p,google_doc_id:null,google_doc_url:null,updated_at:new Date().toISOString()
+   booking_ids:ids,payload:p,google_doc_id:null,google_doc_url:null,updated_at:new Date().toISOString()
   }).eq('id',old.id).eq('status','DRAFT').select().single():
-  db.from('venue_documents').insert({booking_id:b.id,document_type:'INVOICE',status:'DRAFT',payload:p}).select().single();
+  db.from('venue_documents').insert({booking_id:b.id,booking_ids:ids,document_type:'INVOICE',status:'DRAFT',payload:p}).select().single();
   const {data,error}=await q;
   if(error)throw error;
   notify('Draft saved. Invoice running number not allocated yet.');
@@ -116,7 +190,7 @@ async function generate(b){let doc=invoiceFor(b);if(!doc||doc.status!=='DRAFT'){
 async function finalize(b){let doc=invoiceFor(b);if(!doc||doc.status!=='DRAFT'){notify('Save a draft first.');return;}const saved=await save(b);if(!saved)return;if(!confirm('Finalize invoice? A unique INVOICE running number will be taken from EasyLatih V2 STAGING. The official PDF cannot be edited.'))return;busy=true;try{notify('Finalizing invoice…');const r=await bridge('finalize',saved.id);notify('Invoice finalized: '+r.number);await load();openBooking(b.id);}catch(e){notify('Finalize error: '+e.message,true);}finally{busy=false;}}
 async function verifyPayment(b){const doc=invoiceFor(b);if(!doc||doc.status!=='FINAL')return;const sum=money(doc.payload?.total);const amount=prompt('Total amount RECEIVED (RM). Must equal or exceed '+RM(sum),String(sum.toFixed(2)));if(amount===null)return;const paymentAmount=Number(amount);if(!Number.isFinite(paymentAmount)||paymentAmount<sum)return notify('Full payment has not been received. No receipt will be issued.',true);const reference=prompt('Bank transaction / receipt reference (required)','');if(reference===null)return;if(!reference.trim())return notify('Payment reference is required.',true);if(!confirm('Confirm bank receipt has actually been verified? This records PAID IN FULL.'))return;try{const r=await bridge('verify_payment',doc.id,{amount:paymentAmount,reference:reference.trim()});notify('Full payment verified. You can now generate a receipt.');await load();openBooking(b.id);}catch(e){notify(e.message,true);}}
 async function send(b,type){const doc=type==='INVOICE'?invoiceFor(b):receiptFor(b);if(!doc||doc.status!=='FINAL')return;const email=b.applicant_email||'';if(!confirm('Send '+type+' '+doc.document_number+' to '+email+'?'))return;try{const r=await bridge('send',doc.id);notify('Email submission completed for '+email);await load();openBooking(b.id);}catch(e){notify('Send failed: '+e.message,true);}}
-async function makeReceipt(b){const inv=invoiceFor(b);if(!inv||inv.status!=='FINAL'||!inv.payment_verified_at)return notify('Verify full payment of a finalized invoice before issuing a receipt.',true);let doc=receiptFor(b);if(doc){openReceipt(b);return;}const payload={...inv.payload,invoice_number:inv.document_number,invoice_total:inv.payload.total,amount_received:inv.payment_amount,payment_date:inv.payment_verified_at.slice(0,10),payment_method:'Bank Transfer',transaction_reference:inv.payment_reference,received_from:inv.payload.client_name};const q=await db.from('venue_documents').insert({booking_id:b.id,document_type:'RECEIPT',status:'DRAFT',payload}).select().single();if(q.error)return notify('Receipt draft error: '+q.error.message,true);await load();openReceipt(b);}
+async function makeReceipt(b){const inv=invoiceFor(b);if(!inv||inv.status!=='FINAL'||!inv.payment_verified_at)return notify('Verify full payment of a finalized invoice before issuing a receipt.',true);let doc=receiptFor(b);if(doc){openReceipt(b);return;}const payload={...inv.payload,invoice_number:inv.document_number,invoice_total:inv.payload.total,amount_received:inv.payment_amount,payment_date:inv.payment_verified_at.slice(0,10),payment_method:'Bank Transfer',transaction_reference:inv.payment_reference,received_from:inv.payload.client_name};const q=await db.from('venue_documents').insert({booking_id:b.id,booking_ids:inv.booking_ids?.length?inv.booking_ids:[b.id],document_type:'RECEIPT',status:'DRAFT',payload}).select().single();if(q.error)return notify('Receipt draft error: '+q.error.message,true);await load();openReceipt(b);}
 function openReceipt(b){const d=receiptFor(b);if(!d)return;const inv=invoiceFor(b);$('vdEditor').hidden=false;$('vdEditor').innerHTML='<div class="vd-head"><strong>OFFICIAL RECEIPT · '+E(b.programme_title)+'</strong><span class="vd-pill '+(d.status==='FINAL'?'final':'')+'">'+E(d.status)+'</span></div>'+
  '<p>Invoice: <b>'+E(inv.document_number)+'</b> · Received: <b>'+RM(inv.payment_amount)+'</b> · Payment Reference: '+E(inv.payment_reference)+'</p>'+
  '<p>Receipt template will be populated from the verified payment record. No receipt is issued for partial payment.</p>'+
