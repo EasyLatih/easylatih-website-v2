@@ -39,6 +39,39 @@ Deno.serve(async(req:Request)=>{
   const doc=rr.data,booking=doc.venue_bookings;
   if(!booking)return res(404,{ok:false,error:"Related booking not found"});
   const isReceipt=doc.document_type==="RECEIPT";
+  const ids:string[]=Array.isArray(doc.booking_ids)&&doc.booking_ids.length?doc.booking_ids:[doc.booking_id];
+  if(ids.length>31||new Set(ids).size!==ids.length||!ids.includes(doc.booking_id))
+   return res(400,{ok:false,error:"Invalid list of dates"});
+  const linkedResult=await db.from("venue_bookings").select("*").in("id",ids);
+  if(linkedResult.error||linkedResult.data?.length!==ids.length)
+   return res(409,{ok:false,error:"Some booking dates are missing"});
+  const linked=(linkedResult.data||[]).sort((a:any,b:any)=>String(a.booking_date).localeCompare(String(b.booking_date)));
+  const anchor=linked.find((v:any)=>v.id===doc.booking_id);
+  const dayMillis=(s:string)=>Date.parse(s+"T12:00:00Z");
+  if(!anchor||linked.some((v:any,i:number)=>v.room_id!==anchor.room_id||
+     String(v.applicant_email).toLowerCase()!==String(anchor.applicant_email).toLowerCase()||
+     ["REJECTED","CANCELLED"].includes(v.status)||
+     (i>0&&dayMillis(v.booking_date)-dayMillis(linked[i-1].booking_date)!==86400000)))
+   return res(409,{ok:false,error:"Bookings must be consecutive dates for one customer and room."});
+  if(!isReceipt&&linked.length>1){
+   const lines=doc.payload?.lines;
+   if(!Array.isArray(lines)||lines.length!==linked.length)
+    return res(400,{ok:false,error:"Every selected date needs its own rental line."});
+   for(let i=0;i<linked.length;i++){
+    const b=linked[i],line=lines[i];
+    if(!line||line.booking_id!==b.id||line.booking_date!==b.booking_date||
+      String(line.start_time).slice(0,5)!==String(b.start_time).slice(0,5)||
+      String(line.end_time).slice(0,5)!==String(b.end_time).slice(0,5)||
+      !Number.isFinite(Number(line.rate))||Number(line.rate)<0)
+     return res(400,{ok:false,error:"Date, time or daily charge does not match the saved booking."});
+   }
+   const rounded=(n:number)=>Math.round((n+Number.EPSILON)*100);
+   const rateSum=lines.reduce((n:number,l:any)=>n+Number(l.rate),0);
+   const fullTotal=rateSum+Number(doc.payload.add_ons||0)-Number(doc.payload.discount||0)+Number(doc.payload.tax||0);
+   if(rounded(rateSum)!==rounded(Number(doc.payload.rate))||
+      rounded(Math.max(0,fullTotal))!==rounded(Number(doc.payload.total)))
+    return res(400,{ok:false,error:"Invoice total does not match the daily rental breakdown."});
+  }
   let invoice:any=null;
   if(isReceipt){
    const q=await db.from("venue_documents").select("*").eq("booking_id",doc.booking_id).eq("document_type","INVOICE").single();
@@ -46,7 +79,7 @@ Deno.serve(async(req:Request)=>{
    invoice=q.data;
    if(!invoice.payment_verified_at)return res(409,{ok:false,error:"Full payment must be verified before issuing a receipt"});
   }
-  const shared={documentId:doc.id,bookingId:doc.booking_id,type:doc.document_type,payload:doc.payload,booking,invoice};
+  const shared={documentId:doc.id,bookingId:doc.booking_id,bookingIds:ids,type:doc.document_type,payload:doc.payload,booking,bookings:linked,invoice};
   if(action==="draft"){
    if(doc.status!=="DRAFT")return res(409,{ok:false,error:"Finalized documents cannot be regenerated"});
    if(doc.google_doc_id)return res(200,{ok:true,googleDocId:doc.google_doc_id,googleDocUrl:doc.google_doc_url});
