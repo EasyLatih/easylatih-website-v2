@@ -1,0 +1,26 @@
+/* Venue documents */
+#venueDocumentsPanel{scroll-margin-top:20px}
+.vd-toolbar,.vd-buttons{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:13px 0}
+.vd-toolbar select{border:1px solid #c7d6e2;border-radius:9px;padding:10px;min-width:min(440px,100%);font:inherit;max-width:100%}
+#vdEditor{padding:18px;background:#f8fbff;border:1px solid #d7e5f0;border-radius:12px;margin:18px 0}
+.vd-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.vd-head strong,.vd-head small{display:block}.vd-head small{color:#697e8f}
+.vd-pill{background:#fff0db;color:#99600d;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700}
+.vd-pill.final{background:#daf5e7;color:#0a6a3b}
+.vd-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.vd-field{display:flex;flex-direction:column;gap:5px;color:#355268;font-size:12px;font-weight:600}
+.vd-field input,.vd-field textarea{width:100%;border-radius:8px;border:1px solid #c8d8e4;padding:10px;color:#203a50;font:inherit;font-size:13px;font-weight:400;background:white}
+.vd-field textarea{min-height:72px;resize:vertical}
+.vd-field input:disabled,.vd-field textarea:disabled{background:#edf2f5;color:#506778}
+.vd-total{background:#e9f3fc;padding:15px;margin:16px 0;border-radius:9px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vd-total strong{font-size:20px;color:#003e6f}.vd-total small{display:block;color:#617a8b}
+.vd-buttons button:disabled{opacity:.5;cursor:not-allowed}
+.vd-link{background:#e9f3fc;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;text-decoration:none}
+.vd-final{font-size:13px;background:#eaf6ed;border-radius:8px;padding:11px;margin-top:10px}
+#vdLocalPreview{margin:16px auto;max-width:770px}
+.vd-page{position:relative;overflow:hidden;background:white;border:1px solid #d2dde8;padding:38px;box-shadow:0 10px 32px #1234}
+.vd-page .vd-title{font-size:17px;color:#003e6f}.vd-page h2{margin:20px 0}.vd-page h3{margin:12px 0}
+.vd-page p{font-size:12px;line-height:1.7;color:#3e5161;margin:12px 0}.vd-page table{min-width:0;font-size:12px}
+.vd-watermark{position:absolute;top:54%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:64px;font-weight:800;color:#e6eaed;pointer-events:none;white-space:nowrap;opacity:.55}
+#venueDocumentsPanel small{display:block}
+@media(max-width:750px){.vd-fields{grid-template-columns:1fr}#vdEditor{padding:12px}.vd-page{padding:18px}.vd-watermark{font-size:36px}}
