@@ -75,6 +75,18 @@ function vdMakeDraft(d){
  const doc=DocumentApp.openById(file.getId());
  const rows=vdTokens(d),body=doc.getBody();
  Object.keys(rows).forEach(k=>vdReplace(body,'{{'+k+'}}',rows[k]));
+ if(d.type==='INVOICE'&&d.payload&&d.payload.inclusions){
+  const inclusions=String(d.payload.inclusions).split('\n').map(x=>x.trim()).filter(Boolean);
+  const fixed=[
+   '• Training room \\(maximum 26 pax\\)',
+   '• Tables & chairs','• Air-conditioned room',
+   '• LCD projector & screen','• Whiteboard & markers','• Wi-Fi access'
+  ];
+  fixed.forEach((term,idx)=>{
+   const text=idx===fixed.length-1?inclusions.slice(idx).map(x=>'• '+x).join('\n'):(inclusions[idx]?'• '+inclusions[idx]:'');
+   body.replaceText(term,text);
+  });
+ }
  doc.saveAndClose();
  return {googleDocId:file.getId(),googleDocUrl:file.getUrl()};
 }
