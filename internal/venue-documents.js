@@ -96,7 +96,8 @@ async function save(b){
  try{
   const old=invoiceFor(b);
   if(old?.status==='FINAL')throw Error('Finalized invoices cannot be edited.');
-  const changed=!old||JSON.stringify(old.payload)!==JSON.stringify(p);
+  const normalize=x=>JSON.stringify(Object.keys(x||{}).sort().map(k=>[k,String(x[k]??'')]));
+  const changed=!old||normalize(old.payload)!==normalize(p);
   if(old&&!changed){notify('Draft is already saved.');return old;}
   const clearDoc=Boolean(old?.google_doc_id);
   if(clearDoc&&!confirm('Details have changed. Generate a fresh Google Docs draft? Your previous Google Doc remains in Drive, but its edits will NOT be used for the invoice. Click Cancel to keep the original.'))return null;
