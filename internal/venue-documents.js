@@ -9,7 +9,7 @@ const E=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt
 const RM=n=>'RM '+(Number(n)||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 const money=n=>Math.max(0,Number(n)||0);
 const dateMY=s=>s?new Date(s+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}):'';
-const dueDate=s=>{if(!s)return '';const d=new Date(s+'T12:00:00');d.setDate(d.getDate()-1);return d.toISOString().slice(0,10)};
+const dueDate=s=>s?new Date(Date.parse(s+'T00:00:00Z')-86400000).toISOString().slice(0,10):'';
 const fields=[
  ['client_name','Bill To / Client Name','text'],['client_address','Client Address','textarea'],
  ['programme_title','Programme Title','text'],['room_name','Room','text'],
