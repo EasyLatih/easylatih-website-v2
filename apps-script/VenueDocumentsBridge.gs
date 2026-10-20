@@ -33,6 +33,10 @@ function vdFolder(id){const it=DriveApp.getFileById(id).getParents();return it.h
 function vdReplace(body,k,v){body.replaceText(k.replace(/\{/g,'\\{').replace(/\}/g,'\\}'),String(v??''));}
 function vdTokens(d){
  const b=d.booking||{},p=d.payload||{},i=d.invoice||{};
+ const lines=Array.isArray(p.lines)&&p.lines.length>1?p.lines.slice().sort((a,b)=>String(a.booking_date).localeCompare(String(b.booking_date))):[];
+ const firstDay=lines.length?lines[0].booking_date:(p.booking_date||b.booking_date);
+ const rentalRange=lines.length?vdDate(lines[0].booking_date)+' – '+vdDate(lines[lines.length-1].booking_date):vdDate(firstDay);
+ const dailyRows=lines.length?lines.map((l,n)=>String(n+1)+'. '+vdDate(l.booking_date)+' | '+String(l.start_time||'')+'–'+String(l.end_time||'')+' | '+String(l.session||'Room Rental')+' | RM '+vdCash(l.rate)).join('\n'):'1. '+vdDate(firstDay)+' | '+String(p.start_time||String(b.start_time||'').slice(0,5))+'–'+String(p.end_time||String(b.end_time||'').slice(0,5))+' | RM '+vdCash(p.rate);
  const paymentDate=String(p.payment_date||i.payment_verified_at||'').slice(0,10);
  const total=Math.max(0,Number(p.rate||0)+Number(p.add_ons||0)-Number(p.discount||0)+Number(p.tax||0));
  const no=d.type==='INVOICE'?'[[DRAFT_INVOICE_NUMBER]]':String(i.document_number||'');
@@ -46,17 +50,18 @@ function vdTokens(d){
  ROOM_NAME:p.room_name||b.room_name||'EasyLatih Training Room',
  PROGRAMME_TITLE:p.programme_title||b.programme_title||'-',
  BOOKING_REFERENCE:String(d.bookingId||'').slice(0,8).toUpperCase(),
- RENTAL_DATE:vdDate(p.booking_date||b.booking_date),
+ RENTAL_DATE:rentalRange,
+ RENTAL_LINE_ITEMS:dailyRows,
  SESSION_TYPE:p.session||b.booking_package||'Room Rental',
  RATE_CATEGORY:p.session||'Room Rental',
  START_TIME:p.start_time||String(b.start_time||'').slice(0,5),
  END_TIME:p.end_time||String(b.end_time||'').slice(0,5),
  DURATION_HOURS:p.duration||'-',
  PAX:p.participants||b.participants||'-',
- UNIT_RATE:vdCash(p.rate),QUANTITY:'1',UNIT_LABEL:'booking',
+ UNIT_RATE:vdCash(p.rate),QUANTITY:'1',UNIT_LABEL:lines.length?'consolidated rental':'booking',
  ADD_ONS_TOTAL:vdCash(p.add_ons),DISCOUNT_AMOUNT:vdCash(p.discount),
  TAX_AMOUNT:vdCash(p.tax),TOTAL_PAYABLE:vdCash(p.total??total),
- DUE_DATE:vdDue(p.booking_date||b.booking_date),
+ DUE_DATE:vdDue(firstDay),
  COMPLIMENTARY_ITEMS:p.complimentary||'Not provided for this booking',
  INVOICE_TOTAL:vdCash(i.payload?.total??p.invoice_total??total),
  AMOUNT_RECEIVED:vdCash(i.payment_amount??p.amount_received??total),
