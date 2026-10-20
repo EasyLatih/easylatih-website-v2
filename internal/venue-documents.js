@@ -169,7 +169,7 @@ async function save(b){
  try{
   const old=invoiceFor(b);
   if(old?.status==='FINAL')throw Error('Finalized invoices cannot be edited.');
-  const normalize=x=>JSON.stringify(Object.keys(x||{}).sort().map(k=>[k,String(x[k]??'')]));
+  const normalize=x=>JSON.stringify(Object.keys(x||{}).sort().map(k=>[k,k==='lines'?JSON.stringify(x[k]):String(x[k]??'')]));
   const changed=!old||normalize(old.payload)!==normalize(p);
   if(old&&!changed){notify('Draft is already saved.');return old;}
   const clearDoc=Boolean(old?.google_doc_id);
