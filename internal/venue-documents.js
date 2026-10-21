@@ -202,15 +202,27 @@ function openReceipt(b){const d=receiptFor(b);if(!d)return;const inv=invoiceFor(
  $('vdReceiptSend')?.addEventListener('click',()=>send(b,'RECEIPT'));
 }
 function refreshActions(){const b=bookings.find(x=>x.id===selected);if(!b)return;const invoice=invoiceFor(b);$('vdReceiptActions').innerHTML='<button type="button" id="vdMakeReceipt" '+(!invoice?.payment_verified_at?'disabled':'')+'>'+(receiptFor(b)?'View Receipt':'Create Receipt Draft')+'</button>'; $('vdMakeReceipt').onclick=()=>makeReceipt(b)}
+async function checkTemplateIntegration(){
+ const el=$('vdBridgeStatus');if(!el)return;
+ try{
+  const d=await bridge('connection_status',null);
+  el.style.background=d.bridgeConfigured?'#eaf8f0':'#fff6e8';
+  el.style.color=d.bridgeConfigured?'#176444':'#84520d';
+  el.textContent=d.bridgeConfigured?
+    'Invoice & Receipt templates linked. Google Apps Script settings found; test with a draft before issuing an official PDF.':
+    'Invoice & Receipt templates linked. Google Apps Script has not yet been activated; Save Draft and Preview work, but Google Docs generation / Finalize require one-time setup.';
+ }catch(e){el.textContent='Could not verify Google Docs integration: '+e.message;}
+}
 async function setup(){const app=$('adminApp');if(!app)return;const {data}=await db.auth.getUser();if(data?.user?.app_metadata?.role!=='admin')return;
  const panel=document.createElement('section');panel.className='panel';panel.id='venueDocumentsPanel';panel.innerHTML='<h2>Invoice & Receipt Management</h2><p>Generate a draft, preview and edit it, then finalize. The official invoice number is allocated only at finalization from EasyLatih V2 STAGING.</p>'+
- '<div id="vdNotice" class="notice" hidden></div><div class="vd-toolbar"><select id="vdBooking"><option value="">Choose booking...</option></select><button id="vdRefresh">↻ Refresh Documents</button></div>'+
+ '<div id="vdNotice" class="notice" hidden></div><div id="vdBridgeStatus" class="notice" role="status">Checking Google Docs integration…</div><div class="vd-toolbar"><select id="vdBooking"><option value="">Choose booking...</option></select><button id="vdRefresh">↻ Refresh Documents</button></div>'+
  '<div id="vdReceiptActions" class="vd-buttons"></div><div id="vdEditor" hidden></div>'+
  '<div class="table-scroll"><table><thead><tr><th>Booking</th><th>Invoice</th><th>Payment</th><th>Receipt</th><th>Action</th></tr></thead><tbody id="vdRows"></tbody></table></div>';
  app.insertBefore(panel,app.querySelector('section.panel')||null);
  $('vdBooking').addEventListener('change',()=>{if($('vdBooking').value){openBooking($('vdBooking').value);refreshActions()}});
  $('vdRows').addEventListener('click',e=>{const el=e.target.closest('[data-vd-book]');if(el){openBooking(el.dataset.vdBook);refreshActions()}});
  $('vdRefresh').addEventListener('click',()=>load().then(()=>{if(selected){openBooking(selected);refreshActions()}}).catch(e=>notify(e.message,true)));
+ await checkTemplateIntegration();
  try{await load()}catch(e){notify('Documents cannot load: '+e.message,true)}
 }
 document.addEventListener('DOMContentLoaded',setup);
