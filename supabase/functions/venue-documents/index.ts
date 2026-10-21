@@ -33,6 +33,11 @@ Deno.serve(async(req:Request)=>{
   const db=createClient(url,serviceKey);
   const input=await req.json();
   const id=input?.documentId,action=String(input?.action||"");
+  if(action==="connection_status")return res(200,{
+   ok:true,templatesReady:true,bridgeConfigured:Boolean(scriptUrl&&scriptSecret),
+   message:(scriptUrl&&scriptSecret)?"Google Apps Script credentials configured (requires live test).":
+     "Google Apps Script not yet activated. Draft preview remains available."
+  });
   if(!isUuid(id))return res(400,{ok:false,error:"Invalid document ID"});
   const rr=await db.from("venue_documents").select("*,venue_bookings(*)").eq("id",id).single();
   if(rr.error||!rr.data)return res(404,{ok:false,error:"Invoice or receipt draft not found"});
