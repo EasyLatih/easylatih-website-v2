@@ -23,6 +23,7 @@ td.actions{white-space:nowrap}td.actions button{margin:2px}
 .room-create{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}.room-card{border-top:1px solid #e6edf2;padding:15px 0;display:flex;align-items:center;justify-content:space-between;gap:14px}.room-card small{display:block;color:#718698}.room-actions{display:flex;flex-wrap:wrap;gap:8px}
 .notice{padding:13px 16px;border-radius:9px;border:1px solid #c9dbea;background:#edf6fb;margin-bottom:19px}
 .notice[data-type=success]{background:#eaf8f0;color:#14673e}.notice[data-type=danger]{background:#fff1ef;color:#a63229}.empty{text-align:center;color:#718698}
+.internal-block-form{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:11px}.internal-block-form label{display:block;color:#4d687a;font-size:.75rem;font-weight:600}.internal-block-form input,.internal-block-form select,.internal-block-form textarea{width:100%;margin-top:5px;padding:10px 11px;border:1px solid #c7d6e2;border-radius:7px;font:inherit;font-size:.84rem}.internal-block-form textarea{min-height:42px;resize:vertical}.internal-block-form .wide{grid-column:span 2}.internal-block-form .form-actions{display:flex;align-items:end}@media(max-width:800px){.internal-block-form{grid-template-columns:repeat(2,minmax(0,1fr))}.internal-block-form .wide{grid-column:span 2}}@media(max-width:480px){.internal-block-form{grid-template-columns:1fr}.internal-block-form .wide{grid-column:span 1}}
 @media(max-width:800px){.kpis{grid-template-columns:repeat(2,1fr)}.room-card{align-items:flex-start;flex-direction:column}header .bar{padding:14px}main{padding:20px 14px}}
 </style><link rel="stylesheet" href="venue-documents.css"></head><body>
 <header><div class="bar"><div class="brand"><a href="../index.html"><img src="../assets/logo.png" alt="EasyLatih"></a><div><strong>Venue Booking Admin</strong><small>Room reservations &amp; management</small></div></div><a href="admin-dashboard.html">← Admin Centre</a></div></header>
@@ -36,6 +37,22 @@ td.actions{white-space:nowrap}td.actions button{margin:2px}
       <div class="kpi"><strong id="pendingCount">0</strong><span>Pending Review</span></div>
       <div class="kpi"><strong id="confirmedCount">0</strong><span>Confirmed</span></div>
       <div class="kpi"><strong id="roomCount">0</strong><span>Active Rooms</span></div>
+    </section>
+    <section class="panel" aria-labelledby="internalBlockHeading">
+      <h2 id="internalBlockHeading">Block EasyLatih Training</h2>
+      <p style="font-size:.86rem">Untuk program EasyLatih sendiri. Tarikh akan terus jadi <strong>CONFIRMED</strong> dan block calendar tanpa email pelanggan, quotation atau invoice.</p>
+      <form id="internalBlockForm" class="internal-block-form">
+        <label class="wide">Programme / Training Title<input id="internalTitle" type="text" minlength="3" maxlength="180" required placeholder="Contoh: Bengkel Akta Kerja 1955"></label>
+        <label>Room<select id="internalRoom" required><option value="">Select room</option></select></label>
+        <label>Estimated Pax<input id="internalPax" type="number" min="1" max="200" value="26" required></label>
+        <label>Start Date<input id="internalStartDate" type="date" required></label>
+        <label>End Date<input id="internalEndDate" type="date" required></label>
+        <label>Start Time<input id="internalStartTime" type="time" value="09:00" required></label>
+        <label>End Time<input id="internalEndTime" type="time" value="17:00" required></label>
+        <label class="wide">Internal Notes <textarea id="internalNotes" maxlength="1000" placeholder="Optional: trainer, setup, special requirement…"></textarea></label>
+        <div class="form-actions"><button type="submit" class="primary">Block Training Dates</button></div>
+      </form>
+      <p style="font-size:.78rem;margin:14px 0 0">Untuk program 2 hari atau lebih, pilih Start Date dan End Date. Jika perlu buka semula tarikh, tekan <strong>Release Block</strong> pada rekod tersebut.</p>
     </section>
     <section class="panel"><h2>Booking Requests</h2>
       <div class="toolbar"><input id="findBooking" type="search" placeholder="Search applicant / programme" aria-label="Search bookings"><select id="roomFilter" aria-label="Room filter"><option value="">All rooms</option></select><select id="statusFilter" aria-label="Status filter"><option value="">All statuses</option><option value="PENDING">Pending</option><option value="CONFIRMED">Confirmed</option><option value="REJECTED">Rejected</option><option value="CANCELLED">Cancelled</option></select></div>
