@@ -109,7 +109,7 @@ function renderTable(){
 async function load(){const [a,b]=await Promise.all([
  db.from('venue_bookings').select('*,venue_rooms(name)').order('created_at',{ascending:false}).limit(500),
  db.from('venue_documents').select('*').order('created_at',{ascending:false}).limit(1000)
-]);if(a.error||b.error)throw a.error||b.error;bookings=a.data||[];docs=b.data||[];renderTable();}
+]);if(a.error||b.error)throw a.error||b.error;bookings=(a.data||[]).filter(b=>b.booking_source!=='INTERNAL');docs=b.data||[];renderTable();}
 async function voidInvoice(b){
  const doc=invoiceFor(b);if(!doc||doc.status!=='FINAL'||doc.payment_verified_at)return notify('Only an unpaid finalized invoice can be voided.',true);
  const reason=prompt('Reason for voiding '+doc.document_number+' (required):','');
