@@ -125,6 +125,20 @@ Deno.serve(async(req:Request)=>{
    if(saved.error)throw saved.error;
    return res(200,{ok:true,paid:true});
   }
+  if(action==="void"){
+   if(isReceipt||doc.status!=="FINAL")return res(409,{ok:false,error:"Only a finalized invoice can be voided."});
+   if(doc.payment_verified_at)return res(409,{ok:false,error:"A paid invoice cannot be voided. Record a refund or credit adjustment instead."});
+   const reason=String(input.reason||"").trim();
+   if(reason.length<3||reason.length>500)return res(400,{ok:false,error:"A void reason between 3 and 500 characters is required."});
+   const receipt=await db.from("venue_documents").select("id").eq("booking_id",doc.booking_id).eq("document_type","RECEIPT").limit(1);
+   if(receipt.error)throw receipt.error;
+   if(receipt.data?.length)return res(409,{ok:false,error:"This invoice already has a receipt and cannot be voided."});
+   const saved=await db.from("venue_documents").update({
+    status:"VOID",voided_at:new Date().toISOString(),voided_by:user.id,void_reason:reason,updated_at:new Date().toISOString()
+   }).eq("id",id).eq("status","FINAL").is("payment_verified_at",null).select().single();
+   if(saved.error)throw saved.error;
+   return res(200,{ok:true,voided:true,number:doc.document_number});
+  }
   if(action==="send"){
    if(doc.status!=="FINAL"||!doc.pdf_file_id||!doc.document_number)return res(409,{ok:false,error:"Finalize the PDF before sending."});
    const recipient=String(booking.applicant_email||"");
