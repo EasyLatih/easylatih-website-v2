@@ -242,7 +242,7 @@ async function setup(){const app=$('adminApp');if(!app)return;const {data}=await
  $('vdRows').addEventListener('click',e=>{const el=e.target.closest('[data-vd-book]');if(el){openBooking(el.dataset.vdBook);refreshActions()}});
  $('vdRefresh').addEventListener('click',()=>load().then(()=>{if(selected){openBooking(selected);refreshActions()}}).catch(e=>notify(e.message,true)));
  await checkTemplateIntegration();
- try{await load()}catch(e){notify('Documents cannot load: '+e.message,true)}
+ try{await load();if(window.location.hash==='#documents')setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'start'}),0)}catch(e){notify('Documents cannot load: '+e.message,true)}
 }
 document.addEventListener('DOMContentLoaded',setup);
 })();
