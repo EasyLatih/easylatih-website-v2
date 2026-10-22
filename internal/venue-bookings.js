@@ -141,7 +141,8 @@
     if(overlaps.length)return banner('Conflict on '+overlaps.map(readableDate).join(', ')+'. Change the time or release the existing block first.','danger');
     if(!confirm('Block '+dates.length+' date(s) for "'+title+'"? This will lock the room calendar immediately and no email or invoice will be created.'))return;
     const internalNote=['EasyLatih internal training block',notes].filter(Boolean).join(' · ');
-    const rows=dates.map(booking_date=>({room_id,booking_date,start_time,end_time,applicant_name:'EasyLatih Internal',company_name:'Easy Latih Consultancy',applicant_email:'internal@easylatih.my',applicant_phone:'0109202811',programme_title:title,participants,notes:internalNote,status:'CONFIRMED',booking_package:'INTERNAL_TRAINING',estimated_price:0,booking_source:'INTERNAL'}));
+    const internal_training_group_id=crypto.randomUUID();
+    const rows=dates.map(booking_date=>({room_id,booking_date,start_time,end_time,applicant_name:'EasyLatih Internal',company_name:'Easy Latih Consultancy',applicant_email:'internal@easylatih.my',applicant_phone:'0109202811',programme_title:title,participants,notes:internalNote,status:'CONFIRMED',booking_package:'INTERNAL_TRAINING',estimated_price:0,booking_source:'INTERNAL',internal_training_group_id}));
     busy=true;banner('Blocking training date(s)…');
     const {error}=await db.from('venue_bookings').insert(rows);busy=false;
     if(error){banner(error.code==='23P01'?'Booking conflict: another confirmed booking already occupies one of these slots.':'Unable to block training: '+error.message,'danger');return;}
