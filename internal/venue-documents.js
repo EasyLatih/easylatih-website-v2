@@ -82,6 +82,9 @@ function editorMarkup(p,doc,b){
   return '<label class="vd-field"><span>'+E(label)+'</span>'+input+'</label>';
  };
  const s=doc?.status||'NEW';
+ if(s==='VOID')return '<div class="vd-head"><div><strong>VOID INVOICE · '+E(b.programme_title)+'</strong><small>'+E(dateMY(b.booking_date))+' · '+E(b.applicant_name)+'</small></div><span class="vd-pill">VOID</span></div>'+
+  '<div class="vd-final"><strong>'+E(doc.document_number||'Official invoice')+'</strong> is retained for audit and cannot be edited, paid or emailed.<br>Void reason: '+E(doc.void_reason||'-')+'</div>'+
+  (doc.pdf_url?'<div class="vd-buttons"><a class="vd-link" target="_blank" rel="noopener" href="'+E(doc.pdf_url)+'">View Final PDF ↗</a><button type="button" id="vdReplacement" class="primary">Create Replacement Draft</button></div>':'<div class="vd-buttons"><button type="button" id="vdReplacement" class="primary">Create Replacement Draft</button></div>');
  return '<div class="vd-head"><div><strong>INVOICE · '+E(b.programme_title)+'</strong><small>'+E(dateMY(b.booking_date))+' · '+E(b.applicant_name)+'</small></div><span class="vd-pill '+(s==='FINAL'?'final':'')+'">'+E(s)+'</span></div>'+
  groupSelector+lineEditor+'<div class="vd-fields">'+fields.map(cell).join('')+'</div>'+
  '<div class="vd-total">Total Payable: <strong id="vdTotal">'+RM(p.total??price(p))+'</strong><small>Full payment due by '+E(dateMY(dueDate(multi?group[0].booking_date:p.booking_date)))+'</small></div>'+
@@ -107,8 +110,21 @@ async function load(){const [a,b]=await Promise.all([
  db.from('venue_bookings').select('*,venue_rooms(name)').order('created_at',{ascending:false}).limit(500),
  db.from('venue_documents').select('*').order('created_at',{ascending:false}).limit(1000)
 ]);if(a.error||b.error)throw a.error||b.error;bookings=a.data||[];docs=b.data||[];renderTable();}
+async function voidInvoice(b){
+ const doc=invoiceFor(b);if(!doc||doc.status!=='FINAL'||doc.payment_verified_at)return notify('Only an unpaid finalized invoice can be voided.',true);
+ const reason=prompt('Reason for voiding '+doc.document_number+' (required):','');
+ if(reason===null)return;if(reason.trim().length<3)return notify('Enter a void reason of at least 3 characters.',true);
+ if(!confirm('Void '+doc.document_number+'? The number and final PDF stay in the audit record. This does not cancel the booking or unblock the calendar.'))return;
+ try{await bridge('void',doc.id,{reason:reason.trim()});notify('Invoice voided. Create a replacement draft only if a corrected invoice is needed.');await load();openBooking(b.id);refreshActions()}catch(e){notify('Void error: '+e.message,true)}
+}
+async function replacementInvoice(b){
+ const old=invoiceFor(b);if(!old||old.status!=='VOID')return;
+ const q=await db.from('venue_documents').insert({booking_id:old.booking_id,booking_ids:old.booking_ids?.length?old.booking_ids:[old.booking_id],document_type:'INVOICE',status:'DRAFT',payload:old.payload}).select().single();
+ if(q.error)return notify('Replacement draft error: '+q.error.message,true);
+ notify('Replacement draft created. Review it before finalizing.');await load();openBooking(b.id);refreshActions();
+}
 function wireEditor(b,d){
- if(!d||d.status!=='FINAL'){
+ if(!d||d.status==='DRAFT'){
  const recalc=()=>{const p=viewPayload();$('vdTotal').textContent=RM(p.total);renderPreview(p,true);};
  fields.forEach(([id])=>$('vd_'+id)?.addEventListener('input',recalc));
  draftLines.forEach(l=>$('vdDay_'+l.booking_id)?.addEventListener('input',recalc));
@@ -139,6 +155,9 @@ function wireEditor(b,d){
  $('vdPreview')?.addEventListener('click',()=>{$('vdLocalPreview').hidden=!$('vdLocalPreview').hidden;renderPreview(viewPayload(),false)});
  $('vdPayment')?.addEventListener('click',()=>verifyPayment(b));
  $('vdSend')?.addEventListener('click',()=>send(b,'INVOICE'));
+ if(d?.status==='FINAL'&&!d.payment_verified_at){document.querySelector('#vdEditor .vd-buttons')?.insertAdjacentHTML('beforeend','<button type="button" id="vdVoid">Void Invoice</button>');}
+ $('vdVoid')?.addEventListener('click',()=>voidInvoice(b));
+ $('vdReplacement')?.addEventListener('click',()=>replacementInvoice(b));
 }
 function openBooking(id){
  let b=bookings.find(x=>x.id===id);if(!b)return;
@@ -168,7 +187,7 @@ async function save(b){
  busy=true;
  try{
   const old=invoiceFor(b);
-  if(old?.status==='FINAL')throw Error('Finalized invoices cannot be edited.');
+  if(old&&old.status!=='DRAFT')throw Error('Only invoice drafts can be edited.');
   const normalize=x=>JSON.stringify(Object.keys(x||{}).sort().map(k=>[k,k==='lines'?JSON.stringify(x[k]):String(x[k]??'')]));
   const changed=!old||normalize(old.payload)!==normalize(p);
   if(old&&!changed){notify('Draft is already saved.');return old;}
