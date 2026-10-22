@@ -24,6 +24,9 @@
     const roomFilter=$('roomFilter'),chosen=roomFilter.value;
     roomFilter.innerHTML='<option value="">All rooms</option>'+rooms.map(r=>'<option value="'+escape(r.id)+'">'+escape(r.name)+'</option>').join('');
     roomFilter.value=rooms.some(r=>r.id===chosen)?chosen:'';
+    const internalRoom=$('internalRoom'),internalChosen=internalRoom.value;
+    internalRoom.innerHTML='<option value="">Select room</option>'+rooms.filter(r=>r.is_active).map(r=>'<option value="'+escape(r.id)+'">'+escape(r.name)+' · '+escape(r.capacity)+' pax</option>').join('');
+    internalRoom.value=rooms.some(r=>r.id===internalChosen&&r.is_active)?internalChosen:'';
     renderBookings();renderRooms();renderMail();renderRates();renderHolidays();
   }
   function renderBookings(){
@@ -31,12 +34,13 @@
     const shown=bookings.filter(b=>(!stat||b.status===stat)&&(!room||b.room_id===room)&&
       (!term||[b.applicant_name,b.company_name,b.programme_title,b.applicant_email,b.applicant_phone].some(x=>String(x||'').toLowerCase().includes(term))));
     $('bookingRows').innerHTML=shown.map(b=>{
+      const isInternal=b.booking_source==='INTERNAL';
       const buttons=b.status==='PENDING'?'<button data-book="'+escape(b.id)+'" data-status="CONFIRMED" class="primary">Confirm</button><button data-book="'+escape(b.id)+'" data-status="REJECTED">Reject</button>':
-      b.status==='CONFIRMED'?'<button data-book="'+escape(b.id)+'" data-status="CANCELLED">Cancel</button>':
+      b.status==='CONFIRMED'?'<button data-book="'+escape(b.id)+'" data-status="CANCELLED">'+(isInternal?'Release Block':'Cancel')+'</button>':
       '<button data-book="'+escape(b.id)+'" data-status="PENDING">Reopen</button>';
-      return '<tr><td><strong>'+escape(b.programme_title)+'</strong><small>'+escape(b.company_name||'—')+'</small><span class="chip '+escape(b.status.toLowerCase())+'">'+escape(b.status)+'</span></td>'+
+      return '<tr><td><strong>'+escape(b.programme_title)+'</strong><small>'+escape(isInternal?'EasyLatih Internal Training':(b.company_name||'—'))+'</small>'+(isInternal?'<span class="chip" style="background:#e8f0ff;color:#244e92">INTERNAL</span>':'')+'<span class="chip '+escape(b.status.toLowerCase())+'">'+escape(b.status)+'</span></td>'+
       '<td>'+escape(b.venue_rooms?.name||'Room')+'<small>'+readableDate(b.booking_date)+'</small><small>'+escape(b.start_time?.slice(0,5))+' – '+escape(b.end_time?.slice(0,5))+'</small></td>'+
-      '<td>'+escape(b.applicant_name)+'<small>'+escape(b.applicant_email)+'</small><small>'+escape(b.applicant_phone)+'</small></td>'+
+      '<td>'+escape(isInternal?'EasyLatih':b.applicant_name)+'<small>'+escape(isInternal?'Internal calendar block':b.applicant_email)+'</small><small>'+escape(isInternal?'No customer email sent':b.applicant_phone)+'</small></td>'+
       '<td>'+escape(b.participants)+' pax <small>'+escape(b.notes||'—')+'</small><small>Est. rental: '+(b.estimated_price==null?'—':'RM'+Number(b.estimated_price).toFixed(2))+'</small></td>'+
       '<td class="actions">'+buttons+'</td></tr>';
     }).join('')||'<tr><td colspan="5" class="empty">No bookings match this filter.</td></tr>';
@@ -120,6 +124,30 @@
     if(error)return banner('Unable to remove holiday: '+error.message,'danger');
     banner('Holiday removed.','success');await load();
   }
+  function datesInclusive(start,end){
+    const first=new Date(start+'T12:00:00'),last=new Date(end+'T12:00:00'),days=[];
+    for(let cursor=first;cursor<=last;cursor.setDate(cursor.getDate()+1))days.push(cursor.toISOString().slice(0,10));
+    return days;
+  }
+  async function blockInternalTraining(event){
+    event.preventDefault();if(busy)return;
+    const room_id=$('internalRoom').value,title=$('internalTitle').value.trim(),participants=Number($('internalPax').value);
+    const start=$('internalStartDate').value,end=$('internalEndDate').value,start_time=$('internalStartTime').value,end_time=$('internalEndTime').value,notes=$('internalNotes').value.trim();
+    const room=rooms.find(r=>r.id===room_id&&r.is_active),today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kuala_Lumpur'});
+    if(!room||title.length<3||!start||!end||end<start||start<today||!start_time||!end_time||start_time>=end_time||!Number.isInteger(participants)||participants<1||participants>room.capacity)return banner('Please check room, title, date, time and pax. Dates must be today or later.','danger');
+    const dates=datesInclusive(start,end);
+    if(dates.length>31)return banner('Internal block can cover a maximum of 31 consecutive days.','danger');
+    const overlaps=dates.filter(date=>bookings.some(b=>b.room_id===room_id&&b.booking_date===date&&b.status==='CONFIRMED'&&b.start_time<end_time&&b.end_time>start_time));
+    if(overlaps.length)return banner('Conflict on '+overlaps.map(readableDate).join(', ')+'. Change the time or release the existing block first.','danger');
+    if(!confirm('Block '+dates.length+' date(s) for "'+title+'"? This will lock the room calendar immediately and no email or invoice will be created.'))return;
+    const internalNote=['EasyLatih internal training block',notes].filter(Boolean).join(' · ');
+    const rows=dates.map(booking_date=>({room_id,booking_date,start_time,end_time,applicant_name:'EasyLatih Internal',company_name:'Easy Latih Consultancy',applicant_email:'internal@easylatih.my',applicant_phone:'0109202811',programme_title:title,participants,notes:internalNote,status:'CONFIRMED',booking_package:'INTERNAL_TRAINING',estimated_price:0,booking_source:'INTERNAL'}));
+    busy=true;banner('Blocking training date(s)…');
+    const {error}=await db.from('venue_bookings').insert(rows);busy=false;
+    if(error){banner(error.code==='23P01'?'Booking conflict: another confirmed booking already occupies one of these slots.':'Unable to block training: '+error.message,'danger');return;}
+    $('internalBlockForm').reset();$('internalPax').value=room.capacity;$('internalStartTime').value='09:00';$('internalEndTime').value='17:00';
+    banner('EasyLatih training blocked for '+dates.length+' date(s). The public calendar is now updated.','success');await load();
+  }
 
   function renderRooms(){
     $('roomCards').innerHTML=rooms.map(r=>'<div class="room-card"><div><strong>'+escape(r.name)+'</strong><small>Capacity: '+escape(r.capacity)+' pax · '+(r.is_active?'Active':'Inactive')+'</small></div>'+
@@ -164,6 +192,7 @@
     $('mailFailures').addEventListener('click',e=>{const btn=e.target.closest('button[data-email-retry]');if(btn)retryMail(btn.dataset.emailRetry);});
     $('rateForm').addEventListener('submit',saveRates);
     $('holidayForm').addEventListener('submit',addHoliday);
+    $('internalBlockForm').addEventListener('submit',blockInternalTraining);
     $('holidayRows').addEventListener('click',event=>{const el=event.target.closest('button[data-holiday-date]');if(el)removeHoliday(el.dataset.holidayDate);});
     $('roomCards').addEventListener('click',e=>{const btn=e.target.closest('button[data-room]');if(btn)changeRoom(btn.dataset.room,btn.dataset.roomAction);});
     $('addRoomForm').addEventListener('submit',async e=>{
