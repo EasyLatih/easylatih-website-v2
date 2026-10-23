@@ -36,7 +36,7 @@
     $('bookingRows').innerHTML=shown.map(b=>{
       const isInternal=b.booking_source==='INTERNAL';
       const buttons=b.status==='PENDING'?'<button data-book="'+escape(b.id)+'" data-status="CONFIRMED" class="primary">Confirm</button><button data-book="'+escape(b.id)+'" data-status="REJECTED">Reject</button>':
-      b.status==='CONFIRMED'?'<button data-book="'+escape(b.id)+'" data-status="CANCELLED">'+(isInternal?'Release Block':'Cancel')+'</button>':
+      b.status==='CONFIRMED'?((isInternal?'<button data-book-edit="'+escape(b.id)+'">Edit</button>':'')+'<button data-book="'+escape(b.id)+'" data-status="CANCELLED">'+(isInternal?'Release Block':'Cancel')+'</button>'):
       '<button data-book="'+escape(b.id)+'" data-status="PENDING">Reopen</button>';
       return '<tr><td><strong>'+escape(b.programme_title)+'</strong><small>'+escape(isInternal?'EasyLatih Internal Training':(b.company_name||'—'))+'</small>'+(isInternal?'<span class="chip" style="background:#e8f0ff;color:#244e92">INTERNAL</span>':'')+'<span class="chip '+escape(b.status.toLowerCase())+'">'+escape(b.status)+'</span></td>'+
       '<td>'+escape(b.venue_rooms?.name||'Room')+'<small>'+readableDate(b.booking_date)+'</small><small>'+escape(b.start_time?.slice(0,5))+' – '+escape(b.end_time?.slice(0,5))+'</small></td>'+
@@ -164,6 +164,26 @@
     if(error){banner(error.code==='23P01'?'Booking conflict: another confirmed reservation occupies this slot.':('Update failed: '+error.message),'danger');return;}
     banner('Booking updated successfully.','success');await load();
   }
+  async function editInternalBooking(id){
+    const record=bookings.find(b=>b.id===id);
+    if(!record||record.booking_source!=='INTERNAL'||busy)return;
+    const title=prompt('Programme title',record.programme_title);if(title===null)return;
+    const booking_date=prompt('Date (YYYY-MM-DD)',record.booking_date);if(booking_date===null)return;
+    const start_time=prompt('Start time (HH:MM)',record.start_time?.slice(0,5));if(start_time===null)return;
+    const end_time=prompt('End time (HH:MM)',record.end_time?.slice(0,5));if(end_time===null)return;
+    const participants=Number(prompt('Participants',record.participants));
+    const notes=prompt('Notes',record.notes||'');if(notes===null)return;
+    const room=rooms.find(r=>r.id===record.room_id),today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kuala_Lumpur'});
+    if(!room||title.trim().length<3||!/^\d{4}-\d{2}-\d{2}$/.test(booking_date)||booking_date<today||!/^\d{2}:\d{2}$/.test(start_time)||!/^\d{2}:\d{2}$/.test(end_time)||start_time>=end_time||!Number.isInteger(participants)||participants<1||participants>room.capacity)return banner('Please check title, date, time and pax. The date must be today or later.','danger');
+    const conflict=bookings.some(b=>b.id!==id&&b.room_id===record.room_id&&b.booking_date===booking_date&&b.status==='CONFIRMED'&&b.start_time<end_time&&b.end_time>start_time);
+    if(conflict)return banner('This change conflicts with another confirmed booking.','danger');
+    if(!confirm('Save changes to this EasyLatih training block?'))return;
+    busy=true;banner('Updating training block…');
+    const {error}=await db.from('venue_bookings').update({programme_title:title.trim(),booking_date,start_time,end_time,participants,notes:notes.trim(),updated_at:new Date().toISOString()}).eq('id',id);
+    busy=false;
+    if(error){banner(error.code==='23P01'?'Booking conflict: another confirmed booking already occupies this slot.':'Update failed: '+error.message,'danger');return;}
+    banner('Training block updated. Inventory requirement will refresh from the new details.','success');await load();
+  }
   async function changeRoom(id,action){
     if(busy)return;
     const r=rooms.find(x=>x.id===id);if(!r)return;
@@ -189,7 +209,7 @@
     try{await load();}catch(e){banner('Unable to load booking data. '+e.message,'danger');}
     $('refreshData').addEventListener('click',()=>load().catch(e=>banner(e.message,'danger')));
     ['statusFilter','roomFilter','findBooking'].forEach(id=>$(id).addEventListener(id==='findBooking'?'input':'change',renderBookings));
-    $('bookingRows').addEventListener('click',e=>{const btn=e.target.closest('button[data-book]');if(btn)changeStatus(btn.dataset.book,btn.dataset.status);});
+    $('bookingRows').addEventListener('click',e=>{const edit=e.target.closest('button[data-book-edit]'),btn=e.target.closest('button[data-book]');if(edit)editInternalBooking(edit.dataset.bookEdit);else if(btn)changeStatus(btn.dataset.book,btn.dataset.status);});
     $('mailFailures').addEventListener('click',e=>{const btn=e.target.closest('button[data-email-retry]');if(btn)retryMail(btn.dataset.emailRetry);});
     $('rateForm').addEventListener('submit',saveRates);
     $('holidayForm').addEventListener('submit',addHoliday);
