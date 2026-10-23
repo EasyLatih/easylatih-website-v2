@@ -7,7 +7,7 @@
   const today = () => new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Kuala_Lumpur'});
   const datePlus = days => { const date = new Date(today()+'T12:00:00'); date.setDate(date.getDate()+days); return date.toISOString().slice(0,10); };
   const readableDate = value => value ? new Date(value+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-  let items = [], trainings = [], schedules = [], busy = false, editingScheduleId = null;
+  let items = [], trainings = [], schedules = [], issuedTrainingKeys = new Set(), busy = false, editingScheduleId = null;
   function banner(message, type='info') { const el=$('message'); el.textContent=message; el.dataset.type=type; el.hidden=!message; }
   function groupedTrainings(rows) {
     const groups = new Map();
@@ -20,7 +20,8 @@
     return [...groups.values()].sort((a,b) => a.start_date.localeCompare(b.start_date));
   }
   function paxFor(training) { return training.actual_pax==null ? training.max_pax : training.actual_pax; }
-  function plannedFor(item) { return trainings.filter(training => training.goodies_required).reduce((total, training) => total + paxFor(training) * Number(item.default_per_pax || 0), 0); }
+  function plannedFor(item) { return trainings.filter(training => training.goodies_required && training.end_date >= today()).reduce((total, training) => total + paxFor(training) * Number(item.default_per_pax || 0), 0); }
+  function issueKey(training) { return training.source+':'+(training.source==='ROOM' ? (training.internal_training_group_id || training.id) : training.id); }
   function render() {
     const total = items.reduce((sum,item) => sum + Number(item.current_stock||0), 0);
     const low = items.filter(item => Number(item.current_stock||0) <= Number(item.reorder_level||0)).length;
@@ -38,21 +39,25 @@
       const source=training.source==='EXTERNAL'?'EXTERNAL VENUE':'TRAINING ROOM';
       const venue=training.source==='EXTERNAL'?training.venue_name:(training.venue_rooms?.name||'Room');
       const actual=training.actual_pax==null?'Not confirmed':training.actual_pax;
-      const actions='<button data-actual-pax="'+escape(training.id)+'">Actual pax</button><button data-goodies-toggle="'+escape(training.id)+'">Goodies: '+(training.goodies_required?'Yes':'No')+'</button>'+(training.source==='EXTERNAL'?'<button data-schedule-edit="'+escape(training.id)+'">Edit</button><button data-schedule-cancel="'+escape(training.id)+'">Cancel</button>':'<a href="venue-bookings.html#booking-'+escape(training.id)+'">Edit room booking</a>');
+      const issued=issuedTrainingKeys.has(issueKey(training));
+      const issueAction=!training.goodies_required ? '' : issued ? '<span class="chip">GOODIES ISSUED</span>' : training.end_date>today() ? '<button disabled title="Available after training ends">Issue goodies</button>' : training.actual_pax===null ? '<button disabled title="Set actual pax first">Issue goodies</button>' : '<button class="primary" data-issue-goodies="'+escape(training.id)+'">Issue goodies</button>';
+      const actions='<button data-actual-pax="'+escape(training.id)+'">Actual pax</button><button data-goodies-toggle="'+escape(training.id)+'">Goodies: '+(training.goodies_required?'Yes':'No')+'</button>'+issueAction+(training.source==='EXTERNAL'?'<button data-schedule-edit="'+escape(training.id)+'">Edit</button><button data-schedule-cancel="'+escape(training.id)+'">Cancel</button>':'<a href="venue-bookings.html#booking-'+escape(training.id)+'">Edit room booking</a>');
       return '<tr><td><strong>'+escape(training.programme_title)+'</strong><span class="chip">'+source+'</span></td><td>'+dates+'</td><td>'+escape(venue)+'</td><td>Target: '+training.max_pax+'<small>Actual: '+actual+'</small></td><td>'+goodies+'</td><td class="actions">'+actions+'</td></tr>';
     }).join('') || '<tr><td colspan="6" class="empty">No confirmed EasyLatih training in the next 30 days.</td></tr>';
   }
   async function load() {
-    const [itemResult, bookingResult, scheduleResult] = await Promise.all([
+    const [itemResult, bookingResult, scheduleResult, movementResult] = await Promise.all([
       db.from('inventory_items').select('*').eq('is_active',true).order('name'),
-      db.from('venue_bookings').select('id,internal_training_group_id,booking_date,programme_title,participants,actual_participants,goodies_required,venue_rooms(name)').eq('booking_source','INTERNAL').eq('status','CONFIRMED').gte('booking_date',today()).lte('booking_date',datePlus(30)).order('booking_date'),
-      db.from('training_schedules').select('*').eq('status','CONFIRMED').lte('start_date',datePlus(30)).gte('end_date',today()).order('start_date')
+      db.from('venue_bookings').select('id,internal_training_group_id,booking_date,programme_title,participants,actual_participants,goodies_required,venue_rooms(name)').eq('booking_source','INTERNAL').eq('status','CONFIRMED').gte('booking_date',datePlus(-30)).lte('booking_date',datePlus(30)).order('booking_date'),
+      db.from('training_schedules').select('*').eq('status','CONFIRMED').lte('start_date',datePlus(30)).gte('end_date',datePlus(-30)).order('start_date'),
+      db.from('inventory_movements').select('training_source,training_id').eq('movement_type','ISSUE').not('training_id','is',null)
     ]);
-    if (itemResult.error || bookingResult.error || scheduleResult.error) throw itemResult.error || bookingResult.error || scheduleResult.error;
+    if (itemResult.error || bookingResult.error || scheduleResult.error || movementResult.error) throw itemResult.error || bookingResult.error || scheduleResult.error || movementResult.error;
     items=itemResult.data||[];
     const roomTrainings=groupedTrainings(bookingResult.data||[]).map(row=>({...row,source:'ROOM',goodies_required:row.goodies_required!==false}));
     schedules=scheduleResult.data||[];
     const externalTrainings=schedules.map(row=>({...row,start_date:row.start_date,end_date:row.end_date,max_pax:Number(row.participants||0),actual_pax:row.actual_participants==null?null:Number(row.actual_participants),source:'EXTERNAL'}));
+    issuedTrainingKeys=new Set((movementResult.data||[]).map(row=>row.training_source+':'+row.training_id));
     trainings=[...roomTrainings,...externalTrainings].sort((a,b)=>a.start_date.localeCompare(b.start_date)); render();
   }
   function resetScheduleForm() {
@@ -107,6 +112,18 @@
     if(result.error)return banner('Unable to update goodies requirement: '+result.error.message,'danger');
     banner(goodies_required?'Training included in goodies planning.':'Training removed from goodies planning.','success');await load();
   }
+  async function issueGoodies(id) {
+    const training=trainings.find(row=>row.id===id); if(!training||busy||!training.goodies_required||training.actual_pax===null)return;
+    const training_id=training.source==='ROOM'?(training.internal_training_group_id||training.id):training.id;
+    if(issuedTrainingKeys.has(training.source+':'+training_id))return banner('Goodies were already issued for this training.','danger');
+    const itemSummary=items.filter(item=>Number(item.default_per_pax||0)>0).map(item=>item.name+' × '+(training.actual_pax*Number(item.default_per_pax||0))).join(', ');
+    if(!confirm('Issue goodies for "'+training.programme_title+'" based on actual '+training.actual_pax+' pax?\n\n'+itemSummary+'\n\nThis deducts stock and cannot be repeated.'))return;
+    busy=true; banner('Issuing goodies and deducting stock…');
+    const {error}=await db.rpc('issue_training_goodies',{p_source:training.source,p_training_id:training_id,p_actual_participants:training.actual_pax});
+    busy=false;
+    if(error)return banner('Unable to issue goodies: '+error.message,'danger');
+    banner('Goodies issued using actual '+training.actual_pax+' pax. Stock has been deducted.','success'); await load();
+  }
   async function saveMovement(event) {
     event.preventDefault(); if (busy) return;
     const item_id=$('movementItem').value, movement_type=$('movementType').value, enteredQty=Number($('movementQty').value), reason=$('movementReason').value.trim();
@@ -129,7 +146,7 @@
     $('movementForm').addEventListener('submit',saveMovement);
     $('scheduleForm').addEventListener('submit',saveSchedule);
     $('scheduleCancelEdit').addEventListener('click',resetScheduleForm);
-    $('trainingRows').addEventListener('click',event=>{const actual=event.target.closest('button[data-actual-pax]'),goodies=event.target.closest('button[data-goodies-toggle]'),edit=event.target.closest('button[data-schedule-edit]'),cancel=event.target.closest('button[data-schedule-cancel]');if(actual)updateActualPax(actual.dataset.actualPax);else if(goodies)toggleGoodies(goodies.dataset.goodiesToggle);else if(edit)editSchedule(edit.dataset.scheduleEdit);else if(cancel)cancelSchedule(cancel.dataset.scheduleCancel);});
+    $('trainingRows').addEventListener('click',event=>{const actual=event.target.closest('button[data-actual-pax]'),goodies=event.target.closest('button[data-goodies-toggle]'),issue=event.target.closest('button[data-issue-goodies]'),edit=event.target.closest('button[data-schedule-edit]'),cancel=event.target.closest('button[data-schedule-cancel]');if(actual)updateActualPax(actual.dataset.actualPax);else if(goodies)toggleGoodies(goodies.dataset.goodiesToggle);else if(issue)issueGoodies(issue.dataset.issueGoodies);else if(edit)editSchedule(edit.dataset.scheduleEdit);else if(cancel)cancelSchedule(cancel.dataset.scheduleCancel);});
     $('itemRows').addEventListener('click',event=>{ const button=event.target.closest('button[data-adjust]'); if (!button) return; $('movementItem').value=button.dataset.adjust; $('movementType').value='ADJUSTMENT'; $('movementQty').focus(); $('movementTitle').textContent='Adjust '+button.dataset.name; $('movementHint').textContent='Use a positive or negative quantity after a stock count.'; window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}); });
   }
   setup();
