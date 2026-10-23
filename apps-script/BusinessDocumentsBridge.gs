@@ -76,8 +76,10 @@ function bdQuoteNumber_(id){
   const book=SpreadsheetApp.openById(VD_SHEET_ID),run=book.getSheetByName('RunningNumbers');if(!run)throw Error('Missing RunningNumbers tab');
   let log=book.getSheetByName('QuotationAllocation');if(!log){log=book.insertSheet('QuotationAllocation');log.appendRow(['DocumentId','QuotationNo','AllocatedAt']);}
   if(log.getLastRow()>1){const vals=log.getRange(2,1,log.getLastRow()-1,2).getValues();for(let row of vals)if(String(row[0])===String(id))return String(row[1]);}
-  const vals=run.getRange(1,1,Math.max(2,run.getLastRow()),3).getValues(),idx=vals.findIndex((x,n)=>n>0&&String(x[0]).toUpperCase()==='QUOTATION');if(idx<0)throw Error('Add QUOTATION row to RunningNumbers tab');
-  const month=Number(Utilities.formatDate(new Date(),VD_TZ,'MM')),year=Utilities.formatDate(new Date(),VD_TZ,'yy'),next=(Number(vals[idx][2])===month?Number(vals[idx][1])||0:0)+1;
+  const vals=run.getRange(1,1,Math.max(2,run.getLastRow()),3).getValues();let idx=vals.findIndex((x,n)=>n>0&&String(x[0]).toUpperCase()==='QUOTATION');
+  const month=Number(Utilities.formatDate(new Date(),VD_TZ,'MM')),year=Utilities.formatDate(new Date(),VD_TZ,'yy');
+  if(idx<0){run.appendRow(['QUOTATION',0,month]);idx=run.getLastRow()-1;}
+  const last=run.getRange(idx+1,2,1,2).getValues()[0],next=(Number(last[1])===month?Number(last[0])||0:0)+1;
   run.getRange(idx+1,2,1,2).setValues([[next,month]]);log.appendRow([id,'QT'+year+'/'+String(month).padStart(2,'0')+'-'+String(next).padStart(4,'0'),new Date()]);return 'QT'+year+'/'+String(month).padStart(2,'0')+'-'+String(next).padStart(4,'0');
  }finally{lock.releaseLock();}
 }
