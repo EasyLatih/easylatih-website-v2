@@ -23,59 +23,60 @@ function bdText_(v){return String(v??'').trim();}
 function bdCash_(v){return 'RM '+(Number(v)||0).toFixed(2);}
 function bdDate_(v){return vdDate(v)||'-';}
 function bdDocTitle_(type){return type==='QUOTATION'?'QUOTATION':type==='INVOICE'?'INVOICE':'OFFICIAL RECEIPT';}
-function bdMarker_(type){return type==='QUOTATION'?'[[DRAFT_QUOTATION_NUMBER]]':type==='INVOICE'?'[[DRAFT_INVOICE_NUMBER]]':'[[DRAFT_RECEIPT_NUMBER]]';}
+const BD_TEMPLATE_IDS_={
+ QUOTATION:'1w2N_noQgkB3QU6Kdx_Bx8jU1Vho_j57O4TFGEkSLC4s',
+ INVOICE:'1VlGTpfv5B30GF24Yi29yiqg_d3IUrtjxID68A64GFR4',
+ RECEIPT:'1n4oWxH_TTBb3i8zhsk2KxWcbB5FfJmanGL8AJ0QCGBA'
+};
+function bdTemplateId_(type){
+ const custom=PropertiesService.getScriptProperties().getProperty('BD_'+String(type)+'_TEMPLATE_ID');
+ const id=custom||BD_TEMPLATE_IDS_[String(type)];if(!/^[\w-]{20,}$/.test(String(id||'')))throw Error('Missing '+type+' master template');return id;
+}
+function bdMarker_(type){return type==='QUOTATION'?'{{QUOTATION_NO}}':type==='INVOICE'?'{{INVOICE_NO}}':'{{RECEIPT_NO}}';}
 function bdDraftName_(d){return 'DRAFT - '+bdDocTitle_(d.type)+' - '+String(d.documentId).slice(0,8);}
 function bdParentFolder_(){return vdFolder(VD_INVOICE_TEMPLATE);}
-function bdLineRows_(payload,type){
- const rows=Array.isArray(payload.lines)?payload.lines:[];
- const head=type==='QUOTATION'?['No.','Description','Fee (RM)','Total (RM)']:['No.','Description','Total (RM)'];
- return [head].concat(rows.map((line,i)=>{
-  const q=Number(line.quantity)||0,r=Number(line.unit_price)||0;
-  return type==='QUOTATION'?[String(i+1),bdText_(line.description),bdCash_(r),bdCash_(q*r)]:[String(i+1),bdText_(line.description),bdCash_(q*r)];
- }));
+function bdLines_(payload){
+ const rows=Array.isArray(payload.lines)?payload.lines.filter(x=>bdText_(x&&x.description)):[];
+ return rows.length?rows:[{description:bdText_(payload.project_title)||'Consultancy service',quantity:1,unit_price:Number(payload.total)||0}];
+}
+function bdChargeTable_(body){
+ const tables=body.getTables();
+ for(let i=0;i<tables.length;i++)if(tables[i].getNumRows()>=3&&bdText_(tables[i].getCell(0,0).getText())==='No.')return tables[i];
+ throw Error('Charges table is missing from the master template');
+}
+function bdCellText_(cell,value){cell.clear();cell.appendParagraph(String(value||'-'));}
+function bdFillChargeTable_(body,p){
+ const lines=bdLines_(p),table=bdChargeTable_(body),many=lines.length>1;
+ const descriptions=lines.map((line,i)=>{
+  const qty=Number(line.quantity)||0,prefix=many?(i+1)+'. ':'';
+  return prefix+bdText_(line.description)+'\nQty: '+qty;
+ }).join('\n\n');
+ const rates=lines.map(line=>bdCash_(line.unit_price)).join('\n\n');
+ const amounts=lines.map(line=>bdCash_((Number(line.quantity)||0)*(Number(line.unit_price)||0))).join('\n\n');
+ bdCellText_(table.getCell(1,0),lines.map((_,i)=>(i+1)+'.').join('\n\n'));
+ vdReplace(body,'{{SERVICE_TITLE}}',bdText_(p.project_title)||'Consultancy service');
+ vdReplace(body,'{{SERVICE_DESCRIPTION}}',descriptions);
+ vdReplace(body,'{{SERVICE_MODE}}',bdText_(p.mode)||'As agreed with client');
+ vdReplace(body,'{{UNIT_FEE}}',rates);
+ vdReplace(body,'{{LINE_TOTAL}}',amounts);
+ vdReplace(body,'{{TOTAL_AMOUNT}}',bdCash_(p.total));
 }
 function bdBuild_(d){
- const p=d.payload||{},doc=DocumentApp.create(bdDraftName_(d)),file=DriveApp.getFileById(doc.getId()),folder=bdParentFolder_();
- folder.addFile(file);DriveApp.getRootFolder().removeFile(file);
- const body=doc.getBody();body.setMarginTop(42).setMarginBottom(42).setMarginLeft(48).setMarginRight(48);
- const title=body.appendParagraph('EASY LATIH CONSULTANCY');title.setBold(true).setFontSize(18).setForegroundColor('#000000');
- body.appendParagraph('202503030373 (JR0173505-K)\nB-62, TKT 1, JLN IM 7/1, BDR INDERA MAHKOTA 6,\n25200, KUANTAN, PAHANG\n\nTel: 09-560 4273 / 010-920 2811\nEmail: admin@easylatih.my\nWebsite: www.easylatih.my').setFontSize(9);
- body.appendParagraph(bdDocTitle_(d.type)).setHeading(DocumentApp.ParagraphHeading.HEADING1).setForegroundColor('#003e6f');
- const meta=body.appendTable([
-  ['Document No.',bdMarker_(d.type)],
-  ['Date',bdDate_(d.type==='RECEIPT'?p.payment_date:(d.type==='INVOICE'?p.invoice_date:p.quotation_date))],
-  ['Client',bdText_(p.client_name)||'-'],
-  ['Attention',bdText_(p.contact_name)||'-'],
-  ['Email / Phone',(bdText_(p.client_email)||(bdText_(p.client_phone)))?bdText_(p.client_email)+' '+bdText_(p.client_phone):'-']
- ]);meta.setBorderWidth(0.5);
- if(bdText_(p.client_address))body.appendParagraph(bdText_(p.client_address)).setFontSize(9);
- body.appendParagraph(bdDocTitle_(d.type)).setHeading(DocumentApp.ParagraphHeading.HEADING1).setAlignment(DocumentApp.HorizontalAlignment.CENTER).setSpacingBefore(14);
- body.appendParagraph(d.type==='QUOTATION'?'With reference to the above, Easy Latih Consultancy (EasyLatih) is pleased to provide you with our quotation for the following service:':d.type==='INVOICE'?'Enclosed herewith is the invoice as follows:':'Received with thanks from the client for the following payment:');
- body.appendParagraph('Title: '+(bdText_(p.project_title)||'-')).setBold(true).setSpacingBefore(12);
- if(d.type==='QUOTATION'&&p.valid_until)body.appendParagraph('Valid until: '+bdDate_(p.valid_until)).setItalic(true);
- if(bdText_(p.scope)){body.appendParagraph('Scope of work').setHeading(DocumentApp.ParagraphHeading.HEADING2);body.appendParagraph(bdText_(p.scope));}
- body.appendParagraph('Charges').setHeading(DocumentApp.ParagraphHeading.HEADING2);
- const charges=body.appendTable(bdLineRows_(p,d.type));charges.setBorderWidth(0.5);
- const calc=body.appendTable([
-  ['Subtotal',bdCash_(p.subtotal)],
-  ['Discount',bdCash_(p.discount)],
-  ['Tax / SST',bdCash_(p.tax)],
-  ['TOTAL',bdCash_(p.total)]
- ]);calc.setBorderWidth(0.5);
- if(d.type==='INVOICE')body.appendParagraph('NOTE:\n1. Please make payment with cheque or transfer to:\n\nEASY LATIH CONSULTANCY\nMAYBANK : 5562 2647 8218').setSpacingBefore(14).setBold(false);
- if(d.type==='RECEIPT'){
-  body.appendParagraph('Received from: '+(bdText_(p.client_name)||'-')).setSpacingBefore(14);
-  body.appendParagraph('Invoice reference: '+(bdText_(p.invoice_number)||'-'));
-  body.appendParagraph('Payment reference: '+(bdText_(p.payment_reference)||'-'));
-  body.appendParagraph('Amount received: '+bdCash_(p.amount_received)).setBold(true);
- }
- if(bdText_(p.notes)){body.appendParagraph('Notes').setHeading(DocumentApp.ParagraphHeading.HEADING2);body.appendParagraph(bdText_(p.notes));}
- if(d.type==='QUOTATION'){
-  body.appendPageBreak();body.appendParagraph('ACCEPTANCE OF QUOTATION').setHeading(DocumentApp.ParagraphHeading.HEADING1).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-  body.appendParagraph('We hereby confirm acceptance of this quotation and agree to the terms and conditions stipulated above.');
-  const acceptance=body.appendTable([['Name:','','Designation:',''],['Signature:','','Date:',''],['Company Stamp:','','','']]);acceptance.setBorderWidth(0.5);
- }
- body.appendParagraph('Easy Latih Consultancy').setFontSize(8).setForegroundColor('#63788b').setSpacingBefore(24);
+ const p=d.payload||{},folder=bdParentFolder_(),template=DriveApp.getFileById(bdTemplateId_(d.type)),file=template.makeCopy(bdDraftName_(d),folder),doc=DocumentApp.openById(file.getId()),body=doc.getBody();
+ const date=d.type==='RECEIPT'?p.payment_date:(d.type==='INVOICE'?p.invoice_date:p.quotation_date);
+ const values={
+  '{{CLIENT_NAME}}':bdText_(p.client_name)||'-',
+  '{{CLIENT_ADDRESS}}':bdText_(p.client_address)||'-',
+  '{{DATE}}':bdDate_(date),
+  '{{SCOPE_OF_WORK}}':bdText_(p.scope)||'The scope of work is as stated in the service description above.',
+  '{{NOTES}}':bdText_(p.notes),
+  '{{PAYMENT_TERMS}}':bdText_(p.payment_terms)||'Payment is due in accordance with the accepted quotation.',
+  '{{PAYMENT_DATE}}':bdDate_(p.payment_date),
+  '{{PAYMENT_METHOD}}':bdText_(p.payment_method)||'Bank transfer',
+  '{{PAYMENT_REFERENCE}}':bdText_(p.payment_reference)||'-',
+  '{{AMOUNT_RECEIVED}}':bdCash_(p.amount_received||p.total)
+ };
+ Object.keys(values).forEach(key=>vdReplace(body,key,values[key]));bdFillChargeTable_(body,p);
  doc.saveAndClose();return {googleDocId:file.getId(),googleDocUrl:file.getUrl()};
 }
 function bdMakeDraft_(d){if(!['QUOTATION','INVOICE','RECEIPT'].includes(String(d.type||'')))throw Error('Unknown document type');return {ok:true,...bdBuild_(d)};}
