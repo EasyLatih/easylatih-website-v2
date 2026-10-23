@@ -38,19 +38,19 @@
       const source=training.source==='EXTERNAL'?'EXTERNAL VENUE':'TRAINING ROOM';
       const venue=training.source==='EXTERNAL'?training.venue_name:(training.venue_rooms?.name||'Room');
       const actual=training.actual_pax==null?'Not confirmed':training.actual_pax;
-      const actions='<button data-actual-pax="'+escape(training.id)+'">Actual pax</button>'+(training.source==='EXTERNAL'?'<button data-schedule-edit="'+escape(training.id)+'">Edit</button><button data-schedule-cancel="'+escape(training.id)+'">Cancel</button>':'<a href="venue-bookings.html#booking-'+escape(training.id)+'">Edit room booking</a>');
+      const actions='<button data-actual-pax="'+escape(training.id)+'">Actual pax</button><button data-goodies-toggle="'+escape(training.id)+'">Goodies: '+(training.goodies_required?'Yes':'No')+'</button>'+(training.source==='EXTERNAL'?'<button data-schedule-edit="'+escape(training.id)+'">Edit</button><button data-schedule-cancel="'+escape(training.id)+'">Cancel</button>':'<a href="venue-bookings.html#booking-'+escape(training.id)+'">Edit room booking</a>');
       return '<tr><td><strong>'+escape(training.programme_title)+'</strong><span class="chip">'+source+'</span></td><td>'+dates+'</td><td>'+escape(venue)+'</td><td>Target: '+training.max_pax+'<small>Actual: '+actual+'</small></td><td>'+goodies+'</td><td class="actions">'+actions+'</td></tr>';
     }).join('') || '<tr><td colspan="6" class="empty">No confirmed EasyLatih training in the next 30 days.</td></tr>';
   }
   async function load() {
     const [itemResult, bookingResult, scheduleResult] = await Promise.all([
       db.from('inventory_items').select('*').eq('is_active',true).order('name'),
-      db.from('venue_bookings').select('id,internal_training_group_id,booking_date,programme_title,participants,actual_participants,venue_rooms(name)').eq('booking_source','INTERNAL').eq('status','CONFIRMED').gte('booking_date',today()).lte('booking_date',datePlus(30)).order('booking_date'),
+      db.from('venue_bookings').select('id,internal_training_group_id,booking_date,programme_title,participants,actual_participants,goodies_required,venue_rooms(name)').eq('booking_source','INTERNAL').eq('status','CONFIRMED').gte('booking_date',today()).lte('booking_date',datePlus(30)).order('booking_date'),
       db.from('training_schedules').select('*').eq('status','CONFIRMED').lte('start_date',datePlus(30)).gte('end_date',today()).order('start_date')
     ]);
     if (itemResult.error || bookingResult.error || scheduleResult.error) throw itemResult.error || bookingResult.error || scheduleResult.error;
     items=itemResult.data||[];
-    const roomTrainings=groupedTrainings(bookingResult.data||[]).map(row=>({...row,source:'ROOM',goodies_required:true}));
+    const roomTrainings=groupedTrainings(bookingResult.data||[]).map(row=>({...row,source:'ROOM',goodies_required:row.goodies_required!==false}));
     schedules=scheduleResult.data||[];
     const externalTrainings=schedules.map(row=>({...row,start_date:row.start_date,end_date:row.end_date,max_pax:Number(row.participants||0),actual_pax:row.actual_participants==null?null:Number(row.actual_participants),source:'EXTERNAL'}));
     trainings=[...roomTrainings,...externalTrainings].sort((a,b)=>a.start_date.localeCompare(b.start_date)); render();
@@ -94,11 +94,25 @@
     if(result.error)return banner('Unable to update actual pax: '+result.error.message,'danger');
     banner(actual_participants===null?'Target pax is being used for goodies planning again.':'Actual pax updated. Goodies requirement now uses '+actual_participants+'.','success');await load();
   }
+  async function toggleGoodies(id) {
+    const training=trainings.find(row=>row.id===id);if(!training||busy)return;
+    const goodies_required=!training.goodies_required;
+    if(!confirm(goodies_required?'Include this training in goodies planning?':'Remove this training from goodies planning?'))return;
+    busy=true;banner('Updating goodies requirement…');
+    let result;
+    if(training.source==='EXTERNAL')result=await db.from('training_schedules').update({goodies_required,updated_at:new Date().toISOString()}).eq('id',id);
+    else if(training.internal_training_group_id)result=await db.from('venue_bookings').update({goodies_required,updated_at:new Date().toISOString()}).eq('internal_training_group_id',training.internal_training_group_id);
+    else result=await db.from('venue_bookings').update({goodies_required,updated_at:new Date().toISOString()}).eq('id',id);
+    busy=false;
+    if(result.error)return banner('Unable to update goodies requirement: '+result.error.message,'danger');
+    banner(goodies_required?'Training included in goodies planning.':'Training removed from goodies planning.','success');await load();
+  }
   async function saveMovement(event) {
     event.preventDefault(); if (busy) return;
-    const item_id=$('movementItem').value, movement_type=$('movementType').value, quantity_change=Number($('movementQty').value), reason=$('movementReason').value.trim();
-    if (!item_id || !Number.isInteger(quantity_change) || !quantity_change || reason.length<2) return banner('Please enter an item, whole-number quantity and reason.','danger');
-    if (movement_type==='STOCK_IN' && quantity_change<1) return banner('Stock in must be a positive number. Use Adjustment for a decrease.','danger');
+    const item_id=$('movementItem').value, movement_type=$('movementType').value, enteredQty=Number($('movementQty').value), reason=$('movementReason').value.trim();
+    if (!item_id || !Number.isInteger(enteredQty) || !enteredQty || reason.length<2) return banner('Please enter an item, whole-number quantity and reason.','danger');
+    if ((movement_type==='STOCK_IN'||movement_type==='ISSUE') && enteredQty<1) return banner('Stock In and Goodies Out must use a positive number. Use Adjustment for a decrease.','danger');
+    const quantity_change=movement_type==='ISSUE'?-enteredQty:enteredQty;
     busy=true; $('movementForm').querySelector('button').disabled=true; banner('Saving stock record…');
     const {error}=await db.from('inventory_movements').insert({item_id,quantity_change,movement_type,reason});
     busy=false; $('movementForm').querySelector('button').disabled=false;
@@ -115,7 +129,7 @@
     $('movementForm').addEventListener('submit',saveMovement);
     $('scheduleForm').addEventListener('submit',saveSchedule);
     $('scheduleCancelEdit').addEventListener('click',resetScheduleForm);
-    $('trainingRows').addEventListener('click',event=>{const actual=event.target.closest('button[data-actual-pax]'),edit=event.target.closest('button[data-schedule-edit]'),cancel=event.target.closest('button[data-schedule-cancel]');if(actual)updateActualPax(actual.dataset.actualPax);else if(edit)editSchedule(edit.dataset.scheduleEdit);else if(cancel)cancelSchedule(cancel.dataset.scheduleCancel);});
+    $('trainingRows').addEventListener('click',event=>{const actual=event.target.closest('button[data-actual-pax]'),goodies=event.target.closest('button[data-goodies-toggle]'),edit=event.target.closest('button[data-schedule-edit]'),cancel=event.target.closest('button[data-schedule-cancel]');if(actual)updateActualPax(actual.dataset.actualPax);else if(goodies)toggleGoodies(goodies.dataset.goodiesToggle);else if(edit)editSchedule(edit.dataset.scheduleEdit);else if(cancel)cancelSchedule(cancel.dataset.scheduleCancel);});
     $('itemRows').addEventListener('click',event=>{ const button=event.target.closest('button[data-adjust]'); if (!button) return; $('movementItem').value=button.dataset.adjust; $('movementType').value='ADJUSTMENT'; $('movementQty').focus(); $('movementTitle').textContent='Adjust '+button.dataset.name; $('movementHint').textContent='Use a positive or negative quantity after a stock count.'; window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}); });
   }
   setup();
