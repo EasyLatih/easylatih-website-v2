@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>My Workspace | EasyLatih Admin</title><link rel="icon" href="../assets/favicon.png" type="image/png"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="my-workspace.css">
+</head><body>
+<header><div class="bar"><div class="brand"><img src="../assets/logo.png" alt="EasyLatih"><div><strong>My Workspace</strong><small>EasyLatih Admin Centre</small></div></div><a class="back" href="admin-dashboard.html">← Admin Centre</a></div></header>
+<main>
+<div id="loginState" class="notice">Checking admin access…</div>
+<div id="adminApp" hidden>
+
+<section class="day-head">
+  <div class="day-title">
+    <p class="eyebrow" id="dayEyebrow">Today</p>
+    <h1 id="dayTitle">—</h1>
+  </div>
+  <div class="day-nav">
+    <button type="button" id="prevDay" aria-label="Previous day">←</button>
+    <button type="button" id="todayBtn">Today</button>
+    <button type="button" id="nextDay" aria-label="Next day">→</button>
+  </div>
+</section>
+
+<section class="day-meta">
+  <div class="progress"><div class="bar-track" aria-hidden="true"><i id="progressFill"></i></div><span id="progressText">0 of 0 done</span></div>
+  <label class="switch"><input type="checkbox" id="trainingToggle"> Training day <small id="trainingAuto"></small></label>
+  <span class="save-state" id="saveState" aria-live="polite"></span>
+</section>
+
+<div id="message" class="notice" hidden></div>
+
+<nav class="tabs" role="tablist" aria-label="Workspace views">
+  <button type="button" role="tab" id="tab-today" aria-selected="true" aria-controls="view-today">Today</button>
+  <button type="button" role="tab" id="tab-week" aria-selected="false" aria-controls="view-week">Week</button>
+</nav>
+
+<!-- TODAY -->
+<section id="view-today" role="tabpanel" aria-labelledby="tab-today">
+  <div class="prayer" id="prayerStrip"><span class="muted">Loading prayer times…</span></div>
+  <div class="layout">
+    <div class="col-main">
+      <section class="panel">
+        <div class="panel-head"><div><h2>Routine</h2><p id="routineHint">Tick each block when it's done.</p></div></div>
+        <ul class="routine" id="routineList"></ul>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><div><h2>Easy Latih today</h2><p>Live from your Admin Centre modules.</p></div><button type="button" id="refreshLive" class="small">↻ Refresh</button></div>
+        <div class="tiles" id="liveTiles"></div>
+        <div class="live-grid">
+          <div class="live-block"><h3>Trainings, next 7 days <a href="inventory-goodies.html">Open</a></h3><div id="trainingList" class="list"><p class="empty">Loading…</p></div></div>
+          <div class="live-block"><h3>Sales follow-ups <a href="agent-dashboard.html">Open</a></h3><div id="salesList" class="list"><p class="empty">Loading…</p></div></div>
+          <div class="live-block"><h3>Unpaid invoices <a href="venue-bookings.html#documents">Room</a> <a href="consultancy-documents.html">Consultancy</a></h3><div id="invoiceList" class="list"><p class="empty">Loading…</p></div></div>
+          <div class="live-block"><h3>Room bookings, this week <a href="venue-bookings.html">Open</a></h3><div id="roomList" class="list"><p class="empty">Loading…</p></div></div>
+          <div class="live-block"><h3>Goodies low stock <a href="inventory-goodies.html">Open</a></h3><div id="stockList" class="list"><p class="empty">Loading…</p></div></div>
+          <div class="live-block"><h3>Trainer portal actions <a href="trainer-admin.html">Open</a></h3><div id="trainerList" class="list"><p class="empty">Loading…</p></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><div><h2>Work journal</h2><p>Saves on its own as you type.</p></div></div>
+        <div class="journal" id="journalFields"></div>
+      </section>
+    </div>
+
+    <aside class="col-side">
+      <section class="panel">
+        <div class="panel-head"><div><h2>My tasks</h2><p>Unfinished tasks stay here until you tick them.</p></div></div>
+        <form id="taskForm" class="task-form">
+          <label class="sr" for="taskTitle">Task</label>
+          <input id="taskTitle" type="text" maxlength="300" placeholder="Send quotation to client" required>
+          <div class="task-form-row">
+            <label class="sr" for="taskBiz">Business</label>
+            <select id="taskBiz">
+              <option value="EL">Easy Latih</option><option value="SNS">S&amp;S</option><option value="RAPAT">RAPAT</option>
+              <option value="GPPT">GPPT FC</option><option value="ASALIHIN">As-Salihin</option><option value="SITE">syamsulizzat.my</option>
+              <option value="AQUA">SA Aqua Agro</option><option value="OTHER">Other</option>
+            </select>
+            <label class="sr" for="taskDue">Due date</label>
+            <input id="taskDue" type="date">
+            <button type="submit" class="primary">Add</button>
+          </div>
+        </form>
+        <ul class="tasks" id="taskList"><li class="empty">Loading…</li></ul>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><div><h2>Quick links</h2></div></div>
+        <div class="links">
+          <a href="https://web.whatsapp.com/" target="_blank" rel="noopener">WhatsApp Web</a>
+          <a href="https://calendar.google.com/" target="_blank" rel="noopener">Google Calendar</a>
+          <a href="https://mail.google.com/" target="_blank" rel="noopener">Gmail</a>
+          <a href="https://business.facebook.com/" target="_blank" rel="noopener">Meta Business Suite</a>
+          <a href="https://www.tiktok.com/tiktokstudio" target="_blank" rel="noopener">TikTok Studio</a>
+          <a href="https://studio.youtube.com/" target="_blank" rel="noopener">YouTube Studio</a>
+          <a href="https://creators.spotify.com/" target="_blank" rel="noopener">Spotify for Creators</a>
+          <a href="https://www.threads.net/" target="_blank" rel="noopener">Threads</a>
+          <a href="agent-dashboard.html">Agent Portal</a>
+          <a href="venue-bookings.html">Room Booking</a>
+          <a href="trainer-admin.html">Trainer Admin</a>
+          <a href="consultancy-documents.html">Consultancy</a>
+        </div>
+      </section>
+    </aside>
+  </div>
+</section>
+
+<!-- WEEK -->
+<section id="view-week" role="tabpanel" aria-labelledby="tab-week" hidden>
+  <section class="panel">
+    <div class="panel-head"><div><h2 id="weekTitle">This week</h2><p>Tap a day to open it.</p></div></div>
+    <div class="week" id="weekStrip"></div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><div><h2>Weekly review</h2><p>What got done and what carried over. Best read on Saturday.</p></div></div>
+    <div id="weekReview" class="review"><p class="empty">Loading…</p></div>
+  </section>
+</section>
+
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script><script src="../trainer/config.js"></script><script src="my-workspace.js"></script>
+</body></html>
