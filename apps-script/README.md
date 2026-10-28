@@ -20,3 +20,29 @@ Admins no longer need an Agent ID login. A signed-in Admin Centre (Supabase) adm
 3. Approve the new permission prompt ("Connect to an external service"); the script uses it to check the admin login with Supabase.
 
 Agents keep logging in with their Agent ID and password as before.
+
+## Documents, JD14 and Certificates in the Admin Centre (AdminToolsBridge.gs)
+
+The Admin Centre page `internal/documents.html` runs the existing Document Generator, JD14 Generator and Certificates through the **EasyLatih Management System V2 - STAGING** Apps Script project. Requests are accepted only with a signed-in Supabase admin.
+
+1. In that project, click **+ → Script**, name it `AdminToolsBridge`, and paste in `AdminToolsBridge.gs`.
+2. In `Code.gs`, add this as the first line inside `function doPost(e) {`:
+   ```js
+   if (e && e.parameter && String(e.parameter.action || '').indexOf('adminTools.') === 0) return handleAdminTools_(e);
+   ```
+3. In `Code.gs`, at the end of `doGet`, replace the final `return HtmlService.createTemplateFromFile("Index")…;` with the version below, so the old dashboard is no longer open to the public:
+   ```js
+   try {
+     assertTrainerAdminAccess_();
+   } catch (error) {
+     return HtmlService
+       .createHtmlOutput('This dashboard has moved to the EasyLatih Admin Centre: <a href="https://www.easylatih.my/admin" target="_top">easylatih.my/admin</a>')
+       .setTitle("EasyLatih Admin Dashboard");
+   }
+   return HtmlService
+     .createTemplateFromFile("Index")
+     .evaluate()
+     .setTitle("EasyLatih Admin Dashboard")
+     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+   ```
+4. Save, then **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy** so the Web App URL stays the same.

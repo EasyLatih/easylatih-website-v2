@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Documents and Certificates | EasyLatih Admin</title><link rel="icon" href="../assets/favicon.png" type="image/png"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="my-workspace.css">
+<style>
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.form-grid .wide{grid-column:1/-1}
+.form-grid label,.stack label{display:flex;flex-direction:column;gap:5px;font-size:.76rem;font-weight:600;color:var(--navy)}
+.form-grid input,.form-grid select,.form-grid textarea,.stack input,.stack select,.stack textarea{font:inherit;font-size:.84rem;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink);min-width:0;width:100%}
+.form-grid textarea{min-height:70px;resize:vertical}
+.stack{display:flex;flex-direction:column;gap:12px}
+label.stack{gap:5px;font-size:.76rem;font-weight:600;color:var(--navy)}
+.row select,.row input{font:inherit;font-size:.84rem;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink);min-width:0;width:100%}
+.form-grid input::placeholder,.form-grid textarea::placeholder,.stack input::placeholder{color:#9aabb8;font-weight:400}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.row > label{flex:1 1 200px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:8px 14px;background:#fff;color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--navy);color:#fff}
+.sub{border-top:1px dashed var(--line);margin-top:16px;padding-top:14px}
+.sub h3{margin-bottom:10px}
+.result{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.result .item a{font-size:.8rem}
+.people{display:flex;flex-direction:column;gap:4px;max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:6px 10px}
+.people label{display:flex;gap:9px;align-items:center;font-size:.8rem;padding:5px 0;border-bottom:1px solid #edf2f5}
+.people label:last-child{border-bottom:0}
+.people input{width:16px;height:16px;accent-color:var(--green)}
+.people small{color:var(--muted)}
+.counts{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;margin-top:8px}
+.counts b{display:block;font-size:1.15rem;color:var(--navy);font-variant-numeric:tabular-nums}
+.busy{opacity:.6;pointer-events:none}
+.hint{font-size:.74rem;color:var(--muted)}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:9px;margin-top:10px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.76rem}
+th,td{padding:7px 9px;border-bottom:1px solid #edf2f5;text-align:left;vertical-align:top}
+th{background:var(--soft);color:var(--muted);font-weight:600;text-transform:uppercase;font-size:.64rem;letter-spacing:.04em}
+@media (max-width:700px){.form-grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head><body>
+<header><div class="bar"><div class="brand"><img src="../assets/logo.png" alt="EasyLatih"><div><strong>Documents and Certificates</strong><small>EasyLatih Admin Centre</small></div></div><div style="display:flex;gap:8px"><a class="back" href="admin-dashboard.html">← Admin Centre</a><a class="back" href="login.html?signout=1">Sign out</a></div></div></header>
+<main>
+<div id="loginState" class="notice">Checking admin access…</div>
+<div id="adminApp" hidden>
+  <div id="message" class="notice" hidden></div>
+
+  <nav class="tabs" role="tablist" aria-label="Document tools">
+    <button type="button" role="tab" id="tab-docs" aria-selected="true" aria-controls="view-docs">Quotation and invoice</button>
+    <button type="button" role="tab" id="tab-jd14" aria-selected="false" aria-controls="view-jd14">JD14</button>
+    <button type="button" role="tab" id="tab-certs" aria-selected="false" aria-controls="view-certs">Certificates</button>
+  </nav>
+
+  <!-- QUOTATION AND INVOICE -->
+  <section id="view-docs" role="tabpanel" aria-labelledby="tab-docs">
+    <div class="layout">
+      <div class="col-main">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Generate quotation or invoice</h2><p>Creates the PDF from your Google Docs templates and records it in the master sheet.</p></div></div>
+          <form id="docForm" novalidate>
+            <div class="form-grid">
+              <label class="wide">Company name<input id="d-companyName" required placeholder="ABC Sdn Bhd"></label>
+              <label class="wide">Company address<textarea id="d-companyAddress" placeholder="No. 1, Jalan Example, 25000 Kuantan, Pahang"></textarea></label>
+              <label>PIC name<input id="d-picName" placeholder="Puan Aminah"></label>
+              <label>PIC email<input id="d-picEmail" type="email" placeholder="hr@abc.com.my"></label>
+              <label>PIC phone<input id="d-picPhone" placeholder="0123456789"></label>
+              <label>Programme type
+                <span class="seg" role="group" aria-label="Programme type">
+                  <button type="button" data-ptype="PUBLIC" aria-pressed="true">Public</button>
+                  <button type="button" data-ptype="INHOUSE" aria-pressed="false">In-house</button>
+                </span>
+              </label>
+            </div>
+            <div class="form-grid sub" id="publicFields">
+              <label class="wide">Course<select id="d-courseId"><option value="">Loading courses…</option></select></label>
+              <label>Payment method<select id="d-paymentMethod"><option value="HRD">HRD</option><option value="SELF">Self-funded</option></select></label>
+            </div>
+            <div class="form-grid sub" id="inhouseFields" hidden>
+              <label class="wide">Programme name<input id="d-customProgramName" placeholder="Customer Service Excellence"></label>
+              <label>Fee per group (RM)<input id="d-feePerGroup" type="number" min="0" step="0.01" placeholder="6000"></label>
+              <label>Number of groups<input id="d-numberOfGroup" type="number" min="1" value="1"></label>
+              <label>Max pax per group<input id="d-maxPaxPerGroup" type="number" min="1" placeholder="20"></label>
+              <label>Venue<input id="d-venue" placeholder="H Elite Design Hotel"></label>
+              <label>Start date<input id="d-startDate" type="date"></label>
+              <label>End date<input id="d-endDate" type="date"></label>
+              <label>Course duration<input id="d-programDuration" placeholder="2 Days"></label>
+              <label>Total time<input id="d-totalTime" placeholder="14 Hours"></label>
+            </div>
+            <div class="form-grid sub">
+              <label>Requested pax<input id="d-requestedPax" type="number" min="1" value="1"></label>
+              <label>Discount (RM per pax)<input id="d-discount" type="number" min="0" step="0.01" value="0"></label>
+              <label class="wide">Amount override (optional)<input id="d-amount" type="number" min="0" step="0.01" placeholder="Leave blank to calculate automatically"></label>
+            </div>
+            <div class="actions">
+              <button type="button" class="primary" data-doc="QUOTATION">Generate quotation</button>
+              <button type="button" data-doc="INVOICE">Generate invoice</button>
+              <button type="button" data-doc="HRD_INVOICE">Generate HRD invoice</button>
+            </div>
+          </form>
+          <div class="result" id="docResult"></div>
+        </section>
+      </div>
+      <aside class="col-side">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Finalise in-house quotation</h2><p>Locks an in-house quotation draft as the final PDF.</p></div></div>
+          <form id="finaliseForm" class="stack" novalidate>
+            <label>Quotation number<input id="f-documentNo" placeholder="QUO26/08-0001"></label>
+            <button type="submit" class="primary">Finalise PDF</button>
+          </form>
+          <div class="result" id="finaliseResult"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h2>Made this session</h2><p>Links stay here until you close the page.</p></div></div>
+          <div class="list" id="sessionDocs"><p class="empty">Nothing generated yet.</p></div>
+        </section>
+      </aside>
+    </div>
+  </section>
+
+  <!-- JD14 -->
+  <section id="view-jd14" role="tabpanel" aria-labelledby="tab-jd14" hidden>
+    <section class="panel">
+      <div class="panel-head"><div><h2>JD14 generator</h2><p>Pick the training start date, choose the company, check the details, then generate the PDF.</p></div></div>
+      <div class="row">
+        <label class="stack" style="flex:0 1 220px">Training start date<input id="j-searchDate" type="date"></label>
+        <button type="button" id="j-loadCompanies">Find companies</button>
+        <label class="stack" style="flex:1 1 260px">Company<select id="j-company"><option value="">Find companies first</option></select></label>
+        <button type="button" id="j-loadDetails">Load details</button>
+      </div>
+      <form id="jd14Form" class="form-grid sub" novalidate>
+        <label class="wide">Company name<input id="j-companyName"></label>
+        <label class="wide">Company address<textarea id="j-companyAddress"></textarea></label>
+        <label>Employer code<input id="j-employerCode" placeholder="From HRD Corp"></label>
+        <label>Approval no.<input id="j-approvalNo" placeholder="From HRD Corp grant"></label>
+        <label>Training start date<input id="j-trainingStartDate" type="date"></label>
+        <label>Training end date<input id="j-trainingEndDate" type="date"></label>
+        <label class="wide">Course title<input id="j-courseTitle"></label>
+        <label>Venue<input id="j-venue"></label>
+        <label>Total pax<input id="j-totalPax" type="number" min="0"></label>
+        <label>Total fee (RM)<input id="j-totalFee"></label>
+        <label>Date of submission<input id="j-dateSubmission" type="date"></label>
+        <div class="actions wide"><button type="submit" class="primary">Generate JD14 PDF</button></div>
+      </form>
+      <div class="result" id="jd14Result"></div>
+    </section>
+  </section>
+
+  <!-- CERTIFICATES -->
+  <section id="view-certs" role="tabpanel" aria-labelledby="tab-certs" hidden>
+    <div class="layout">
+      <div class="col-main">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Programme certificates</h2><p>Mark attendance, then generate and email certificates for everyone who attended.</p></div><button type="button" class="small" id="c-reloadPrograms">↻ Refresh</button></div>
+          <div class="row">
+            <label class="stack" style="flex:1 1 280px">Programme<select id="c-program"><option value="">Loading programmes…</option></select></label>
+            <button type="button" id="c-loadPeople">Load participants</button>
+          </div>
+          <div id="c-people" class="sub" hidden>
+            <div class="row" style="justify-content:space-between;margin-bottom:8px"><span class="hint" id="c-peopleCount"></span><span class="row"><button type="button" class="small" id="c-all">Tick all</button><button type="button" class="small" id="c-none">Untick all</button></span></div>
+            <div class="people" id="c-peopleList"></div>
+            <div class="actions"><button type="button" id="c-saveAttendance">Save attendance</button></div>
+          </div>
+          <div class="actions sub">
+            <button type="button" class="primary" id="c-generate">Generate all certificates</button>
+            <button type="button" id="c-send">Email all certificates</button>
+          </div>
+          <p class="hint" style="margin-top:8px">Large programmes can take a few minutes. Keep this page open until the result appears.</p>
+          <div class="result" id="c-result"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div><h2>Manual certificate batch</h2><p>For participants who didn't register through the website. Paste from Excel: Name, Email, HR email, IC or passport.</p></div></div>
+          <form id="m-form" novalidate>
+            <div class="form-grid">
+              <label class="wide">Programme name<input id="m-programName" placeholder="Supply Chain and Inventory Management"></label>
+              <label>Venue<input id="m-venue" placeholder="Kuantan, Pahang"></label>
+              <label>Default HR email (optional)<input id="m-defaultHr" type="email" placeholder="hr@company.com"></label>
+              <label>Start date<input id="m-start" type="date"></label>
+              <label>End date<input id="m-end" type="date"></label>
+              <label class="wide">Participants<textarea id="m-paste" style="min-height:140px" placeholder="Ahmad Ali	ahmad@example.com	hr@example.com	900101-01-1234"></textarea></label>
+            </div>
+            <p class="hint" id="m-preview">Paste one participant per line.</p>
+            <div class="actions"><button type="submit" class="primary">Import batch</button></div>
+          </form>
+          <div class="sub">
+            <div class="row">
+              <label class="stack" style="flex:1 1 240px">Batch<select id="m-batch"><option value="">No batch yet</option></select></label>
+              <button type="button" id="m-status">Check status</button>
+              <button type="button" class="primary" id="m-generate">Generate certificates</button>
+              <button type="button" id="m-send">Email certificates</button>
+            </div>
+            <div class="counts" id="m-counts"></div>
+            <div class="result" id="m-result"></div>
+            <div class="table-wrap" id="m-tableWrap" hidden><table><thead><tr><th>Participant</th><th>Email</th><th>Certificate</th><th>Email status</th></tr></thead><tbody id="m-rows"></tbody></table></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="col-side">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Certificate template</h2><p>The Google Slides file used for every certificate.</p></div></div>
+          <form id="t-form" class="stack" novalidate>
+            <label>Google Slides URL or file ID<input id="t-url" placeholder="https://docs.google.com/presentation/d/…"></label>
+            <div class="row"><button type="submit" class="primary">Save template</button><a class="links" id="t-open" target="_blank" rel="noopener" hidden style="font-size:.8rem;font-weight:600;color:var(--orange);align-self:center">Open current template ↗</a></div>
+            <button type="button" class="small" id="t-reset" style="align-self:flex-start">Reset to default template</button>
+          </form>
+          <p class="hint" id="t-current" style="margin-top:10px"></p>
+          <p class="hint" style="margin-top:8px">Placeholders: {{PARTICIPANT_NAME}}, {{IC_NO}}, {{PROGRAM_NAME}}, {{VENUE}}, {{PROGRAM_DATE}}, {{CERTIFICATE_NO}}</p>
+        </section>
+      </aside>
+    </div>
+  </section>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script><script src="../trainer/config.js"></script><script src="documents.js"></script>
+</body></html>
