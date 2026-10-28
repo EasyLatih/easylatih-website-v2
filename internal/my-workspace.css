@@ -1,5 +1,6 @@
 :root{--navy:#003e6f;--orange:#bb4800;--ink:#233c50;--muted:#63788b;--line:#dce7ed;--soft:#f3f7fa;--red:#a63229;--red-bg:#fff1ef;--amber:#8a5a00;--amber-bg:#fff6e3;--green:#176444;--green-bg:#eaf8f0;--blue-bg:#edf6fb;--el:#003e6f;--sns:#5b3fa8;--rapat:#bb4800;--other:#63788b}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--soft);color:var(--ink);font-family:Poppins,system-ui,sans-serif}
 header{background:linear-gradient(120deg,#002d50,var(--navy));color:#fff}
 .bar{max-width:1280px;margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:15px}

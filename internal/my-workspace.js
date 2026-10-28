@@ -423,7 +423,7 @@
     if (!db || !cfg.supabaseUrl) { $('loginState').textContent = 'Supabase configuration is missing.'; return; }
     const {data, error} = await db.auth.getUser();
     if (error || !data || !data.user || (data.user.app_metadata || {}).role !== 'admin') {
-      $('loginState').innerHTML = 'Admin access required. <a href="../trainer/index.html">Sign in with your EasyLatih admin account</a>.'; return;
+      location.replace('login.html?next='+encodeURIComponent((location.pathname.split('/').pop()||'admin-dashboard.html')+location.hash)); return;
     }
     user = data.user; $('loginState').hidden = true; $('adminApp').hidden = false;
     bind(); renderDay(); renderTasks(); renderLive();

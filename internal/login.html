@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Admin sign in | EasyLatih</title><link rel="icon" href="../assets/favicon.png" type="image/png"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#003e6f;--navy-deep:#002d50;--orange:#bb4800;--ink:#233c50;--muted:#63788b;--line:#dce7ed;--soft:#f3f7fa;--red:#a63229;--green:#176444}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+input::placeholder{color:#9aabb8;font-weight:400}
+html,body{height:100%}
+body{margin:0;font-family:Poppins,system-ui,sans-serif;color:var(--ink);background:var(--soft);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:100%}
+.side{background:linear-gradient(150deg,var(--navy-deep),var(--navy));color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:space-between;gap:32px}
+.side img{width:120px;height:56px;object-fit:contain;background:#fff;border-radius:9px;padding:4px}
+.side h1{font-size:clamp(1.6rem,3vw,2.3rem);line-height:1.2;margin:0 0 12px;max-width:420px}
+.side p{color:#cbdce8;font-size:.9rem;line-height:1.7;max-width:420px;margin:0}
+.side ul{list-style:none;padding:0;margin:20px 0 0;display:flex;flex-direction:column;gap:8px;font-size:.84rem;color:#e3edf4}
+.side li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--orange);margin-right:10px;vertical-align:middle}
+.side small{color:#9ab7c9;font-size:.74rem}
+.main{display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.card{width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px}
+.card h2{margin:0;color:var(--navy);font-size:1.45rem}
+.card p{margin:0;color:var(--muted);font-size:.85rem;line-height:1.6}
+form{display:flex;flex-direction:column;gap:14px}
+label{display:flex;flex-direction:column;gap:6px;font-size:.8rem;font-weight:600;color:var(--navy)}
+input{font:inherit;font-size:.92rem;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;color:var(--ink)}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+button{font:inherit;font-weight:600;font-size:.92rem;border:0;border-radius:10px;padding:13px 16px;background:var(--orange);color:#fff;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+.link{background:none;border:0;padding:0;color:var(--orange);font-weight:600;font-size:.8rem;cursor:pointer;align-self:flex-start}
+.notice{padding:11px 13px;border-radius:9px;font-size:.82rem;line-height:1.5;background:#edf6fb;border:1px solid #c9dbea}
+.notice[data-type=danger]{background:#fff1ef;border-color:#f2c7c1;color:var(--red)}
+.notice[data-type=success]{background:#eaf8f0;border-color:#bde4ce;color:#14673e}
+.foot{font-size:.74rem;color:var(--muted)}
+.foot a{color:var(--navy)}
+@media (max-width:820px){
+  body{grid-template-columns:minmax(0,1fr)}
+  .side{padding:24px 20px;gap:12px}
+  .side ul,.side small{display:none}
+  .side h1{font-size:1.3rem;margin-bottom:4px}
+  .main{align-items:flex-start;padding:28px 20px 48px}
+}
+</style>
+</head><body>
+<aside class="side">
+  <img src="../assets/logo.png" alt="EasyLatih">
+  <div>
+    <h1>EasyLatih Admin</h1>
+    <p>One sign-in for everything you run at EasyLatih.</p>
+    <ul>
+      <li>My Workspace</li>
+      <li>Admin Centre and Agent Portal</li>
+      <li>Trainer Admin and Room Booking</li>
+      <li>Consultancy documents and Inventory</li>
+    </ul>
+  </div>
+  <small>Easy Learning, Real Results!</small>
+</aside>
+
+<main class="main">
+  <section class="card" aria-labelledby="formTitle">
+    <div>
+      <h2 id="formTitle">Sign in</h2>
+      <p id="formIntro">Use your EasyLatih admin email and password.</p>
+    </div>
+    <div id="message" class="notice" role="status" hidden></div>
+
+    <form id="signInForm" novalidate>
+      <label>Email<input id="email" type="email" autocomplete="username" required placeholder="admin@easylatih.my"></label>
+      <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit" id="signInBtn">Sign in</button>
+      <button type="button" class="link" id="forgotBtn">Forgot password?</button>
+    </form>
+
+    <form id="resetRequestForm" hidden novalidate>
+      <label>Email<input id="resetEmail" type="email" autocomplete="username" required placeholder="admin@easylatih.my"></label>
+      <button type="submit" id="resetRequestBtn">Send reset link</button>
+      <button type="button" class="link" id="backToSignIn">Back to sign in</button>
+    </form>
+
+    <form id="newPasswordForm" hidden novalidate>
+      <label>New password<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label>Repeat new password<input id="newPassword2" type="password" autocomplete="new-password" minlength="8" required></label>
+      <button type="submit" id="newPasswordBtn">Save new password</button>
+    </form>
+
+    <p class="foot">Trainer? Use the <a href="../trainer/index.html">trainer portal</a>. Agent? Use the <a href="agent-dashboard.html">Agent Portal</a>.</p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
+<script src="../trainer/config.js"></script>
+<script src="admin-session.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const cfg = window.EASYLATIH_TRAINER_PORTAL || {};
+  const db = window.supabase && cfg.supabaseUrl ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
+  const params = new URLSearchParams(location.search);
+  const DEFAULT_NEXT = 'admin-dashboard.html';
+
+  // Only allow returning to EasyLatih admin pages, never to another site.
+  function nextPage() {
+    const raw = params.get('next') || '';
+    if (/^[a-z0-9-]+\.html(#[a-z0-9-]+)?$/i.test(raw)) return raw;
+    if (/^\.\.\/internal\/[a-z0-9-]+\.html(#[a-z0-9-]+)?$/i.test(raw)) return raw;
+    return DEFAULT_NEXT;
+  }
+  function message(text, type) { const el = $('message'); el.textContent = text || ''; el.dataset.type = type || 'info'; el.hidden = !text; }
+  function show(which) {
+    ['signInForm', 'resetRequestForm', 'newPasswordForm'].forEach(id => { $(id).hidden = id !== which; });
+    const titles = {signInForm:['Sign in','Use your EasyLatih admin email and password.'], resetRequestForm:['Reset password','We\'ll email you a link to set a new password.'], newPasswordForm:['Set a new password','Choose a password with at least 8 characters.']};
+    $('formTitle').textContent = titles[which][0]; $('formIntro').textContent = titles[which][1];
+  }
+  const isAdmin = user => !!(user && user.app_metadata && user.app_metadata.role === 'admin');
+  function clearSalesSession() { ['agentSessionToken','agentId','agentName','role'].forEach(k => { try { localStorage.removeItem(k); } catch (_) {} }); }
+
+  async function enter() {
+    // Prepare the Agent Portal sales session too, but never hold up sign-in for it.
+    if (window.EasyLatihSalesSession) {
+      await Promise.race([window.EasyLatihSalesSession.ensure(db, {force:true}), new Promise(r => setTimeout(r, 4000))]).catch(() => {});
+    }
+    location.replace(nextPage());
+  }
+
+  async function signIn(ev) {
+    ev.preventDefault();
+    const email = $('email').value.trim(), password = $('password').value;
+    if (!email || !password) return message('Enter your email and password.', 'danger');
+    $('signInBtn').disabled = true; $('signInBtn').textContent = 'Signing in…'; message('');
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error) {
+      $('signInBtn').disabled = false; $('signInBtn').textContent = 'Sign in';
+      return message(/invalid/i.test(error.message) ? 'That email and password don\'t match. Try again or reset your password.' : 'Sign-in failed: ' + error.message, 'danger');
+    }
+    if (!isAdmin(data.user)) {
+      await db.auth.signOut();
+      $('signInBtn').disabled = false; $('signInBtn').textContent = 'Sign in';
+      return message('This sign-in is only for the EasyLatih admin account. Trainers and agents have their own portals below.', 'danger');
+    }
+    clearSalesSession();
+    $('signInBtn').textContent = 'Opening…';
+    await enter();
+  }
+
+  async function requestReset(ev) {
+    ev.preventDefault();
+    const email = $('resetEmail').value.trim();
+    if (!email) return message('Enter your email.', 'danger');
+    $('resetRequestBtn').disabled = true;
+    const redirectTo = location.origin + location.pathname + '?reset=1';
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+    $('resetRequestBtn').disabled = false;
+    if (error) return message('The reset email could not be sent: ' + error.message, 'danger');
+    message('If that email has an admin account, a reset link is on its way. Open it on this device.', 'success');
+  }
+
+  async function saveNewPassword(ev) {
+    ev.preventDefault();
+    const a = $('newPassword').value, b = $('newPassword2').value;
+    if (a.length < 8) return message('Use at least 8 characters.', 'danger');
+    if (a !== b) return message('The two passwords don\'t match.', 'danger');
+    $('newPasswordBtn').disabled = true;
+    const { data, error } = await db.auth.updateUser({ password: a });
+    $('newPasswordBtn').disabled = false;
+    if (error) return message('Your password could not be saved: ' + error.message, 'danger');
+    if (!isAdmin(data.user)) { await db.auth.signOut(); show('signInForm'); return message('Password saved. This page is only for the admin account.', 'success'); }
+    message('Password saved. Opening your admin pages…', 'success');
+    await enter();
+  }
+
+  async function start() {
+    if (!db) { message('Sign-in is unavailable: Supabase configuration is missing.', 'danger'); $('signInBtn').disabled = true; return; }
+    $('signInForm').addEventListener('submit', signIn);
+    $('resetRequestForm').addEventListener('submit', requestReset);
+    $('newPasswordForm').addEventListener('submit', saveNewPassword);
+    $('forgotBtn').addEventListener('click', () => { $('resetEmail').value = $('email').value; message(''); show('resetRequestForm'); $('resetEmail').focus(); });
+    $('backToSignIn').addEventListener('click', () => { message(''); show('signInForm'); $('email').focus(); });
+
+    db.auth.onAuthStateChange(event => { if (event === 'PASSWORD_RECOVERY') { message(''); show('newPasswordForm'); $('newPassword').focus(); } });
+
+    if (params.has('signout')) {
+      await db.auth.signOut(); clearSalesSession();
+      history.replaceState(null, '', location.pathname);
+      message('You\'re signed out.', 'success'); $('email').focus(); return;
+    }
+    if (params.has('reset') || /type=recovery/.test(location.hash)) { show('newPasswordForm'); return; }
+
+    const { data } = await db.auth.getUser();
+    if (isAdmin(data && data.user)) { message('Already signed in. Opening…'); await enter(); return; }
+    if (data && data.user) message('You\'re signed in with a non-admin account. Sign in with the admin account to continue.');
+    $('email').focus();
+  }
+  start();
+})();
+</script>
+</body></html>

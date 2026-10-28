@@ -447,13 +447,13 @@
     setupBanner();
     if(!client)return;
     const session=await getSession();
-    if(!session){location.replace('../trainer/index.html?login=1');return;}
+    if(!session){location.replace('../internal/login.html?next=trainer-admin.html');return;}
     if(session.user.app_metadata?.role!=='admin'){
       document.body.innerHTML='<div class="page"><div class="alert alert-danger"><strong>Access denied.</strong> This page requires an EasyLatih admin account.</div></div>';return;
     }
     currentUser=session.user;
     $('adminEmail').textContent=session.user.email;
-    $('adminLogout')?.addEventListener('click',async()=>{await client.auth.signOut();location.replace('../trainer/index.html');});
+    $('adminLogout')?.addEventListener('click',()=>{location.replace('../internal/login.html?signout=1');});
     await refreshAdmin();
     $('refreshAdmin')?.addEventListener('click',refreshAdmin);
     $('createOpportunityForm')?.addEventListener('submit',createOpportunity);
