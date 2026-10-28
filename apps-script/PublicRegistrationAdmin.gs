@@ -634,8 +634,8 @@ function praCsv_(rows) {
 }
 
 function praAdminEmail_() {
-  const list = typeof TRAINER_ADMIN_EMAILS !== 'undefined' && TRAINER_ADMIN_EMAILS.length ? TRAINER_ADMIN_EMAILS : [Session.getEffectiveUser().getEmail()];
-  return list[0];
+  // Uses the admin list in Code.gs, so no extra Google permission is needed.
+  return typeof TRAINER_ADMIN_EMAILS !== 'undefined' && TRAINER_ADMIN_EMAILS.length ? TRAINER_ADMIN_EMAILS[0] : 'admin@easylatih.my';
 }
 
 function praEmailParticipantList_(courseId) {
