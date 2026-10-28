@@ -300,6 +300,7 @@
     <input id="agentId" placeholder="Agent ID">
     <input id="password" type="password" placeholder="Password">
     <button onclick="login()">Login</button>
+    <p class="sop-muted" style="margin-top:10px">Admin? <a href="../trainer/index.html">Sign in once with your EasyLatih admin account</a> and this portal opens on its own.</p>
   </div>
 
   <div id="dashboard" class="hidden">
@@ -502,6 +503,9 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
+<script src="../trainer/config.js"></script>
+<script src="admin-session.js"></script>
 <script>
 const API_URL =
 "https://script.google.com/macros/s/AKfycby5Tl6A7Vip6GdkNsMstjl6026EvH6boWU9de-11DO6EaSR4XJTogXdY7ZDIxyJS6Go/exec";
@@ -518,6 +522,11 @@ async function apiRequest(params){
   const response = await fetch(`${API_URL}?${params.toString()}`);
   const data = await response.json();
   if (data.code === "SESSION_REQUIRED") {
+    if (!params.has("_retried") && localStorage.getItem("role") === "ADMIN") {
+      localStorage.removeItem("agentSessionToken");
+      const fresh = await adminSalesSession(true);
+      if (fresh) { params.delete("sessionToken"); params.set("_retried", "1"); return apiRequest(params); }
+    }
     localStorage.clear();
     alert("Sesi anda tamat. Sila log masuk semula.");
     location.reload();
@@ -1041,8 +1050,24 @@ async function saveCallLog(rowNumber){
   }
 }
 
-window.onload = () => {
+// One login: a signed-in Admin Centre admin gets a portal session without the Agent ID form.
+let portalAdminDb = null;
+async function adminSalesSession(force){
+  try {
+    const cfg = window.EASYLATIH_TRAINER_PORTAL || {};
+    if (!window.supabase || !window.EasyLatihSalesSession || !cfg.supabaseUrl) return "";
+    portalAdminDb = portalAdminDb || window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey);
+    return await window.EasyLatihSalesSession.ensure(portalAdminDb, { force: !!force });
+  } catch (error) {
+    return "";
+  }
+}
+
+window.onload = async () => {
   if(localStorage.getItem("agentId") && getSessionToken()){
+    loadDashboard();
+    showAdminButton();
+  } else if (await adminSalesSession(false)) {
     loadDashboard();
     showAdminButton();
   }

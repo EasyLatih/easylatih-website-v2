@@ -217,7 +217,7 @@
       return '<div class="item">'+tag+'<strong>'+esc(tr.title)+'</strong><small>'+when+(tr.time?' · '+esc(tr.time):'')+' · '+esc(tr.venue)+(tr.pax?' · '+tr.pax+' pax':'')+'</small><div class="prep">'+PREP.map(([id, label]) => '<label><input type="checkbox" data-prep="'+esc(tr.key)+'" data-item="'+id+'"'+(p[id]?' checked':'')+'> '+label+'</label>').join('')+'</div></div>';
     }).join('') : '<p class="empty">No trainings in the next 7 days.</p>';
 
-    if (!live.sales) $('salesList').innerHTML = '<p class="empty">Sales data uses your Agent Portal session. <a href="agent-dashboard.html">Sign in to Agent Portal</a>, then come back and refresh.</p>';
+    if (!live.sales) $('salesList').innerHTML = '<p class="empty">Sales data could not be connected to your admin login. Refresh to try again, or <a href="agent-dashboard.html">open Agent Portal</a>.</p>';
     else {
       const items = [...(live.sales.overdueFollowUps || []).slice(0,4).map(x => ({...x, kind:'overdue'})), ...(live.sales.quotationFollowUps || []).slice(0,3).map(x => ({...x, kind:'quote'}))];
       $('salesList').innerHTML = items.length ? items.map(x => {
@@ -292,11 +292,17 @@
     renderLive(); renderHeader(); renderRoutine(); renderWeek();
   }
   async function loadSales() {
-    let token = ''; try { token = localStorage.getItem('agentSessionToken') || ''; } catch (_) {}
-    if (!token) { live.sales = null; return; }
+    const S = window.EasyLatihSalesSession;
+    const call = async token => { const res = await fetch(SALES_API+'?'+new URLSearchParams({action:'adminDashboard', sessionToken:token})); return res.json(); };
     try {
-      const res = await fetch(SALES_API+'?'+new URLSearchParams({action:'adminDashboard', sessionToken:token}));
-      const data = await res.json();
+      let token = S ? await S.ensure(db) : (localStorage.getItem('agentSessionToken') || '');
+      if (!token) { live.sales = null; return; }
+      let data = await call(token);
+      if (data && (data.code === 'SESSION_REQUIRED' || data.code === 'FORBIDDEN') && S) {
+        try { localStorage.removeItem('agentSessionToken'); } catch (_) {}
+        token = await S.ensure(db, {force:true});
+        data = token ? await call(token) : null;
+      }
       live.sales = data && data.success ? data : null;
     } catch (_) { live.sales = null; }
   }
