@@ -201,7 +201,10 @@ function praPrograms_() {
     if (!id || praUpper_(p.ProgramType) === 'INHOUSE') return false;
     if (settings[id] && praText_(settings[id].ArchivedDate)) return false;
     const status = praUpper_(p.Status);
-    return (byCourse[id] || []).length > 0 || (status !== 'DRAFT' && status !== 'CANCELLED' && status !== 'DECLINED');
+    if ((byCourse[id] || []).length > 0) return true;
+    // No registrations: only show upcoming programmes that are open for registration.
+    const ends = praIso_(p.EndDate) || praIso_(p.StartDate);
+    return ['DRAFT', 'CANCELLED', 'DECLINED', 'COMPLETED'].indexOf(status) === -1 && (!ends || ends >= praToday_());
   }).map(function (p) {
     const id = praText_(p.CourseID);
     const list = byCourse[id] || [];
