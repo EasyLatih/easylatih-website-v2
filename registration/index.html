@@ -217,7 +217,7 @@ button{
 
     <br><br>
 
-    <button type="button" onclick="submitRegistration()">Submit Registration</button>
+    <button type="button" id="submitRegistrationBtn" onclick="submitRegistration()">Submit Registration</button>
 
     <div id="submitResult" style="margin-top:1rem;"></div>
   </div>
@@ -499,7 +499,30 @@ function addParticipant() {
   box.appendChild(div);
 }
 
+// One submission per form: the button locks while sending, and the server
+// ignores repeats that carry the same submission ID.
+let registrationSubmitting = false;
+let registrationDone = false;
+const registrationSubmissionId = (window.crypto && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
+
+function setRegistrationBusy(busy) {
+  const btn = document.getElementById("submitRegistrationBtn");
+  if (!btn) return;
+  btn.disabled = busy;
+  btn.style.opacity = busy ? "0.6" : "";
+  btn.style.cursor = busy ? "wait" : "";
+  btn.textContent = busy ? "Submitting… please wait" : "Submit Registration";
+}
+
+window.addEventListener("beforeunload", function (event) {
+  if (registrationSubmitting) { event.preventDefault(); event.returnValue = ""; }
+});
+
 function submitRegistration() {
+  if (registrationSubmitting || registrationDone) return;
+
   if (!document.getElementById("agreeTerms").checked) {
     alert("Please agree to the terms and conditions.");
     return;
@@ -540,8 +563,11 @@ function submitRegistration() {
     participantsJson: JSON.stringify(participants)
   };
 
+  registrationSubmitting = true;
+  setRegistrationBusy(true);
+  payload.submissionId = registrationSubmissionId;
   document.getElementById("submitResult").innerHTML =
-    "Submitting registration...";
+    "Submitting your registration. This can take up to 30 seconds. Please don't close or refresh this page.";
 
   fetch("/api/public-registration", {
     method: "POST",
@@ -563,12 +589,18 @@ function submitRegistration() {
     return data.message;
   })
   .then(message => {
+    registrationSubmitting = false;
+    registrationDone = true;
+    const btn = document.getElementById("submitRegistrationBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "Registration submitted"; btn.style.opacity = "0.6"; btn.style.cursor = "default"; }
     document.getElementById("submitResult").innerHTML =
-      `<div class="success">${message}</div>`;
+      `<div class="success">${message}<br>Check your email for the quotation or invoice. To register more participants, reload this page.</div>`;
   })
   .catch(err => {
+    registrationSubmitting = false;
+    setRegistrationBusy(false);
     document.getElementById("submitResult").innerHTML =
-      `<div class="error">Error: ${err.message}</div>`;
+      `<div class="error">Error: ${err.message}<br>If you already received our email, your registration went through. Please don't submit again.</div>`;
   });
 }
 </script>

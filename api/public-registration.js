@@ -22,7 +22,8 @@ export default async function handler(req, res) {
       "requestedPax",
       "discountCode",
       "discountAmount",
-      "participantsJson"
+      "participantsJson",
+      "submissionId"
     ];
 
     fields.forEach((key) => {
