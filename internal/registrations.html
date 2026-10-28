@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Public Registrations | EasyLatih Admin</title><link rel="icon" href="../assets/favicon.png" type="image/png"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="my-workspace.css">
+<style>
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 8px 24px #003e6f0a}
+.pcard h3{margin:0;font-size:.95rem;color:var(--navy);display:block}
+.pcard .meta{font-size:.74rem;color:var(--muted);line-height:1.5}
+.chip{display:inline-block;font-size:.64rem;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--blue-bg);color:#225e97;letter-spacing:.02em}
+.chip.good{background:var(--green-bg);color:var(--green)}.chip.warn{background:var(--amber-bg);color:var(--amber)}.chip.bad{background:var(--red-bg);color:var(--red)}.chip.grey{background:var(--soft);color:var(--muted)}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.paxbar{position:relative;height:8px;border-radius:4px;background:var(--line);overflow:visible}
+.paxbar i{display:block;height:100%;border-radius:4px;background:var(--green)}
+.paxbar i.low{background:var(--orange)}
+.paxbar b{position:absolute;top:-3px;width:2px;height:14px;background:var(--navy)}
+.paxline{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}
+.toolbar input[type=search]{font:inherit;font-size:.84rem;border:1px solid var(--line);border-radius:9px;padding:9px 12px;min-width:0;flex:1 1 260px;background:#fff}
+.reg{border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.reg-top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.reg h4{margin:0;font-size:.9rem;color:var(--ink)}
+.reg .who{font-size:.76rem;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
+.reg .who a{color:var(--orange);font-weight:600}
+.steps{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.7rem;color:var(--muted)}
+.steps span.on{color:var(--green);font-weight:600}
+.act{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.act a{font-size:.74rem;font-weight:600;color:var(--orange)}
+.inline-form{display:none;border-top:1px dashed var(--line);padding-top:10px}
+.inline-form.open{display:block}
+.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px}
+.form-grid .wide{grid-column:1/-1}
+.form-grid label,.stack label{display:flex;flex-direction:column;gap:5px;font-size:.74rem;font-weight:600;color:var(--navy)}
+.form-grid input,.form-grid select,.form-grid textarea,.stack input,.stack textarea{font:inherit;font-size:.84rem;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;color:var(--ink);min-width:0;width:100%}
+.form-grid input::placeholder,.stack input::placeholder,.stack textarea::placeholder{color:#9aabb8}
+.stack{display:flex;flex-direction:column;gap:12px}
+.stack textarea{min-height:110px;resize:vertical}
+.people{margin:0;padding:0;list-style:none;font-size:.74rem;color:var(--ink);display:flex;flex-direction:column;gap:3px}
+.people li{display:flex;gap:8px;flex-wrap:wrap}
+.people small{color:var(--muted)}
+details summary{cursor:pointer;font-size:.74rem;font-weight:600;color:var(--navy)}
+.summary{display:flex;gap:18px;flex-wrap:wrap;font-size:.78rem}
+.summary b{display:block;font-size:1.25rem;color:var(--navy);font-variant-numeric:tabular-nums}
+.client{border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px}
+.client h4{margin:0 0 4px;font-size:.9rem}
+.client ul{margin:4px 0 0;padding-left:16px;font-size:.74rem;line-height:1.6}
+.client .who{font-size:.74rem;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
+.client .who a{color:var(--orange);font-weight:600}
+.danger-zone{border-top:1px dashed var(--line);padding-top:12px;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{font-size:.74rem;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:10px}
+@media (max-width:760px){.form-grid{grid-template-columns:minmax(0,1fr)}.client{grid-template-columns:minmax(0,1fr)}.reg-top{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head><body>
+<header><div class="bar"><div class="brand"><img src="../assets/logo.png" alt="EasyLatih"><div><strong>Public Registrations</strong><small>EasyLatih Admin Centre</small></div></div><div style="display:flex;gap:8px"><a class="back" href="admin-dashboard.html">← Admin Centre</a><a class="back" href="login.html?signout=1">Sign out</a></div></div></header>
+<main>
+<div id="loginState" class="notice">Checking admin access…</div>
+<div id="adminApp" hidden>
+  <div id="message" class="notice" hidden></div>
+  <nav class="tabs" role="tablist" aria-label="Registration views">
+    <button type="button" role="tab" id="tab-programmes" aria-selected="true" aria-controls="view-programmes">Programmes</button>
+    <button type="button" role="tab" id="tab-clients" aria-selected="false" aria-controls="view-clients">Former clients</button>
+    <button type="button" role="tab" id="tab-archived" aria-selected="false" aria-controls="view-archived">Archived</button>
+  </nav>
+
+  <section id="view-programmes" role="tabpanel" aria-labelledby="tab-programmes">
+    <div id="programmeList">
+      <div class="toolbar"><p class="hint">Public programmes with registrations, earliest first. Archived programmes move to the Archived tab.</p><button type="button" class="small" id="refreshList">↻ Refresh</button></div>
+      <div class="cards" id="cards"><p class="empty">Loading programmes…</p></div>
+    </div>
+    <div id="programmeDetail" hidden></div>
+  </section>
+
+  <section id="view-clients" role="tabpanel" aria-labelledby="tab-clients" hidden>
+    <form class="toolbar" id="clientSearch">
+      <input type="search" id="clientQuery" placeholder="Search company, PIC, email, phone or programme" aria-label="Search former clients">
+      <button type="submit" class="primary">Search</button>
+      <button type="button" id="clientExport">Export CSV</button>
+    </form>
+    <p class="hint" id="clientCount"></p>
+    <div class="list" id="clientList"><p class="empty">Search, or press Search with nothing typed to list every client.</p></div>
+  </section>
+
+  <section id="view-archived" role="tabpanel" aria-labelledby="tab-archived" hidden>
+    <div class="list" id="archivedList"><p class="empty">Loading…</p></div>
+  </section>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script><script src="../trainer/config.js"></script><script src="registrations.js"></script>
+</body></html>

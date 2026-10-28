@@ -30,6 +30,11 @@ function handleAdminTools_(e) {
 
     const action = String(params.action || '').replace(/^adminTools\./, '');
     const actions = adminToolsActions_();
+    // Public programme registrations (PublicRegistrationAdmin.gs), when installed.
+    if (typeof publicRegistrationActions_ === 'function') {
+      const extra = publicRegistrationActions_();
+      Object.keys(extra).forEach(function (k) { actions[k] = extra[k]; });
+    }
     if (!Object.prototype.hasOwnProperty.call(actions, action)) throw new Error('Unknown action: ' + action);
 
     let payload = {};
