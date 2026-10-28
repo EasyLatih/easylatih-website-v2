@@ -525,6 +525,26 @@ function praSettingsFor_(courseId) {
   return praIndex_(praRead_(praSettingsSheet_()).rows, 'CourseID')[praText_(courseId)] || {};
 }
 
+// Client emails are bilingual: Bahasa Malaysia first, then English.
+function praBilingualHtml_(ms, en) {
+  return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222">' +
+    ms +
+    '<hr style="border:none;border-top:1px solid #ccc;margin:24px 0">' +
+    '<p style="color:#777;font-size:12px;margin:0 0 8px"><i>English version</i></p>' +
+    en +
+    '</div>';
+}
+
+function praBilingualText_(ms, en) {
+  return ms.join('\n') + '\n\n--------------------\nEnglish version\n--------------------\n\n' + en.join('\n');
+}
+
+function praDetailsTable_(rows) {
+  return '<table cellpadding="4" style="border-collapse:collapse;font-size:14px">' +
+    rows.map(function (r) { return '<tr><td><b>' + praEscape_(r[0]) + '</b></td><td>' + praEscape_(r[1]) + '</td></tr>'; }).join('') +
+    '</table>';
+}
+
 function praSendConfirmation_(reg, program, kind, extra) {
   extra = extra || {};
   const to = praText_(reg.PICEmail);
@@ -534,38 +554,48 @@ function praSendConfirmation_(reg, program, kind, extra) {
   const date = praProgramDate_(program);
   const venue = praText_(program.Venue);
   const mode = praText_(program.DeliveryMode);
+  const venueText = venue + (mode ? ' (' + mode + ')' : '');
   const pax = Number(reg.RequestedPax || 0);
-  const opening = kind === 'GRANT'
+  const regNo = praText_(reg.RegistrationID);
+  const pic = praText_(reg.PICName);
+  const joining = praText_(s.JoiningInstructions);
+  const wa = praText_(s.WhatsAppLink);
+
+  const msOpening = kind === 'GRANT'
+    ? 'Kami telah menerima kelulusan geran HRD Corp anda' + (extra.grantRef ? ' (rujukan ' + extra.grantRef + ')' : '') + '. Pendaftaran anda telah disahkan.'
+    : 'Kami telah menerima bayaran anda. Pendaftaran anda telah disahkan' + (extra.receipt ? ' dan resit rasmi dilampirkan bersama e-mel ini.' : '.');
+  const enOpening = kind === 'GRANT'
     ? 'We have received your HRD Corp grant approval' + (extra.grantRef ? ' (reference ' + extra.grantRef + ')' : '') + '. Your registration is confirmed.'
     : 'We have received your payment. Your registration is confirmed' + (extra.receipt ? ' and the official receipt is attached.' : '.');
 
-  const lines = [
-    'Dear ' + (praText_(reg.PICName) || 'Sir/Madam') + ',',
-    '',
-    opening,
-    '',
-    'Programme: ' + name,
-    'Date: ' + date,
-    'Venue: ' + venue + (mode ? ' (' + mode + ')' : ''),
-    'Participants registered: ' + pax,
-    'Registration no.: ' + praText_(reg.RegistrationID)
-  ];
-  if (praText_(s.JoiningInstructions)) lines.push('', 'Joining instructions:', praText_(s.JoiningInstructions));
-  if (praText_(s.WhatsAppLink)) lines.push('', 'Please join the programme WhatsApp group for updates: ' + praText_(s.WhatsAppLink));
-  lines.push('', 'Thank you.', 'Easy Latih Consultancy', 'Easy Learning, Real Results!');
+  const msRows = [['Program', name], ['Tarikh', date], ['Tempat', venueText], ['Bilangan peserta', String(pax)], ['No. pendaftaran', regNo]];
+  const enRows = [['Programme', name], ['Date', date], ['Venue', venueText], ['Participants', String(pax)], ['Registration no.', regNo]];
 
-  const html =
-    '<p>Dear ' + praEscape_(praText_(reg.PICName) || 'Sir/Madam') + ',</p>' +
-    '<p>' + praEscape_(opening) + '</p>' +
-    '<table cellpadding="4" style="border-collapse:collapse;font-size:14px">' +
-    '<tr><td><b>Programme</b></td><td>' + praEscape_(name) + '</td></tr>' +
-    '<tr><td><b>Date</b></td><td>' + praEscape_(date) + '</td></tr>' +
-    '<tr><td><b>Venue</b></td><td>' + praEscape_(venue) + (mode ? ' (' + praEscape_(mode) + ')' : '') + '</td></tr>' +
-    '<tr><td><b>Participants</b></td><td>' + pax + '</td></tr>' +
-    '<tr><td><b>Registration no.</b></td><td>' + praEscape_(reg.RegistrationID) + '</td></tr>' +
-    '</table>' +
-    (praText_(s.JoiningInstructions) ? '<h3 style="margin:18px 0 6px">Joining instructions</h3><p>' + praEscape_(s.JoiningInstructions).replace(/\n/g, '<br>') + '</p>' : '') +
-    (praText_(s.WhatsAppLink) ? '<p><a href="' + praEscape_(s.WhatsAppLink) + '" style="display:inline-block;background:#25D366;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold">Join the programme WhatsApp group</a></p>' : '') +
+  const msText = ['Tuan/Puan ' + pic + ',', '', msOpening, ''].concat(msRows.map(function (r) { return r[0] + ': ' + r[1]; }));
+  if (joining) msText.push('', 'Arahan kehadiran:', joining);
+  if (wa) msText.push('', 'Sila sertai kumpulan WhatsApp program untuk makluman terkini: ' + wa);
+  msText.push('', 'Terima kasih.', 'Easy Latih Consultancy');
+
+  const enText = ['Dear ' + (pic || 'Sir/Madam') + ',', '', enOpening, ''].concat(enRows.map(function (r) { return r[0] + ': ' + r[1]; }));
+  if (joining) enText.push('', 'Joining instructions:', joining);
+  if (wa) enText.push('', 'Please join the programme WhatsApp group for updates: ' + wa);
+  enText.push('', 'Thank you.', 'Easy Latih Consultancy', 'Easy Learning, Real Results!');
+
+  const joiningHtml = joining ? praEscape_(joining).replace(/\n/g, '<br>') : '';
+  const waButton = function (label) {
+    return wa ? '<p><a href="' + praEscape_(wa) + '" style="display:inline-block;background:#25D366;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold">' + label + '</a></p>' : '';
+  };
+  const msHtml =
+    '<p>Tuan/Puan ' + praEscape_(pic) + ',</p>' +
+    '<p>' + praEscape_(msOpening) + '</p>' + praDetailsTable_(msRows) +
+    (joining ? '<h3 style="margin:18px 0 6px">Arahan kehadiran</h3><p>' + joiningHtml + '</p>' : '') +
+    waButton('Sertai kumpulan WhatsApp program') +
+    '<p>Terima kasih.<br>Easy Latih Consultancy</p>';
+  const enHtml =
+    '<p>Dear ' + praEscape_(pic || 'Sir/Madam') + ',</p>' +
+    '<p>' + praEscape_(enOpening) + '</p>' + praDetailsTable_(enRows) +
+    (joining ? '<h3 style="margin:18px 0 6px">Joining instructions</h3><p>' + joiningHtml + '</p>' : '') +
+    waButton('Join the programme WhatsApp group') +
     '<p>Thank you.<br>Easy Latih Consultancy<br><i>Easy Learning, Real Results!</i></p>';
 
   const attachments = [];
@@ -574,7 +604,8 @@ function praSendConfirmation_(reg, program, kind, extra) {
     const id = extra.receipt.pdfId || (m ? m[1] : '');
     if (id) attachments.push(DriveApp.getFileById(id).getBlob());
   }
-  praSend_(to, 'Registration confirmed – ' + name, lines.join('\n'), html, attachments);
+  praSend_(to, 'Pendaftaran disahkan / Registration confirmed – ' + name,
+    praBilingualText_(msText, enText), praBilingualHtml_(msHtml, enHtml), attachments);
 }
 
 // Called from submitRegistration() after the quotation/invoice email.
@@ -586,8 +617,26 @@ function praAfterRegistration_(data, program) {
     const link = praText_(s.GuidelineUrl);
     if (!link || !praText_(data.picEmail)) return;
     const name = praText_(program && program.ProgramName);
-    const text = [
-      'Dear ' + (praText_(data.picName) || 'Sir/Madam') + ',',
+    const pic = praText_(data.picName);
+    const button = function (label) {
+      return '<p><a href="' + praEscape_(link) + '" style="display:inline-block;background:#003e6f;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold">' + label + '</a></p>';
+    };
+
+    const msText = [
+      'Tuan/Puan ' + pic + ',',
+      '',
+      'Terima kasih kerana mendaftar untuk ' + name + '.',
+      'Sebut harga yang dihantar dalam e-mel kami sebelum ini ialah lampiran untuk permohonan geran HRD Corp anda.',
+      'Sila ikut panduan ini untuk memohon geran bagi program ini:',
+      link,
+      '',
+      'Setelah geran anda diluluskan, sila balas e-mel ini bersama surat kelulusan atau nombor rujukan geran.',
+      '',
+      'Terima kasih.',
+      'Easy Latih Consultancy'
+    ];
+    const enText = [
+      'Dear ' + (pic || 'Sir/Madam') + ',',
       '',
       'Thank you for registering for ' + name + '.',
       'The quotation sent in our earlier email is the attachment for your HRD Corp grant application.',
@@ -598,15 +647,23 @@ function praAfterRegistration_(data, program) {
       '',
       'Thank you.',
       'Easy Latih Consultancy'
-    ].join('\n');
-    const html =
-      '<p>Dear ' + praEscape_(praText_(data.picName) || 'Sir/Madam') + ',</p>' +
+    ];
+    const msHtml =
+      '<p>Tuan/Puan ' + praEscape_(pic) + ',</p>' +
+      '<p>Terima kasih kerana mendaftar untuk <b>' + praEscape_(name) + '</b>.</p>' +
+      '<p>Sebut harga yang dihantar dalam e-mel kami sebelum ini ialah lampiran untuk permohonan geran HRD Corp anda. Sila ikut panduan ini untuk memohon geran bagi program ini:</p>' +
+      button('Buka panduan permohonan geran HRD Corp') +
+      '<p>Setelah geran anda diluluskan, sila balas e-mel ini bersama surat kelulusan atau nombor rujukan geran.</p>' +
+      '<p>Terima kasih.<br>Easy Latih Consultancy</p>';
+    const enHtml =
+      '<p>Dear ' + praEscape_(pic || 'Sir/Madam') + ',</p>' +
       '<p>Thank you for registering for <b>' + praEscape_(name) + '</b>.</p>' +
       '<p>The quotation sent in our earlier email is the attachment for your HRD Corp grant application. Please follow this guide to apply for the grant for this programme:</p>' +
-      '<p><a href="' + praEscape_(link) + '" style="display:inline-block;background:#003e6f;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold">Open the HRD Corp grant guide</a></p>' +
+      button('Open the HRD Corp grant guide') +
       '<p>Once your grant is approved, simply reply to this email with the approval letter or grant reference.</p>' +
       '<p>Thank you.<br>Easy Latih Consultancy</p>';
-    praSend_(praText_(data.picEmail), 'HRD Corp grant application guide – ' + name, text, html);
+    praSend_(praText_(data.picEmail), 'Panduan permohonan geran HRD Corp / HRD Corp grant application guide – ' + name,
+      praBilingualText_(msText, enText), praBilingualHtml_(msHtml, enHtml));
   } catch (error) {
     console.error('Guideline email failed: ' + error.message);
   }

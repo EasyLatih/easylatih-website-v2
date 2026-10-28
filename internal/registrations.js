@@ -106,8 +106,10 @@
         '<div class="act wide"><button type="submit" class="primary">Confirm grant and email PIC</button><button type="button" data-close>Cancel</button></div></form>';
     }
     if (HRD_STEP[kind]) {
+      // Original amount: HRD fee × pax, less any discount (same basis as the quotation).
+      const claim = Math.max(0, detail.program.hrdFee * r.requestedPax - (r.discountAmount || 0));
       return '<form class="form-grid" data-form="STEP" data-step="'+kind+'" data-id="'+id+'"><label>Date<input name="date" type="date" value="'+t+'" required></label>' +
-        (kind === 'CLAIM_SUBMITTED' ? '<label>Claim reference<input name="ref" placeholder="HRD Corp claim ID"></label><label>Claim amount (RM)<input name="amount" type="number" min="0" step="0.01"></label>' : '') +
+        (kind === 'CLAIM_SUBMITTED' ? '<label>Claim reference<input name="ref" placeholder="HRD Corp claim ID"></label><label>Claim amount (RM)<input name="amount" type="number" min="0" step="0.01" value="'+(claim?claim.toFixed(2):'')+'"></label>' : '') +
         '<div class="act wide"><button type="submit" class="primary">Mark '+esc(HRD_STEP[kind].toLowerCase())+'</button><button type="button" data-close>Cancel</button></div></form>';
     }
     if (kind === 'CANCEL') {
