@@ -32,6 +32,11 @@
 input[readonly]{background:var(--soft)!important;color:var(--muted)!important}
 .count{font-weight:400}
 .count.full{color:#a63229;font-weight:700}
+.ai{display:flex;flex-direction:column;gap:7px;padding:12px;border:1px solid #f1d9c6;background:#fffaf5;border-radius:10px;font-size:.76rem;color:var(--ink)}
+.ai strong{color:var(--navy);font-size:.8rem}.ai>span{color:var(--muted)}
+.ai-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ai-row input[type=file]{flex:1 1 220px;font-size:.74rem}
+.ai details summary{cursor:pointer;font-weight:600;color:var(--navy)}.ai details textarea{width:100%;min-height:90px;margin:8px 0;font:inherit;font-size:.8rem;border:1px solid var(--line);border-radius:9px;padding:8px}
+.ai-state{font-size:.72rem;color:var(--muted)}.ai-state.bad{color:#a63229}
 .copy{flex:none;font-size:.7rem;padding:5px 9px}
 .copy.done{background:#e9f8f0;color:#176444;border-color:#bfe6cf}
 .note-r{margin-top:6px;font-size:.7rem;color:var(--muted)}
@@ -65,6 +70,16 @@ input[readonly]{background:var(--soft)!important;color:var(--muted)!important}
             <p>Description and relevance: maximum 400 characters each. Saved against the course title, so every future session of this course is filled in automatically.</p>
             <div class="form-grid">
               <label class="wide">Course title (A) <small>copy from the HRD Corp system, including the code</small><input id="f-title" placeholder="10001758181: AKTA KERJA 1955: ..."></label>
+              <div class="wide ai">
+                <strong>✨ Draft B and C with Gemini</strong>
+                <span>Attach the course content (PDF). Without a file, the programme's course content link is used.</span>
+                <div class="ai-row"><input type="file" id="ai-file" accept="application/pdf"><button type="button" class="small primary" id="ai-generate">Generate with Gemini</button><button type="button" class="small" id="ai-prompt">Copy prompt for Gemini app</button></div>
+                <details id="ai-paste-box"><summary>Paste the answer from the Gemini app</summary>
+                  <textarea id="ai-paste" placeholder="DESCRIPTION: …&#10;RELEVANCE: …"></textarea>
+                  <button type="button" class="small" id="ai-fill">Fill B and C</button>
+                </details>
+                <span id="ai-state" class="ai-state"></span>
+              </div>
               <label class="wide">Description (B) <small class="count" data-for="f-description"></small><textarea id="f-description" maxlength="400"></textarea></label>
               <label class="wide">Relevance of training (C) <small class="count" data-for="f-relevance"></small><textarea id="f-relevance" maxlength="400"></textarea></label>
               <label>Type of retraining &amp; skills upgrading (D)<select id="f-retraining"><option value="">Select</option><option>Engineering</option><option>Legal And Law</option><option>Finance and Accounting</option><option>Management and Leadership</option><option>Operation Management</option><option>Quality</option><option>Productivity</option><option>Digitalisation</option><option>Linguistics</option><option>Hospitality and Toursim</option><option>Medical and Medical Service Related</option><option>Healthcare</option><option>Logistics, Warehousing and Supply Chain</option><option>Sales, Marketing, Customer Service and Retail</option><option>Safety</option><option>Health</option><option>Security</option><option>Creative Arts or Journalism</option><option>Scientific, Technical or Statistics</option><option>Building, Construction, Maintenance</option><option>Sustainability</option><option>Industry 4.0</option><option>Regulation and Certification Based</option><option>GIG Economy</option></select></label>

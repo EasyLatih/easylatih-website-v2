@@ -312,6 +312,59 @@
     finally { btn.disabled = false; btn.textContent = 'Save details'; }
   }
 
+  // ---------- Gemini drafts for B and C ----------
+  const LIMIT = 400;
+  const fit = t => { t = String(t || '').replace(/\s+/g, ' ').trim(); if (t.length <= LIMIT) return t; const c = t.slice(0, LIMIT), d = c.lastIndexOf('.'); return d > 200 ? c.slice(0, d + 1) : c.slice(0, c.lastIndexOf(' ')) + '.'; };
+  function aiState(msg, bad) { const el = $('ai-state'); el.textContent = msg || ''; el.classList.toggle('bad', !!bad); }
+  function fillBC(desc, rel) {
+    if (desc) $('f-description').value = fit(desc);
+    if (rel) $('f-relevance').value = fit(rel);
+    $('saveState').textContent = 'Unsaved changes.'; render();
+  }
+  function geminiPrompt() {
+    const title = val('f-title') || (src && src.programName) || '(course title)';
+    return [
+      'Anda membantu penyedia latihan berdaftar HRD Corp (Easy Latih Consultancy) mengisi permohonan geran dalam sistem eTRiS.',
+      'Kursus: ' + title + (val('f-retraining') ? ' (kategori: ' + val('f-retraining') + ')' : ''),
+      'Berdasarkan course content yang saya lampirkan, tulis dalam Bahasa Melayu yang formal:',
+      '1. DESCRIPTION: ringkasan kursus – apa yang dipelajari dan hasil kepada peserta.',
+      '2. RELEVANCE: sebab latihan ini relevan dan penting kepada majikan serta pekerja (risiko, pematuhan, prestasi, produktiviti).',
+      'Syarat: setiap satu MAKSIMUM 400 aksara termasuk ruang; satu perenggan; tiada bullet, tajuk atau emoji; jangan reka fakta yang tiada dalam course content.',
+      'Contoh gaya DESCRIPTION: "Memahami teras undang-undang perburuhan di Malaysia (termasuk Pindaan Akta Kerja 1955 terkini). Kursus ini memberikan kefahaman praktikal mengenai hak dan kewajipan majikan bagi memastikan operasi syarikat patuh undang-undang, mengelakkan risiko saman atau denda daripada Jabatan Tenaga Kerja (JTK), serta mewujudkan persekitaran kerja yang harmoni."',
+      'Contoh gaya RELEVANCE: "Latihan ini sangat relevan kerana ia membekalkan majikan dan pihak HR dengan kefahaman kritikal mengenai Pindaan Akta Kerja 1955 terkini bagi mengelakkan risiko denda, kompaun, serta tindakan undang-undang daripada Jabatan Tenaga Kerja (JTK) atau Mahkamah Perusahaan."',
+      'Jawab dalam format ini sahaja:',
+      'DESCRIPTION: ...',
+      'RELEVANCE: ...'
+    ].join('\n');
+  }
+  function parsePasted() {
+    const t = $('ai-paste').value;
+    const d = /DESCRIPTION\s*:?\**\s*([\s\S]*?)(?=\n\s*\**\s*RELEVANCE\s*:|$)/i.exec(t);
+    const r = /RELEVANCE\s*:?\**\s*([\s\S]*)$/i.exec(t);
+    const clean = x => (x || '').replace(/\*\*/g, '').trim();
+    if (!d && !r) { aiState('Could not find DESCRIPTION: and RELEVANCE: in the pasted text.', true); return; }
+    fillBC(clean(d && d[1]), clean(r && r[1]));
+    aiState('B and C filled from the Gemini app. Check them, then Save.');
+  }
+  const toBase64 = file => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => bad(new Error('Could not read the file.')); r.readAsDataURL(file); });
+  async function generate(btn) {
+    if (!val('f-title')) { aiState('Enter the course title (A) first.', true); return; }
+    const file = $('ai-file').files[0];
+    if (file && file.type !== 'application/pdf') { aiState('Upload the course content as a PDF.', true); return; }
+    if (file && file.size > 15 * 1024 * 1024) { aiState('The PDF is larger than 15 MB.', true); return; }
+    if (!file && !(src && src.courseContentUrl)) { aiState('Attach the course content PDF first.', true); return; }
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Generating…'; aiState('Gemini is reading the course content…');
+    try {
+      const payload = { title: val('f-title'), retrainingType: val('f-retraining'), courseContentUrl: src && src.courseContentUrl || '' };
+      if (file) Object.assign(payload, { fileBase64: await toBase64(file), fileType: file.type, fileName: file.name });
+      const out = await call('regAppendixGenerate', payload);
+      fillBC(out.description, out.relevance);
+      aiState('Drafted by Gemini from the ' + (out.source || 'course content') + '. Check the wording, then Save.');
+    } catch (e) {
+      aiState(/Unknown action/i.test(e.message) ? 'Gemini is not connected yet (Apps Script not updated). Use "Copy prompt for Gemini app" for now.' : e.message, true);
+    } finally { btn.disabled = false; btn.textContent = old; }
+  }
+
   // ---------- start ----------
   function bind() {
     $('programme').onchange = e => selectProgramme(e.target.value);
@@ -329,6 +382,9 @@
       const l = build()[b.dataset.a].lines[b.dataset.l];
       copyText(l.copy != null ? l.copy : l.value, b);
     });
+    $('ai-generate').onclick = e => generate(e.currentTarget);
+    $('ai-prompt').onclick = e => { copyText(geminiPrompt(), e.currentTarget); $('ai-paste-box').open = true; aiState('Prompt copied. In the Gemini app, attach the course content, paste the prompt, then paste the answer below.'); };
+    $('ai-fill').onclick = parsePasted;
     $('copyAll').onclick = e => copyText(plainText(), e.currentTarget);
     $('download').onclick = () => src && download();
     $('print').onclick = () => src && printDoc();
