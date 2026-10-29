@@ -72,9 +72,9 @@ input[readonly]{background:var(--soft)!important;color:var(--muted)!important}
               <label class="wide">Course title (A) <small>copy from the HRD Corp system, including the code</small><input id="f-title" placeholder="10001758181: AKTA KERJA 1955: ..."></label>
               <div class="wide ai">
                 <strong>✨ Draft B and C with Gemini</strong>
-                <span>Attach the course content (PDF). Without a file, the programme's course content link is used.</span>
-                <div class="ai-row"><input type="file" id="ai-file" accept="application/pdf"><button type="button" class="small primary" id="ai-generate">Generate with Gemini</button><button type="button" class="small" id="ai-prompt">Copy prompt for Gemini app</button></div>
-                <details id="ai-paste-box"><summary>Paste the answer from the Gemini app</summary>
+                <span>1. Copy the prompt. 2. In the Gemini app, attach the course content and paste the prompt. 3. Paste Gemini's answer below and fill B and C.</span>
+                <div class="ai-row"><button type="button" class="small primary" id="ai-prompt">Copy prompt for Gemini</button></div>
+                <details id="ai-paste-box" open><summary>Paste Gemini's answer</summary>
                   <textarea id="ai-paste" placeholder="DESCRIPTION: …&#10;RELEVANCE: …"></textarea>
                   <button type="button" class="small" id="ai-fill">Fill B and C</button>
                 </details>

@@ -50,8 +50,7 @@ function publicRegistrationActions_() {
     regArchive: function (d) { return praArchive_(praText_(d.courseId), d.force === true); },
     regArchivedPrograms: function () { return praArchivedPrograms_(); },
     regFormerClients: function (d) { return praFormerClients_(praText_(d.query)); },
-    regAppendixSource: function (d) { return praAppendixSource_(praText_(d.courseId)); },
-    regAppendixGenerate: function (d) { return appxGenerate_(d); }
+    regAppendixSource: function (d) { return praAppendixSource_(praText_(d.courseId)); }
   };
 }
 
