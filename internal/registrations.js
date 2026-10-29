@@ -183,7 +183,7 @@
     const completed = active.filter(r => r.stage.done).length;
     const archivable = active.length ? completed === active.length : d.registrations.length > 0;
     $('programmeDetail').innerHTML =
-      '<div class="toolbar"><button type="button" id="backToList">← All programmes</button><button type="button" class="small" id="refreshDetail">↻ Refresh</button></div>' +
+      '<div class="toolbar"><button type="button" id="backToList">← All programmes</button><button type="button" class="small" id="refreshDetail">↻ Refresh</button><a class="small" style="display:inline-flex;align-items:center;padding:6px 11px;border:1px solid var(--line);border-radius:8px;font-size:.74rem;font-weight:600;color:var(--navy);text-decoration:none;background:#fff" href="appendices.html?course='+encodeURIComponent(p.courseId)+'">🧩 eTRiS Appendices</a></div>' +
       '<section class="panel"><div class="panel-head"><div><p class="eyebrow">'+esc(p.courseId)+' · '+esc(p.status)+'</p><h2 style="font-size:1.3rem">'+esc(p.programName)+'</h2><p>'+esc(p.programDate)+' · '+esc(p.venue)+(p.deliveryMode?' · '+esc(p.deliveryMode):'')+'</p></div></div>' +
       '<div class="summary"><div><b>'+pax+'</b>pax registered</div><div><b>'+confirmedPax+'</b>pax confirmed</div><div><b>'+(p.minPax||'—')+'</b>minimum pax</div><div><b>'+(p.maxPax||'—')+'</b>maximum pax</div><div><b>'+active.length+'</b>companies</div><div><b>'+(p.closeDate?nice(p.closeDate):'—')+'</b>registration closes</div></div>' +
       (p.minPax && pax < p.minPax ? '<p class="notice" data-type="danger" style="margin-top:12px">Below minimum: '+pax+' of '+p.minPax+' pax registered.</p>' : '') +
