@@ -270,14 +270,14 @@
 
   // Manual mode: blank form, nothing pulled from the Programs sheet.
   function startManual() {
-    src = { courseId: '', programName: '', startDate: '', endDate: '', venue: '', state: '', hrdFee: 0, totalTime: '' };
+    src = { manual: true, courseId: '', programName: '', startDate: '', endDate: '', venue: '', state: '', hrdFee: 0, totalTime: '' };
     auto = { price: '', start: '', end: '', hours: '', days: '', full: '', half: '', less: '', months: '0' };
     course = null; session = null;
     ['f-title','f-description','f-relevance','f-retraining','f-trainer','f-trainerName','f-trainerIc','f-address','f-state'].forEach(id => { $(id).value = ''; });
     $('f-location').value = 'Local';
     OVERRIDE_KEYS.forEach(k => { $('o-'+k).value = auto[k]; });
     $('summary').hidden = true; $('work').hidden = false;
-    $('saveState').textContent = 'Manual mode: only the course details (A–D) are saved.';
+    $('saveState').textContent = 'Manual mode: not saved yet.';
     history.replaceState(null, '', location.pathname);
     render();
   }
@@ -285,10 +285,10 @@
   async function save(ev) {
     ev.preventDefault();
     if (!src) return;
-    if (!src.courseId && !val('f-title')) { banner('Enter the course title before saving.', 'danger'); return; }
+    if (src.manual && !val('f-title')) { banner('Enter the course title before saving.', 'danger'); return; }
     const btn = $('save'); btn.disabled = true; btn.textContent = 'Saving…';
     try {
-      const key = courseKey(src.courseId ? src.programName : val('f-title'));
+      const key = courseKey(src.manual ? val('f-title') : src.programName);
       const overrides = {};
       OVERRIDE_KEYS.forEach(k => { const v = val('o-'+k); if (v !== '' && v !== String(auto[k] ?? '')) overrides[k] = v; });
       if (val('f-state') && val('f-state') !== (src.state || '')) overrides.state = val('f-state');
@@ -299,7 +299,7 @@
       }).select().single();
       if (c.error) throw c.error;
       course = c.data;
-      if (!src.courseId) { $('saveState').textContent = 'Course details saved. Trainer, venue and dates are not saved in manual mode.'; return; }
+      if (src.manual && !src.courseId) src.courseId = 'MANUAL-' + Date.now();
       const s = await db.from('appendix_session_details').upsert({
         course_id: src.courseId, course_key: key, training_location: val('f-location') || 'Local',
         full_address: val('f-address'), trainer_id: val('f-trainer') || null,
@@ -307,9 +307,57 @@
       }).select().single();
       if (s.error) throw s.error;
       course = c.data; session = s.data;
+      loadSaved();
       $('saveState').textContent = 'Saved ' + new Date().toLocaleTimeString('en-MY', {hour:'2-digit', minute:'2-digit'}) + '.';
     } catch (e) { banner('Could not save: ' + (e.message || e), 'danger'); }
     finally { btn.disabled = false; btn.textContent = 'Save details'; }
+  }
+
+  // ---------- duplicate a saved one ----------
+  let saved = [], profiles = {};
+  async function loadSaved() {
+    try {
+      const [ss, cp] = await Promise.all([
+        db.from('appendix_session_details').select('course_id,course_key,training_location,full_address,trainer_id,trainer_name,trainer_ic,overrides,updated_at').order('updated_at', { ascending: false }).limit(100),
+        db.from('appendix_course_profiles').select('*')
+      ]);
+      if (ss.error || cp.error) throw ss.error || cp.error;
+      profiles = {}; (cp.data || []).forEach(r => { profiles[r.course_key] = r; });
+      saved = ss.data || [];
+      const label = r => {
+        const p = profiles[r.course_key] || {}, ov = r.overrides || {};
+        const prog = programmes.find(x => x.courseId === r.course_id);
+        const start = ov.start || (prog && prog.startDate) || '';
+        const title = (p.course_title || r.course_key || '').replace(/^\d{6,}:\s*/, '');
+        return (start ? nice(start) + ' · ' : '') + title + (r.full_address ? ' · ' + r.full_address.split(',')[0] : '');
+      };
+      $('dup').innerHTML = saved.length
+        ? '<option value="">Choose a saved programme to copy</option>' + saved.map((r, i) => '<option value="'+i+'">'+esc(label(r))+'</option>').join('')
+        : '<option value="">Nothing saved yet – save a programme first</option>';
+    } catch (e) { $('dup').innerHTML = '<option value="">Saved appendices are not available</option>'; console.warn(e); }
+  }
+  function duplicate(i) {
+    const r = saved[i]; if (!r) return;
+    const p = profiles[r.course_key] || {}, ov = r.overrides || {};
+    if (!src) { $('programme').value = '__manual'; startManual(); }
+    if (src.manual) src.courseId = '';   // always save a copy as a new record
+    $('f-title').value = p.course_title || '';
+    $('f-description').value = p.description || '';
+    $('f-relevance').value = p.relevance || '';
+    $('f-retraining').value = p.retraining_type || '';
+    $('f-trainer').value = r.trainer_id || '';
+    $('f-trainerName').value = r.trainer_name || '';
+    $('f-trainerIc').value = r.trainer_ic || '';
+    $('f-location').value = r.training_location || 'Local';
+    $('f-address').value = r.full_address || '';
+    if (ov.state) $('f-state').value = ov.state;
+    ['hours', 'price', 'months'].forEach(k => { if (ov[k] != null) $('o-'+k).value = ov[k]; });
+    if (src.manual) { $('o-start').value = ''; $('o-end').value = ''; }
+    rederive();
+    $('dup').value = '';
+    $('saveState').textContent = src.manual ? 'Copied. Pick the new dates, check the venue, then Save.' : 'Copied into this programme. Check the venue, then Save.';
+    render();
+    $('work').scrollIntoView({ behavior: 'smooth' });
   }
 
   // ---------- Gemini drafts for B and C ----------
@@ -349,7 +397,8 @@
   // ---------- start ----------
   function bind() {
     $('programme').onchange = e => selectProgramme(e.target.value);
-    $('reload').onclick = () => loadProgrammes();
+    $('reload').onclick = () => { loadProgrammes(); loadSaved(); };
+    $('dup').onchange = e => { if (e.target.value !== '') duplicate(Number(e.target.value)); };
     $('form').addEventListener('submit', save);
     $('form').addEventListener('input', e => { if (['o-start','o-end','o-hours'].includes(e.target.id)) rederive(); $('saveState').textContent = 'Unsaved changes.'; render(); });
     $('f-trainer').onchange = e => {
@@ -380,7 +429,7 @@
     $('loginState').hidden = true; $('adminApp').hidden = false;
     bind();
     loadTrainers();
-    loadProgrammes();
+    loadProgrammes().then(loadSaved);
   }
   setup();
 })();
