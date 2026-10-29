@@ -28,9 +28,17 @@
   }
 
   // ---------- tabs ----------
-  const tabs = ['programmes', 'clients', 'archived'];
+  const tabs = ['upcoming', 'previous', 'clients', 'archived'];
+  const viewOf = t => (t === 'upcoming' || t === 'previous') ? 'programmes' : t;
+  let listMode = 'upcoming';
   function setTab(t) {
-    tabs.forEach(x => { $('tab-'+x).setAttribute('aria-selected', String(x === t)); $('view-'+x).hidden = x !== t; });
+    tabs.forEach(x => $('tab-'+x).setAttribute('aria-selected', String(x === t)));
+    ['programmes', 'clients', 'archived'].forEach(v => { $('view-'+v).hidden = v !== viewOf(t); });
+    if (viewOf(t) === 'programmes') {
+      listMode = t;
+      $('view-programmes').setAttribute('aria-labelledby', 'tab-'+t);
+      if (detail) backToList(); else renderCards();
+    }
     if (t === 'archived') loadArchived();
     if (t === 'clients' && !clientsLoaded) searchClients('');
   }
@@ -51,7 +59,16 @@
     return d > 1 ? 'Registration closes in '+d+' days ('+nice(p.closeDate)+')' : d === 1 ? 'Registration closes tomorrow' : d === 0 ? 'Registration closes today' : 'Registration closed '+nice(p.closeDate);
   }
   function renderCards() {
-    $('cards').innerHTML = programmes.length ? programmes.map((p, i) => {
+    const today = new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Kuala_Lumpur'});
+    const ended = p => { const e = p.endDate || p.startDate; return !!e && e < today; };
+    const up = [], prev = [];
+    programmes.forEach((p, i) => (ended(p) ? prev : up).push([p, i]));
+    prev.sort((a, b) => String(b[0].startDate).localeCompare(String(a[0].startDate)));
+    $('count-upcoming').textContent = programmes.length ? '('+up.length+')' : '';
+    $('count-previous').textContent = programmes.length ? '('+prev.length+')' : '';
+    $('listHint').textContent = listMode === 'previous' ? 'Programmes that have ended and are not archived yet, latest first. Finish HRD claims here, then archive.' : 'Programmes that have not ended yet, earliest first.';
+    const shown = listMode === 'previous' ? prev : up;
+    $('cards').innerHTML = shown.length ? shown.map(([p, i]) => {
       const c = p.counts;
       const chips = [
         c.awaitingPayment ? '<span class="chip warn">'+c.awaitingPayment+' awaiting payment</span>' : '',
@@ -60,11 +77,11 @@
         c.inClaim ? '<span class="chip">'+c.inClaim+' in HRD claim</span>' : '',
         c.completed ? '<span class="chip grey">'+c.completed+' completed</span>' : ''
       ].join('');
-      return '<article class="pcard"><div class="chips"><span class="chip '+(STATUS[p.status]||'')+'">'+esc(p.status)+'</span>'+(p.archivable && c.total ? '<span class="chip good">Ready to archive</span>' : '')+'</div>' +
+      return '<article class="pcard"><div class="chips"><span class="chip '+(STATUS[p.status]||'')+'">'+esc(p.status)+'</span>'+(p.isActive === false ? '<span class="chip bad">Not active</span>' : p.isPublished === false ? '<span class="chip grey">Not on website</span>' : '')+(p.archivable && c.total ? '<span class="chip good">Ready to archive</span>' : '')+'</div>' +
         '<h3>'+esc(p.programName)+'</h3><p class="meta">'+esc(p.programDate)+' · '+esc(p.venue)+(p.deliveryMode?' · '+esc(p.deliveryMode):'')+'<br>'+esc(closeInfo(p))+'</p>' +
         paxBar(p) + '<div class="chips">'+(chips || '<span class="hint">No registrations yet</span>')+'</div>' +
         '<div><button type="button" class="primary small" data-open="'+i+'">Open programme</button></div></article>';
-    }).join('') : '<p class="empty">No public programmes yet.</p>';
+    }).join('') : '<p class="empty">'+(listMode === 'previous' ? 'No previous programmes waiting to be archived.' : 'No upcoming public programmes.')+'</p>';
   }
   async function loadProgrammes() {
     $('cards').innerHTML = '<p class="empty">Loading programmes…</p>';
@@ -134,6 +151,18 @@
       stepsLine(r) + people +
       '<div class="act">'+next+resend+cancel+receipt+'</div><div class="inline-form" data-slot="'+id+'"></div></article>';
   }
+  function statusPanel(p) {
+    const opts = ['DRAFT','TENTATIVE'].concat(p.status === 'CONFIRMED' ? ['CONFIRMED'] : []).concat(['CANCELLED','COMPLETED']);
+    if (opts.indexOf(p.status) === -1) opts.unshift(p.status);
+    const label = {DRAFT:'Draft (hidden, not open)', TENTATIVE:'Tentative (open for registration)', CONFIRMED:'Confirmed', CANCELLED:'Cancelled', COMPLETED:'Completed'};
+    return '<section class="panel"><div class="panel-head"><div><h2>Programme status</h2><p>Same rules as Programme Management.</p></div></div>' +
+      '<form class="stack" id="statusForm"><label>Status<select id="st-status" style="font:inherit;font-size:.84rem;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff">' +
+      opts.map(o => '<option value="'+o+'"'+(o===p.status?' selected':'')+'>'+esc(label[o]||o)+'</option>').join('') + '</select></label>' +
+      '<label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="st-active" style="width:auto"'+(p.isActive?' checked':'')+'> Active</label>' +
+      '<label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="st-published" style="width:auto"'+(p.isPublished?' checked':'')+'> Published on the website schedule</label>' +
+      '<button type="submit">Save status</button></form>' +
+      '<p class="hint" id="statusNote" style="margin-top:8px">To confirm, use Confirm programme below so PICs get the email. Draft, Cancelled, Completed or inactive programmes are taken off the website automatically.</p></section>';
+  }
   function confirmPanel(p) {
     const c = p.confirm;
     if (!c) return '';
@@ -144,7 +173,7 @@
     return '<section class="panel"><div class="panel-head"><div><h2>Confirm programme</h2><p>Sets the status to CONFIRMED and emails every PIC (Program Disahkan / Programme Confirmed).</p></div></div>' +
       '<ul style="list-style:none;padding:0;margin:0 0 12px;font-size:.84rem">'+list+'</ul>' +
       '<button type="button" id="confirmProgrammeBtn"'+(c.ready?' class="primary"':' disabled')+'>Confirm programme and email PICs</button>' +
-      '<p class="hint" style="margin-top:8px">'+(c.ready?'All checks passed.':'Confirmed pax counts paid and grant-approved registrations only. Status and Active are changed in Programme Management.')+'</p></section>';
+      '<p class="hint" style="margin-top:8px">'+(c.ready?'All checks passed.':'Confirmed pax counts paid and grant-approved registrations only. Change Status and Active in the panel above.')+'</p></section>';
   }
   function renderDetail() {
     const d = detail, p = d.program, s = d.settings;
@@ -163,7 +192,7 @@
       (d.registrations.length ? d.registrations.map(regCard).join('') : '<p class="empty">No registrations yet.</p>') + '</div>' +
       '<div class="danger-zone"><button type="button" id="archiveBtn"'+(archivable?' class="primary"':'')+'>Archive programme</button>' +
       (archivable ? '<span class="hint">All registrations are completed or cancelled.</span>' : '<label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="archiveForce"> Archive anyway (some registrations are not completed)</label>') + '</div></section></div>' +
-      '<aside class="col-side">' + confirmPanel(p) + '<section class="panel"><div class="panel-head"><div><h2>Pax and deadline</h2><p>Changes apply to the website and the registration-close check straight away.</p></div></div>' +
+      '<aside class="col-side">' + statusPanel(p) + confirmPanel(p) + '<section class="panel"><div class="panel-head"><div><h2>Pax and deadline</h2><p>Changes apply to the website and the registration-close check straight away.</p></div></div>' +
       '<form class="stack" id="limitsForm"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px">' +
       '<label>Minimum pax<input id="l-min" type="number" min="1" step="1" required value="'+(p.minPax||'')+'"></label>' +
       '<label>Maximum pax<input id="l-max" type="number" min="1" step="1" required value="'+(p.maxPax||'')+'"></label></div>' +
@@ -306,6 +335,20 @@
         try { detail.settings = await call('regSaveSettings', {courseId: detail.program.courseId, guidelineUrl: $('s-guide').value.trim(), whatsAppLink: $('s-wa').value.trim(), joiningInstructions: $('s-join').value}); $('settingsNote').textContent = 'Saved. New emails will use these settings.'; }
         catch (er) { $('settingsNote').textContent = er.message; }
         b.disabled = false; return;
+      }
+      if (e.target.id === 'statusForm') {
+        const p = detail.program, status = $('st-status').value, isActive = $('st-active').checked, isPublished = $('st-published').checked;
+        const companies = detail.registrations.filter(r => r.stage.key !== 'CANCELLED').length;
+        if (status === 'CANCELLED' && p.status !== 'CANCELLED' && !confirm('Cancel ' + p.programName + '? ' + (companies ? 'All ' + companies + ' PICs get the "Pembatalan Program / Programme Cancellation" email now.' : 'No PICs are registered, so no emails go out.'))) return;
+        if (status === 'COMPLETED' && p.status !== 'COMPLETED' && !confirm('Mark ' + p.programName + ' as completed? It leaves the website schedule.')) return;
+        const b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Saving…';
+        try {
+          const r = await call('regSaveStatus', {courseId: p.courseId, status, isActive, isPublished});
+          detail.program = r.program; renderDetail();
+          const pub = isPublished && !detail.program.isPublished ? ' Published was switched off because the programme is ' + (detail.program.isActive ? detail.program.status.toLowerCase() : 'not active') + '.' : '';
+          banner('Saved: ' + detail.program.status + (detail.program.isActive ? ', active' : ', not active') + (detail.program.isPublished ? ', on the website.' : ', not on the website.') + pub + (r.cancellationEmailsSent ? ' Cancellation emails sent: ' + r.cancellationEmailsSent + '.' : '') + (r.cancellationEmailsFailed ? ' Failed: ' + r.cancellationEmailsFailed + '.' : ''), r.cancellationEmailsFailed ? 'danger' : 'success');
+        } catch (er) { b.disabled = false; b.textContent = 'Save status'; $('statusNote').textContent = er.message; }
+        return;
       }
       if (e.target.id === 'limitsForm') {
         const minPax = Number($('l-min').value), maxPax = Number($('l-max').value);

@@ -58,14 +58,15 @@ details summary{cursor:pointer;font-size:.74rem;font-weight:600;color:var(--navy
 <div id="adminApp" hidden>
   <div id="message" class="notice" hidden></div>
   <nav class="tabs" role="tablist" aria-label="Registration views">
-    <button type="button" role="tab" id="tab-programmes" aria-selected="true" aria-controls="view-programmes">Programmes</button>
+    <button type="button" role="tab" id="tab-upcoming" aria-selected="true" aria-controls="view-programmes">Upcoming <span id="count-upcoming"></span></button>
+    <button type="button" role="tab" id="tab-previous" aria-selected="false" aria-controls="view-programmes">Previous <span id="count-previous"></span></button>
     <button type="button" role="tab" id="tab-clients" aria-selected="false" aria-controls="view-clients">Former clients</button>
     <button type="button" role="tab" id="tab-archived" aria-selected="false" aria-controls="view-archived">Archived</button>
   </nav>
 
-  <section id="view-programmes" role="tabpanel" aria-labelledby="tab-programmes">
+  <section id="view-programmes" role="tabpanel" aria-labelledby="tab-upcoming">
     <div id="programmeList">
-      <div class="toolbar"><p class="hint">Public programmes with registrations, earliest first. Archived programmes move to the Archived tab.</p><button type="button" class="small" id="refreshList">↻ Refresh</button></div>
+      <div class="toolbar"><p class="hint" id="listHint">Programmes that have not ended yet, earliest first.</p><button type="button" class="small" id="refreshList">↻ Refresh</button></div>
       <div class="cards" id="cards"><p class="empty">Loading programmes…</p></div>
     </div>
     <div id="programmeDetail" hidden></div>

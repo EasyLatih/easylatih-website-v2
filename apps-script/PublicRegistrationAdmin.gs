@@ -40,6 +40,7 @@ function publicRegistrationActions_() {
     regSaveLimits: function (d) { return praSaveLimits_(d); },
     regTrainerConfirmed: function (d) { return praTrainerConfirmed_(praText_(d.courseId)); },
     regConfirmProgramme: function (d) { return praConfirmProgramme_(praText_(d.courseId)); },
+    regSaveStatus: function (d) { return praSaveStatus_(d); },
     regPaymentReceived: function (d) { return praPaymentReceived_(d); },
     regGrantApproved: function (d) { return praGrantApproved_(d); },
     regHrdStep: function (d) { return praHrdStep_(d); },
@@ -207,7 +208,7 @@ function praPrograms_() {
     if ((byCourse[id] || []).length > 0) return true;
     // No registrations: only show upcoming programmes that are open for registration.
     const ends = praIso_(p.EndDate) || praIso_(p.StartDate);
-    return ['DRAFT', 'CANCELLED', 'DECLINED', 'COMPLETED'].indexOf(status) === -1 && (!ends || ends >= praToday_());
+    return ['CANCELLED', 'DECLINED', 'COMPLETED'].indexOf(status) === -1 && (!ends || ends >= praToday_());
   }).map(function (p) {
     const id = praText_(p.CourseID);
     const list = byCourse[id] || [];
@@ -232,6 +233,8 @@ function praPrograms_() {
       venue: praText_(p.Venue),
       deliveryMode: praText_(p.DeliveryMode),
       status: praUpper_(p.Status) || 'DRAFT',
+      isActive: praFlag_(p.IsActive),
+      isPublished: praFlag_(p.IsPublished),
       minPax: Number(p.MinPax || 0),
       maxPax: Number(p.MaxPax || 0),
       closeDate: praIso_(p.RegistrationCloseDate),
@@ -265,6 +268,8 @@ function praProgramDetail_(courseId) {
       venue: praText_(p.Venue),
       deliveryMode: praText_(p.DeliveryMode),
       status: praUpper_(p.Status) || 'DRAFT',
+      isActive: praFlag_(p.IsActive),
+      isPublished: praFlag_(p.IsPublished),
       startDate: praIso_(p.StartDate),
       minPax: Number(p.MinPax || 0),
       maxPax: Number(p.MaxPax || 0),
@@ -394,7 +399,7 @@ function praConfirmCheck_(p, courseId) {
     confirmedPax = Number((summary[courseId] || {}).confirmedPax || 0);
   } catch (e) { /* summary unavailable */ }
   const status = praUpper_(p.Status) || 'DRAFT';
-  const isActive = typeof isProgramAdminTrue_ === 'function' ? isProgramAdminTrue_(p.IsActive) : praUpper_(p.IsActive) === 'TRUE';
+  const isActive = praFlag_(p.IsActive);
   const trainerStatus = praUpper_(p.TrainerConfirmationStatus) || 'TENTATIVE';
   const minPax = Number(p.MinPax || 0);
   const checks = [
@@ -424,6 +429,36 @@ function praConfirmProgramme_(courseId) {
     emailsSent: Number(result.confirmationEmailsSent || 0),
     emailsSkipped: Number(result.confirmationEmailsSkipped || 0),
     emailsFailed: Number(result.confirmationEmailsFailed || 0)
+  };
+}
+
+function praFlag_(v) {
+  if (typeof isProgramAdminTrue_ === 'function') return !!isProgramAdminTrue_(v);
+  return v === true || ['TRUE', 'YES', '1', 'Y'].indexOf(praUpper_(v)) !== -1;
+}
+
+// Status, Active and Published, through Programme Management's own update (same rules and cancellation emails).
+function praSaveStatus_(d) {
+  const courseId = praText_(d.courseId);
+  const p = praProgramRecord_(courseId);
+  const status = praUpper_(d.status);
+  const current = praUpper_(p.Status) || 'DRAFT';
+  if (status === 'CONFIRMED' && current !== 'CONFIRMED') throw new Error('Use the Confirm programme button so the PICs get the confirmation email.');
+  if (typeof updateScheduledProgramAdmin !== 'function') throw new Error('Programme status update is not available in this Apps Script project.');
+  const result = updateScheduledProgramAdmin({
+    courseId: courseId,
+    status: status,
+    trainerConfirmationStatus: praUpper_(p.TrainerConfirmationStatus) || 'TENTATIVE',
+    isActive: d.isActive === true,
+    isPublished: d.isPublished === true
+  });
+  if (typeof syncPublicTrainingCalendarMirror === 'function') {
+    try { syncPublicTrainingCalendarMirror(); } catch (e) { console.error('Calendar sync after status change failed: ' + e.message); }
+  }
+  return {
+    program: praProgramDetail_(courseId).program,
+    cancellationEmailsSent: Number(result.cancellationEmailsSent || 0),
+    cancellationEmailsFailed: Number(result.cancellationEmailsFailed || 0)
   };
 }
 
