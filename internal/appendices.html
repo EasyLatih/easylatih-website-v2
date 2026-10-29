@@ -29,6 +29,9 @@
 .line .v{font-size:.8rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;min-width:0}
 .line .v em{display:block;font-style:normal;color:var(--muted);font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .line .v.missing{color:#a63229}
+input[readonly]{background:var(--soft)!important;color:var(--muted)!important}
+.count{font-weight:400}
+.count.full{color:#a63229;font-weight:700}
 .copy{flex:none;font-size:.7rem;padding:5px 9px}
 .copy.done{background:#e9f8f0;color:#176444;border-color:#bfe6cf}
 .note-r{margin-top:6px;font-size:.7rem;color:var(--muted)}
@@ -59,14 +62,13 @@
         <form id="form" novalidate autocomplete="off">
           <div class="group" style="border-top:0;margin-top:0;padding-top:0">
             <h3>Course (A–E)</h3>
-            <p>Saved against the course title, so every future session of this course is filled in automatically.</p>
+            <p>Description and relevance: maximum 400 characters each. Saved against the course title, so every future session of this course is filled in automatically.</p>
             <div class="form-grid">
-              <label>HRD Corp programme code<input id="f-code" inputmode="numeric" placeholder="10001758181"></label>
-              <label>Course title (Appendix A)<input id="f-title"></label>
-              <label class="wide">Description (Appendix B)<textarea id="f-description" placeholder="Short description, as approved in eTRiS"></textarea></label>
-              <label class="wide">Relevance of training (Appendix C)<textarea id="f-relevance"></textarea></label>
-              <label>Type of retraining &amp; skills upgrading (D)<input id="f-retraining" list="retrainingList" placeholder="Legal And Law"></label>
-              <label>HRD Corp focus area (E)<input id="f-focus" list="focusList"></label>
+              <label class="wide">Course title (A) <small>copy from the HRD Corp system, including the code</small><input id="f-title" placeholder="10001758181: AKTA KERJA 1955: ..."></label>
+              <label class="wide">Description (B) <small class="count" data-for="f-description"></small><textarea id="f-description" maxlength="400"></textarea></label>
+              <label class="wide">Relevance of training (C) <small class="count" data-for="f-relevance"></small><textarea id="f-relevance" maxlength="400"></textarea></label>
+              <label>Type of retraining &amp; skills upgrading (D)<select id="f-retraining"><option value="">Select</option><option>Engineering</option><option>Legal And Law</option><option>Finance and Accounting</option><option>Management and Leadership</option><option>Operation Management</option><option>Quality</option><option>Productivity</option><option>Digitalisation</option><option>Linguistics</option><option>Hospitality and Toursim</option><option>Medical and Medical Service Related</option><option>Healthcare</option><option>Logistics, Warehousing and Supply Chain</option><option>Sales, Marketing, Customer Service and Retail</option><option>Safety</option><option>Health</option><option>Security</option><option>Creative Arts or Journalism</option><option>Scientific, Technical or Statistics</option><option>Building, Construction, Maintenance</option><option>Sustainability</option><option>Industry 4.0</option><option>Regulation and Certification Based</option><option>GIG Economy</option></select></label>
+              <label>HRD Corp focus area (E) <small>fixed</small><input id="f-focus" value="Not Applicable" readonly></label>
             </div>
           </div>
 
@@ -85,9 +87,9 @@
 
           <div class="group">
             <h3>Dates, hours and fee (F–L, Q, R)</h3>
-            <p>Full day = 7 hours or more a day, half day = 4 to under 7 hours, below 4 hours counts as hours.</p>
+            <p>Training schedule (Q) uses the same dates as G. Full day = 7 hours or more a day, half day = 4 to under 7 hours, below 4 hours counts as hours.</p>
             <div class="form-grid">
-              <label>Type of training (F) <span class="auto" data-auto="type"></span><input id="o-type" data-key="type"></label>
+              <label>Type of training (F) <small>fixed</small><input id="o-type" value="Public" readonly></label>
               <label>Price per pax in quotation (RM) <span class="auto" data-auto="price"></span><input id="o-price" data-key="price" inputmode="decimal"></label>
               <label>Start date <span class="auto" data-auto="start"></span><input id="o-start" data-key="start" type="date"></label>
               <label>End date <span class="auto" data-auto="end"></span><input id="o-end" data-key="end" type="date"></label>
@@ -124,8 +126,6 @@
 </div>
 </main>
 
-<datalist id="focusList"><option>Not Applicable</option></datalist>
-<datalist id="retrainingList"><option>Legal And Law</option></datalist>
 <datalist id="stateList"><option>Johor</option><option>Kedah</option><option>Kelantan</option><option>Melaka</option><option>Negeri Sembilan</option><option>Pahang</option><option>Perak</option><option>Perlis</option><option>Pulau Pinang</option><option>Sabah</option><option>Sarawak</option><option>Selangor</option><option>Terengganu</option><option>W.P. Kuala Lumpur</option><option>W.P. Labuan</option><option>W.P. Putrajaya</option></datalist>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script><script src="../trainer/config.js"></script><script src="appendices.js"></script>

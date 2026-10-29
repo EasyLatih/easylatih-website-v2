@@ -38,7 +38,7 @@
   let auto = {};           // calculated values
   let course = null;       // saved appendix_course_profiles row
   let session = null;      // saved appendix_session_details row
-  const OVERRIDE_KEYS = ['type','price','start','end','hours','days','full','half','less','months'];
+  const OVERRIDE_KEYS = ['price','start','end','hours','days','full','half','less','months'];
 
   // ---------- calculations ----------
   function dayCount(a, b) {
@@ -62,25 +62,43 @@
       full: String(full), half: String(half), less: String(less), months: '0'
     };
   }
+  // Re-derive days and full/half/less-than-half days from the dates and hours on the form.
+  // Fields the admin has changed by hand are left alone.
+  function rederive() {
+    const days = dayCount(cur('start'), cur('end'));
+    const hours = num(cur('hours'));
+    const next = Object.assign({}, auto);
+    if (days) next.days = String(days);
+    if (days && hours) {
+      const perDay = hours / days;
+      next.full = String(perDay >= 7 ? days : 0);
+      next.half = String(perDay >= 4 && perDay < 7 ? days : 0);
+      next.less = String(perDay < 4 ? hours : 0);
+    }
+    ['days','full','half','less'].forEach(k => {
+      const input = $('o-'+k);
+      if (input.value.trim() === '' || input.value.trim() === String(auto[k] ?? '')) input.value = next[k] ?? '';
+    });
+    auto = next;
+  }
   // Current value of a calculated field: the typed override, else the auto value.
   const cur = k => { const v = val('o-'+k); return v !== '' ? v : (auto[k] ?? ''); };
 
   // ---------- appendices model ----------
   function build() {
     const title = val('f-title') || (src && src.programName) || '';
-    const code = noDash(val('f-code'));
     const days = num(cur('days')) || 1;
     const price = num(cur('price'));
     const fee = price ? fix2(price / days) : '';
     const start = cur('start'), end = cur('end') || start;
     const L = (label, value, opts) => Object.assign({ label, value: String(value ?? '') }, opts || {});
     return [
-      { k:'A', t:'Course Titles', lines:[ L('Course title', code ? code + ': ' + title.toUpperCase() : title.toUpperCase()) ] },
+      { k:'A', t:'Course Titles', lines:[ L('', title) ] },
       { k:'B', t:'Descriptions', lines:[ L('', val('f-description')) ] },
       { k:'C', t:'Relevance of Training', lines:[ L('', val('f-relevance')) ] },
       { k:'D', t:'Type of Retraining & Skills Upgrading', lines:[ L('', val('f-retraining')) ] },
-      { k:'E', t:'HRD Corp Focus Area', lines:[ L('', val('f-focus') || 'Not Applicable') ] },
-      { k:'F', t:'Type of Training', lines:[ L('', cur('type')) ] },
+      { k:'E', t:'HRD Corp Focus Area', lines:[ L('', 'Not Applicable') ] },
+      { k:'F', t:'Type of Training', lines:[ L('', 'Public') ] },
       { k:'G', t:'Commencement of Programme', lines:[ L('Start Date', dmy(start)), L('End Date', dmy(end)) ] },
       { k:'H', t:'Total Hours per Training', lines:[ L('', cur('hours')) ] },
       { k:'I', t:'Number of Full Days', lines:[ L('', cur('full')) ] },
@@ -97,8 +115,12 @@
     ];
   }
 
+  function counters() {
+    document.querySelectorAll('.count').forEach(c => { const n = $(c.dataset.for).value.length; c.textContent = '(' + n + '/400)'; c.classList.toggle('full', n >= 400); });
+  }
   function render() {
     if (!src) return;
+    counters();
     const list = build();
     $('appendices').innerHTML = list.map((a, ai) =>
       '<article><h4><span>'+a.k+'</span>'+esc(a.t)+'</h4>' +
@@ -153,7 +175,7 @@
       const up = programmes.filter(p => (p.endDate || p.startDate || '') >= t);
       const prev = programmes.filter(p => (p.endDate || p.startDate || '') < t).sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
       const opt = p => '<option value="'+esc(p.courseId)+'">'+esc(nice(p.startDate))+' · '+esc(p.programName)+(p.venue ? ' · '+esc(p.venue) : '')+'</option>';
-      $('programme').innerHTML = '<option value="">Select a programme</option>' +
+      $('programme').innerHTML = '<option value="">Select a programme</option><option value="__manual">Fill in manually (no programme)</option>' +
         (up.length ? '<optgroup label="Upcoming">' + up.map(opt).join('') + '</optgroup>' : '') +
         (prev.length ? '<optgroup label="Previous">' + prev.map(opt).join('') + '</optgroup>' : '');
       const want = new URLSearchParams(location.search).get('course');
@@ -197,6 +219,7 @@
     if (!courseId) { $('work').hidden = true; $('summary').hidden = true; src = null; return; }
     $('programme').disabled = true;
     try {
+      if (courseId === '__manual') return startManual();
       src = await loadSource(courseId);
       auto = calcAuto(src);
       const key = courseKey(src.programName);
@@ -215,12 +238,10 @@
           overview = data && data[0] ? data[0].programme_overview || '' : '';
         } catch (_) {}
       }
-      $('f-code').value = course ? course.hrd_programme_code : '';
-      $('f-title').value = course && course.course_title ? course.course_title : src.programName.replace(/\[TEST\]\s*/i, '');
-      $('f-description').value = course ? course.description : overview;
+      $('f-title').value = course && course.course_title ? course.course_title : '';
+      $('f-description').value = (course ? course.description : overview).slice(0, 400);
       $('f-relevance').value = course ? course.relevance : '';
       $('f-retraining').value = course ? course.retraining_type : '';
-      $('f-focus').value = course ? course.focus_area : 'Not Applicable';
 
       // Session (M–P)
       $('f-trainer').value = session && session.trainer_id ? session.trainer_id : '';
@@ -247,21 +268,38 @@
     finally { $('programme').disabled = false; }
   }
 
+  // Manual mode: blank form, nothing pulled from the Programs sheet.
+  function startManual() {
+    src = { courseId: '', programName: '', startDate: '', endDate: '', venue: '', state: '', hrdFee: 0, totalTime: '' };
+    auto = { price: '', start: '', end: '', hours: '', days: '', full: '', half: '', less: '', months: '0' };
+    course = null; session = null;
+    ['f-title','f-description','f-relevance','f-retraining','f-trainer','f-trainerName','f-trainerIc','f-address','f-state'].forEach(id => { $(id).value = ''; });
+    $('f-location').value = 'Local';
+    OVERRIDE_KEYS.forEach(k => { $('o-'+k).value = auto[k]; });
+    $('summary').hidden = true; $('work').hidden = false;
+    $('saveState').textContent = 'Manual mode: only the course details (A–D) are saved.';
+    history.replaceState(null, '', location.pathname);
+    render();
+  }
+
   async function save(ev) {
     ev.preventDefault();
     if (!src) return;
+    if (!src.courseId && !val('f-title')) { banner('Enter the course title before saving.', 'danger'); return; }
     const btn = $('save'); btn.disabled = true; btn.textContent = 'Saving…';
     try {
-      const key = courseKey(src.programName);
+      const key = courseKey(src.courseId ? src.programName : val('f-title'));
       const overrides = {};
       OVERRIDE_KEYS.forEach(k => { const v = val('o-'+k); if (v !== '' && v !== String(auto[k] ?? '')) overrides[k] = v; });
       if (val('f-state') && val('f-state') !== (src.state || '')) overrides.state = val('f-state');
       const c = await db.from('appendix_course_profiles').upsert({
-        course_key: key, course_title: val('f-title'), hrd_programme_code: noDash(val('f-code')),
+        course_key: key, course_title: val('f-title'), hrd_programme_code: (/^(\d{6,})/.exec(val('f-title')) || [,''])[1],
         description: val('f-description'), relevance: val('f-relevance'),
-        retraining_type: val('f-retraining'), focus_area: val('f-focus') || 'Not Applicable'
+        retraining_type: val('f-retraining'), focus_area: 'Not Applicable'
       }).select().single();
       if (c.error) throw c.error;
+      course = c.data;
+      if (!src.courseId) { $('saveState').textContent = 'Course details saved. Trainer, venue and dates are not saved in manual mode.'; return; }
       const s = await db.from('appendix_session_details').upsert({
         course_id: src.courseId, course_key: key, training_location: val('f-location') || 'Local',
         full_address: val('f-address'), trainer_id: val('f-trainer') || null,
@@ -279,7 +317,7 @@
     $('programme').onchange = e => selectProgramme(e.target.value);
     $('reload').onclick = () => loadProgrammes();
     $('form').addEventListener('submit', save);
-    $('form').addEventListener('input', () => { $('saveState').textContent = 'Unsaved changes.'; render(); });
+    $('form').addEventListener('input', e => { if (['o-start','o-end','o-hours'].includes(e.target.id)) rederive(); $('saveState').textContent = 'Unsaved changes.'; render(); });
     $('f-trainer').onchange = e => {
       const t = trainers.find(x => x.id === e.target.value);
       if (t) { $('f-trainerName').value = t.name; $('f-trainerIc').value = t.ic; }
