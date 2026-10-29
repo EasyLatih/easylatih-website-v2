@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Appendices Generator | EasyLatih Admin</title><link rel="icon" href="../assets/favicon.png" type="image/png"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="my-workspace.css">
+<style>
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.form-grid .wide{grid-column:1/-1}
+.form-grid label,.picker label{display:flex;flex-direction:column;gap:5px;font-size:.76rem;font-weight:600;color:var(--navy)}
+.form-grid input,.form-grid select,.form-grid textarea,.picker select{font:inherit;font-size:.84rem;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink);min-width:0;width:100%}
+.form-grid textarea{min-height:92px;resize:vertical;line-height:1.5}
+.form-grid input::placeholder,.form-grid textarea::placeholder{color:#9aabb8;font-weight:400}
+.form-grid small{font-weight:400;color:var(--muted);font-size:.7rem}
+.group{border-top:1px dashed var(--line);margin-top:16px;padding-top:14px}
+.group h3{margin:0 0 3px}
+.group>p{margin:0 0 12px;color:var(--muted);font-size:.74rem;line-height:1.5}
+.picker{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.picker label{flex:1 1 360px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.summary{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:.76rem;color:var(--muted)}
+.summary b{display:block;color:var(--navy);font-size:.92rem}
+.auto{color:var(--muted);font-weight:400}
+.overridden{border-color:#e7a26f!important;background:#fffaf5!important}
+.appx{display:flex;flex-direction:column;gap:10px}
+.appx article{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff}
+.appx h4{margin:0 0 7px;font-size:.78rem;color:var(--navy);display:flex;gap:8px;align-items:baseline}
+.appx h4 span{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:6px;background:var(--navy);color:#fff;font-size:.7rem}
+.line{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:5px 0;border-top:1px solid #eef3f6}
+.line:first-of-type{border-top:0}
+.line .v{font-size:.8rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;min-width:0}
+.line .v em{display:block;font-style:normal;color:var(--muted);font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.line .v.missing{color:#a63229}
+.copy{flex:none;font-size:.7rem;padding:5px 9px}
+.copy.done{background:#e9f8f0;color:#176444;border-color:#bfe6cf}
+.note-r{margin-top:6px;font-size:.7rem;color:var(--muted)}
+.sticky{position:sticky;top:12px}
+@media (max-width:900px){.sticky{position:static}}
+@media (max-width:700px){.form-grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head><body>
+<header><div class="bar"><div class="brand"><img src="../assets/logo.png" alt="EasyLatih"><div><strong>Appendices Generator</strong><small>EasyLatih Admin Centre</small></div></div><div style="display:flex;gap:8px"><a class="back" href="registrations.html">Registrations</a><a class="back" href="admin-dashboard.html">← Admin Centre</a></div></div></header>
+<main>
+<div id="loginState" class="notice">Checking admin access…</div>
+<div id="adminApp" hidden>
+  <div id="message" class="notice" hidden></div>
+
+  <section class="panel">
+    <div class="panel-head"><div><h2>eTRiS Appendices (A–R)</h2><p>Choose a public programme. Dates, fee, hours and venue come from the programme record; course details and trainer are saved once and reused next time.</p></div></div>
+    <div class="picker">
+      <label>Programme<select id="programme"><option value="">Loading programmes…</option></select></label>
+      <button type="button" id="reload" class="small">↻ Reload</button>
+    </div>
+    <div id="summary" class="summary" hidden></div>
+  </section>
+
+  <div class="layout" id="work" hidden>
+    <div class="col-main">
+      <section class="panel">
+        <div class="panel-head"><div><h2>Details</h2><p>Fields marked “auto” are calculated. Change one only if eTRiS needs a different value; it turns orange and is saved for this programme.</p></div></div>
+        <form id="form" novalidate autocomplete="off">
+          <div class="group" style="border-top:0;margin-top:0;padding-top:0">
+            <h3>Course (A–E)</h3>
+            <p>Saved against the course title, so every future session of this course is filled in automatically.</p>
+            <div class="form-grid">
+              <label>HRD Corp programme code<input id="f-code" inputmode="numeric" placeholder="10001758181"></label>
+              <label>Course title (Appendix A)<input id="f-title"></label>
+              <label class="wide">Description (Appendix B)<textarea id="f-description" placeholder="Short description, as approved in eTRiS"></textarea></label>
+              <label class="wide">Relevance of training (Appendix C)<textarea id="f-relevance"></textarea></label>
+              <label>Type of retraining &amp; skills upgrading (D)<input id="f-retraining" list="retrainingList" placeholder="Legal And Law"></label>
+              <label>HRD Corp focus area (E)<input id="f-focus" list="focusList"></label>
+            </div>
+          </div>
+
+          <div class="group">
+            <h3>Trainer and venue (M–P)</h3>
+            <p>Saved for this programme only.</p>
+            <div class="form-grid">
+              <label class="wide">Trainer<select id="f-trainer"><option value="">Type the name and IC below, or pick an approved trainer</option></select></label>
+              <label>Trainer name (as per IC)<input id="f-trainerName"></label>
+              <label>Trainer IC / passport no. <small>no dashes</small><input id="f-trainerIc" inputmode="numeric"></label>
+              <label>Training location (N)<select id="f-location"><option>Local</option><option>Overseas</option></select></label>
+              <label>State (P)<input id="f-state" list="stateList"></label>
+              <label class="wide">Full address (O)<textarea id="f-address" placeholder="Hotel / training centre name, street, postcode, city"></textarea></label>
+            </div>
+          </div>
+
+          <div class="group">
+            <h3>Dates, hours and fee (F–L, Q, R)</h3>
+            <p>Full day = 7 hours or more a day, half day = 4 to under 7 hours, below 4 hours counts as hours.</p>
+            <div class="form-grid">
+              <label>Type of training (F) <span class="auto" data-auto="type"></span><input id="o-type" data-key="type"></label>
+              <label>Price per pax in quotation (RM) <span class="auto" data-auto="price"></span><input id="o-price" data-key="price" inputmode="decimal"></label>
+              <label>Start date <span class="auto" data-auto="start"></span><input id="o-start" data-key="start" type="date"></label>
+              <label>End date <span class="auto" data-auto="end"></span><input id="o-end" data-key="end" type="date"></label>
+              <label>Total hours (H) <span class="auto" data-auto="hours"></span><input id="o-hours" data-key="hours" inputmode="decimal"></label>
+              <label>Training days <span class="auto" data-auto="days"></span><input id="o-days" data-key="days" inputmode="numeric"></label>
+              <label>Full days (I) <span class="auto" data-auto="full"></span><input id="o-full" data-key="full" inputmode="numeric"></label>
+              <label>Half days (J) <span class="auto" data-auto="half"></span><input id="o-half" data-key="half" inputmode="numeric"></label>
+              <label>Less than half day / hours (K) <span class="auto" data-auto="less"></span><input id="o-less" data-key="less" inputmode="decimal"></label>
+              <label>Number of months (L) <span class="auto" data-auto="months"></span><input id="o-months" data-key="months" inputmode="numeric"></label>
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top:16px">
+            <button type="submit" class="primary" id="save">Save details</button>
+            <button type="button" id="resetAuto">Reset calculated fields</button>
+            <span id="saveState" class="hint" style="align-self:center;font-size:.74rem;color:var(--muted)"></span>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <aside class="col-side">
+      <section class="panel sticky">
+        <div class="panel-head"><div><h2>Appendices</h2><p>Copy each value straight into eTRiS.</p></div></div>
+        <div class="actions" style="margin-bottom:12px">
+          <button type="button" class="small primary" id="copyAll">Copy all</button>
+          <button type="button" class="small" id="download">Download Word</button>
+          <button type="button" class="small" id="print">Print / PDF</button>
+        </div>
+        <div id="appendices" class="appx"></div>
+      </section>
+    </aside>
+  </div>
+</div>
+</main>
+
+<datalist id="focusList"><option>Not Applicable</option></datalist>
+<datalist id="retrainingList"><option>Legal And Law</option></datalist>
+<datalist id="stateList"><option>Johor</option><option>Kedah</option><option>Kelantan</option><option>Melaka</option><option>Negeri Sembilan</option><option>Pahang</option><option>Perak</option><option>Perlis</option><option>Pulau Pinang</option><option>Sabah</option><option>Sarawak</option><option>Selangor</option><option>Terengganu</option><option>W.P. Kuala Lumpur</option><option>W.P. Labuan</option><option>W.P. Putrajaya</option></datalist>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script><script src="../trainer/config.js"></script><script src="appendices.js"></script>
+</body></html>

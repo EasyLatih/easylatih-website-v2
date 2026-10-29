@@ -49,7 +49,8 @@ function publicRegistrationActions_() {
     regEmailParticipantList: function (d) { return praEmailParticipantList_(praText_(d.courseId)); },
     regArchive: function (d) { return praArchive_(praText_(d.courseId), d.force === true); },
     regArchivedPrograms: function () { return praArchivedPrograms_(); },
-    regFormerClients: function (d) { return praFormerClients_(praText_(d.query)); }
+    regFormerClients: function (d) { return praFormerClients_(praText_(d.query)); },
+    regAppendixSource: function (d) { return praAppendixSource_(praText_(d.courseId)); }
   };
 }
 
@@ -1103,4 +1104,32 @@ function praSelfTest() {
   }
   console.log('Former clients: ' + praFormerClients_('').total);
   console.log('Receipt template available: ' + (typeof bdBuild_ === 'function'));
+}
+
+
+// ---------------------------------------------------------------------------
+// Appendices generator (Admin Centre → Appendices)
+// Returns the Programs-sheet fields the eTRiS Appendices A–R are built from.
+// Read only; nothing is written.
+// ---------------------------------------------------------------------------
+function praAppendixSource_(courseId) {
+  if (!courseId) throw new Error('Choose a programme.');
+  const p = praProgramRecord_(courseId);
+  return {
+    courseId: courseId,
+    programName: praText_(p.ProgramName),
+    startDate: praIso_(p.StartDate),
+    endDate: praIso_(p.EndDate),
+    programType: praUpper_(p.ProgramType),
+    category: praText_(p.Category),
+    hrdFee: Number(p.HRDFee || 0),
+    selfFee: Number(p.SelfFee || 0),
+    duration: praText_(p.Duration),
+    totalTime: praText_(p.TotalTime),
+    venue: praText_(p.Venue),
+    state: praText_(p.State),
+    deliveryMode: praText_(p.DeliveryMode),
+    courseContentUrl: praText_(p.CourseContentURL),
+    trainerProfileUrl: praText_(p.TrainerProfileURL || p.TrainerProfileUrl)
+  };
 }
