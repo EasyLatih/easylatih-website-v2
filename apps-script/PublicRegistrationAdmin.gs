@@ -701,12 +701,12 @@ function praSendConfirmation_(reg, program, kind, extra) {
 
   const msText = ['Tuan/Puan ' + pic + ',', '', msOpening, ''].concat(msRows.map(function (r) { return r[0] + ': ' + r[1]; }));
   if (joining) msText.push('', 'Arahan kehadiran:', joining);
-  if (wa) msText.push('', 'Sila sertai kumpulan WhatsApp program untuk makluman terkini: ' + wa);
+  if (wa) msText.push('', 'Kumpulan WhatsApp program: ' + wa, 'Sila kongsikan pautan ini kepada semua peserta yang anda daftarkan supaya mereka menerima makluman terkini terus daripada kami.');
   msText.push('', 'Terima kasih.', 'Easy Latih Consultancy');
 
   const enText = ['Dear ' + (pic || 'Sir/Madam') + ',', '', enOpening, ''].concat(enRows.map(function (r) { return r[0] + ': ' + r[1]; }));
   if (joining) enText.push('', 'Joining instructions:', joining);
-  if (wa) enText.push('', 'Please join the programme WhatsApp group for updates: ' + wa);
+  if (wa) enText.push('', 'Programme WhatsApp group: ' + wa, 'Please share this link with all the participants you registered so they receive updates directly from us.');
   enText.push('', 'Thank you.', 'Easy Latih Consultancy', 'Easy Learning, Real Results!');
 
   const joiningHtml = joining ? praEscape_(joining).replace(/\n/g, '<br>') : '';
@@ -717,12 +717,14 @@ function praSendConfirmation_(reg, program, kind, extra) {
     '<p>Tuan/Puan ' + praEscape_(pic) + ',</p>' +
     '<p>' + praEscape_(msOpening) + '</p>' + praDetailsTable_(msRows) +
     (joining ? '<h3 style="margin:18px 0 6px">Arahan kehadiran</h3><p>' + joiningHtml + '</p>' : '') +
+    (wa ? '<h3 style="margin:18px 0 6px">Kumpulan WhatsApp program</h3><p>Sila kongsikan pautan ini kepada <b>semua peserta yang anda daftarkan</b> supaya mereka menerima makluman terkini terus daripada kami.</p>' : '') +
     waButton('Sertai kumpulan WhatsApp program') +
     '<p>Terima kasih.<br>Easy Latih Consultancy</p>';
   const enHtml =
     '<p>Dear ' + praEscape_(pic || 'Sir/Madam') + ',</p>' +
     '<p>' + praEscape_(enOpening) + '</p>' + praDetailsTable_(enRows) +
     (joining ? '<h3 style="margin:18px 0 6px">Joining instructions</h3><p>' + joiningHtml + '</p>' : '') +
+    (wa ? '<h3 style="margin:18px 0 6px">Programme WhatsApp group</h3><p>Please share this link with <b>all the participants you registered</b> so they receive updates directly from us.</p>' : '') +
     waButton('Join the programme WhatsApp group') +
     '<p>Thank you.<br>Easy Latih Consultancy<br><i>Easy Learning, Real Results!</i></p>';
 
