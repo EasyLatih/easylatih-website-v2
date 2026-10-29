@@ -38,6 +38,8 @@ function publicRegistrationActions_() {
     regProgramDetail: function (d) { return praProgramDetail_(praText_(d.courseId)); },
     regSaveSettings: function (d) { return praSaveSettings_(d); },
     regSaveLimits: function (d) { return praSaveLimits_(d); },
+    regTrainerConfirmed: function (d) { return praTrainerConfirmed_(praText_(d.courseId)); },
+    regConfirmProgramme: function (d) { return praConfirmProgramme_(praText_(d.courseId)); },
     regPaymentReceived: function (d) { return praPaymentReceived_(d); },
     regGrantApproved: function (d) { return praGrantApproved_(d); },
     regHrdStep: function (d) { return praHrdStep_(d); },
@@ -268,7 +270,8 @@ function praProgramDetail_(courseId) {
       maxPax: Number(p.MaxPax || 0),
       closeDate: praIso_(p.RegistrationCloseDate),
       hrdFee: Number(p.HRDFee || 0),
-      selfFee: Number(p.SelfFee || 0)
+      selfFee: Number(p.SelfFee || 0),
+      confirm: praConfirmCheck_(p, courseId)
     },
     settings: {
       guidelineUrl: praText_(s.GuidelineUrl),
@@ -381,6 +384,47 @@ function praSaveLimits_(d) {
   }
 
   return praProgramDetail_(courseId).program;
+}
+
+// Same checks as Programme Management's Confirm Programme button (confirmScheduledProgramAdmin).
+function praConfirmCheck_(p, courseId) {
+  let confirmedPax = 0;
+  try {
+    const summary = buildProgramRegistrationSummary_(praBook_().getSheetByName('Registrations'));
+    confirmedPax = Number((summary[courseId] || {}).confirmedPax || 0);
+  } catch (e) { /* summary unavailable */ }
+  const status = praUpper_(p.Status) || 'DRAFT';
+  const isActive = typeof isProgramAdminTrue_ === 'function' ? isProgramAdminTrue_(p.IsActive) : praUpper_(p.IsActive) === 'TRUE';
+  const trainerStatus = praUpper_(p.TrainerConfirmationStatus) || 'TENTATIVE';
+  const minPax = Number(p.MinPax || 0);
+  const checks = [
+    { ok: status === 'TENTATIVE', label: 'Programme status is TENTATIVE (now ' + status + ')' },
+    { ok: isActive, label: 'Programme is active' },
+    { ok: trainerStatus === 'CONFIRMED', label: 'Trainer confirmed (now ' + trainerStatus + ')', fix: trainerStatus === 'CONFIRMED' ? '' : 'TRAINER' },
+    { ok: minPax > 0, label: 'Minimum pax is set' },
+    { ok: minPax > 0 && confirmedPax >= minPax, label: 'Confirmed pax ' + confirmedPax + ' of minimum ' + (minPax || '—') }
+  ];
+  return { status: status, trainerStatus: trainerStatus, confirmedPax: confirmedPax, checks: checks, ready: checks.every(function (c) { return c.ok; }) };
+}
+
+function praTrainerConfirmed_(courseId) {
+  praProgramRecord_(courseId);
+  praUpsert_(praBook_().getSheetByName('Programs'), 'CourseID', courseId, { TrainerConfirmationStatus: 'CONFIRMED', UpdatedDate: new Date() });
+  return praProgramDetail_(courseId).program;
+}
+
+function praConfirmProgramme_(courseId) {
+  if (typeof confirmScheduledProgramAdmin !== 'function') throw new Error('Programme confirmation is not available in this Apps Script project.');
+  const result = confirmScheduledProgramAdmin(courseId);
+  if (typeof syncPublicTrainingCalendarMirror === 'function') {
+    try { syncPublicTrainingCalendarMirror(); } catch (e) { console.error('Calendar sync after confirmation failed: ' + e.message); }
+  }
+  return {
+    program: praProgramDetail_(courseId).program,
+    emailsSent: Number(result.confirmationEmailsSent || 0),
+    emailsSkipped: Number(result.confirmationEmailsSkipped || 0),
+    emailsFailed: Number(result.confirmationEmailsFailed || 0)
+  };
 }
 
 // ---------------------------------------------------------------------------

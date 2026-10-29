@@ -134,6 +134,18 @@
       stepsLine(r) + people +
       '<div class="act">'+next+resend+cancel+receipt+'</div><div class="inline-form" data-slot="'+id+'"></div></article>';
   }
+  function confirmPanel(p) {
+    const c = p.confirm;
+    if (!c) return '';
+    if (c.status === 'CONFIRMED' || c.status === 'COMPLETED') {
+      return '<section class="panel"><div class="panel-head"><div><h2>Programme '+(c.status === 'CONFIRMED' ? 'confirmed' : 'completed')+'</h2><p>PICs received the "Programme Confirmed" email when it was confirmed.</p></div></div></section>';
+    }
+    const list = c.checks.map(x => '<li style="display:flex;gap:8px;align-items:baseline;margin:4px 0"><span aria-hidden="true" style="font-weight:700;color:'+(x.ok?'#1f8a4c':'#c0392b')+'">'+(x.ok?'✓':'✗')+'</span><span>'+esc(x.label)+(x.fix === 'TRAINER' ? ' <button type="button" class="small" id="trainerConfirmedBtn">Trainer has confirmed</button>' : '')+'</span></li>').join('');
+    return '<section class="panel"><div class="panel-head"><div><h2>Confirm programme</h2><p>Sets the status to CONFIRMED and emails every PIC (Program Disahkan / Programme Confirmed).</p></div></div>' +
+      '<ul style="list-style:none;padding:0;margin:0 0 12px;font-size:.84rem">'+list+'</ul>' +
+      '<button type="button" id="confirmProgrammeBtn"'+(c.ready?' class="primary"':' disabled')+'>Confirm programme and email PICs</button>' +
+      '<p class="hint" style="margin-top:8px">'+(c.ready?'All checks passed.':'Confirmed pax counts paid and grant-approved registrations only. Status and Active are changed in Programme Management.')+'</p></section>';
+  }
   function renderDetail() {
     const d = detail, p = d.program, s = d.settings;
     const active = d.registrations.filter(r => r.stage.key !== 'CANCELLED');
@@ -151,7 +163,7 @@
       (d.registrations.length ? d.registrations.map(regCard).join('') : '<p class="empty">No registrations yet.</p>') + '</div>' +
       '<div class="danger-zone"><button type="button" id="archiveBtn"'+(archivable?' class="primary"':'')+'>Archive programme</button>' +
       (archivable ? '<span class="hint">All registrations are completed or cancelled.</span>' : '<label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="archiveForce"> Archive anyway (some registrations are not completed)</label>') + '</div></section></div>' +
-      '<aside class="col-side"><section class="panel"><div class="panel-head"><div><h2>Pax and deadline</h2><p>Changes apply to the website and the registration-close check straight away.</p></div></div>' +
+      '<aside class="col-side">' + confirmPanel(p) + '<section class="panel"><div class="panel-head"><div><h2>Pax and deadline</h2><p>Changes apply to the website and the registration-close check straight away.</p></div></div>' +
       '<form class="stack" id="limitsForm"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px">' +
       '<label>Minimum pax<input id="l-min" type="number" min="1" step="1" required value="'+(p.minPax||'')+'"></label>' +
       '<label>Maximum pax<input id="l-max" type="number" min="1" step="1" required value="'+(p.maxPax||'')+'"></label></div>' +
@@ -256,6 +268,24 @@
       if (t.closest('[data-close]')) { const slot = t.closest('.inline-form'); slot.classList.remove('open'); slot.innerHTML = ''; return; }
       const rs = t.closest('[data-resend]');
       if (rs) { if (!confirm('Send the confirmation email to this PIC again?')) return; rs.disabled = true; try { await call('regResendConfirmation', {registrationId: rs.dataset.resend}); banner('Confirmation email sent again.', 'success'); } catch (er) { banner(er.message, 'danger'); } rs.disabled = false; return; }
+      if (t.closest('#trainerConfirmedBtn')) {
+        if (!confirm('Mark the trainer as CONFIRMED for ' + detail.program.programName + '?')) return;
+        const b = t.closest('#trainerConfirmedBtn'); b.disabled = true;
+        try { detail.program = await call('regTrainerConfirmed', {courseId: detail.program.courseId}); renderDetail(); banner('Trainer marked as confirmed.', 'success'); }
+        catch (er) { b.disabled = false; banner(er.message, 'danger'); }
+        return;
+      }
+      if (t.closest('#confirmProgrammeBtn')) {
+        const p = detail.program;
+        if (!confirm('Confirm ' + p.programName + '? The status becomes CONFIRMED and every PIC gets the "Programme Confirmed" email now.')) return;
+        const b = t.closest('#confirmProgrammeBtn'); b.disabled = true; b.textContent = 'Confirming…';
+        try {
+          const r = await call('regConfirmProgramme', {courseId: p.courseId});
+          detail.program = r.program; renderDetail();
+          banner('Programme confirmed. Emails sent: ' + r.emailsSent + (r.emailsSkipped ? ', skipped: ' + r.emailsSkipped : '') + (r.emailsFailed ? ', failed: ' + r.emailsFailed : '') + '.', r.emailsFailed ? 'danger' : 'success');
+        } catch (er) { b.disabled = false; b.textContent = 'Confirm programme and email PICs'; banner(er.message, 'danger'); }
+        return;
+      }
       if (t.closest('#downloadList')) return downloadCsv(participantCsv(), 'Participants ' + detail.program.programName + ' ' + today());
       if (t.closest('#emailList')) { const b = t.closest('#emailList'); b.disabled = true; try { const r = await call('regEmailParticipantList', {courseId: detail.program.courseId}); $('listNote').textContent = 'Emailed to you: ' + r.participants + ' participants. ' + r.verdict; } catch (er) { banner(er.message, 'danger'); } b.disabled = false; return; }
       if (t.closest('#archiveBtn')) {
