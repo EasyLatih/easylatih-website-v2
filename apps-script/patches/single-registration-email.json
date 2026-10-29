@@ -1,0 +1,20 @@
+{
+  "description": "Code.gs submitRegistration: send one combined registration email (applied in the Apps Script editor on 29 Oct 2026)",
+  "replacements": [
+    {
+      "file": "Code.gs",
+      "find": "  let documentResult = null;\n\n  if (data.paymentMethod === \"HRD\") {",
+      "replace": "  let documentResult = null;\n  let combinedEmailSent = false;\n\n  if (data.paymentMethod === \"HRD\") {"
+    },
+    {
+      "file": "Code.gs",
+      "find": "  emailDocumentToPIC(\n    data.picEmail,\n    documentResult.documentNo,\n    documentResult.pdfUrl,\n    program.ProgramName,\n    documentType\n  );\nupdateDocumentStatusByNo_(",
+      "replace": "  // One email: document + HRD grant guide + course outline + trainer profile (PublicRegistrationAdmin.gs).\n  if (typeof praRegistrationEmail_ === 'function') {\n    try {\n      praRegistrationEmail_(data, program, documentType, documentResult.documentNo, documentResult.pdfUrl);\n      combinedEmailSent = true;\n    } catch (combinedError) {\n      console.error('Combined registration email failed: ' + combinedError.message);\n    }\n  }\n  if (!combinedEmailSent) {\n    emailDocumentToPIC(\n      data.picEmail,\n      documentResult.documentNo,\n      documentResult.pdfUrl,\n      program.ProgramName,\n      documentType\n    );\n  }\nupdateDocumentStatusByNo_("
+    },
+    {
+      "file": "Code.gs",
+      "find": "// Send this programme's HRD grant guideline (PublicRegistrationAdmin.gs).\nif (typeof praAfterRegistration_ === 'function') praAfterRegistration_(data, program);",
+      "replace": "// Separate HRD grant guideline email only if the combined email above was not sent.\nif (!combinedEmailSent && typeof praAfterRegistration_ === 'function') praAfterRegistration_(data, program);"
+    }
+  ]
+}

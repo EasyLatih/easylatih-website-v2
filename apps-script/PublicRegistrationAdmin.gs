@@ -797,6 +797,100 @@ function praAfterRegistration_(data, program) {
   }
 }
 
+// One email on website registration: quotation (HRD) or invoice (self payment) attached,
+// plus the HRD Corp grant guide, course outline and trainer profile, so the PIC has everything at once.
+function praRegistrationEmail_(data, program, documentType, documentNo, pdfUrl) {
+  const to = praText_(data && data.picEmail);
+  if (!to) throw new Error('PIC email is empty.');
+  const idMatch = String(pdfUrl || '').match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (!idMatch) throw new Error('PDF URL is empty.');
+  const pdf = DriveApp.getFileById(idMatch[1]).getBlob();
+
+  const hrd = documentType === 'Quotation';
+  const name = praText_(program && program.ProgramName);
+  const pic = praText_(data.picName);
+  const s = praSettingsFor_(data.courseId);
+  const guide = hrd ? praText_(s.GuidelineUrl) : '';
+  const outline = praText_(program && (program.CourseContentURL || program.CourseContentUrl));
+  const trainer = praText_(program && (program.TrainerProfileURL || program.TrainerProfileUrl));
+  const when = praProgramDate_(program || {});
+  const where = praText_(program && program.Venue);
+
+  const button = function (href, label) {
+    return '<a href="' + praEscape_(href) + '" style="display:inline-block;background:#003e6f;color:#fff;padding:9px 14px;border-radius:6px;text-decoration:none;font-weight:bold;margin:0 6px 6px 0">' + praEscape_(label) + '</a>';
+  };
+  const links = function (ms) {
+    const out = [];
+    if (outline) out.push([outline, 'Course outline']);
+    if (trainer) out.push([trainer, ms ? 'Profil jurulatih' : 'Trainer profile']);
+    return out;
+  };
+  const details = function (ms) {
+    return praDetailsTable_([
+      [ms ? 'Program' : 'Programme', name],
+      [ms ? 'Tarikh' : 'Date', when],
+      [ms ? 'Tempat' : 'Venue', where],
+      [ms ? (hrd ? 'No. sebut harga' : 'No. invois') : (hrd ? 'Quotation no.' : 'Invoice no.'), praText_(documentNo)],
+      [ms ? 'Bilangan peserta' : 'Participants', praText_(data.requestedPax)]
+    ].filter(function (r) { return praText_(r[1]); }));
+  };
+
+  // ---- Bahasa Malaysia ----
+  const msHtml = [
+    '<p>Tuan/Puan ' + praEscape_(pic) + ',</p>',
+    '<p>Terima kasih kerana mendaftar dengan Easy Latih Consultancy.</p>',
+    details(true),
+    hrd
+      ? '<p><b>Sebut harga dilampirkan.</b> Semua dokumen yang diperlukan untuk permohonan geran HRD Corp ada dalam e-mel ini:</p>'
+      : '<p><b>Invois dilampirkan.</b> Sila buat bayaran berdasarkan invois ini.</p>',
+    links(true).length ? '<p>' + links(true).map(function (l) { return button(l[0], l[1]); }).join('') + '</p>' : '',
+    guide ? '<p>Sila ikut panduan ini untuk memohon geran HRD Corp bagi program ini:</p><p>' + button(guide, 'Panduan permohonan geran HRD Corp') + '</p>' : '',
+    hrd
+      ? '<p>Setelah geran diluluskan, sila balas e-mel ini bersama surat kelulusan atau nombor rujukan geran.</p>'
+      : '<p>Setelah bayaran dibuat, sila balas e-mel ini bersama bukti bayaran.</p>',
+    '<p>Terima kasih.<br>Easy Latih Consultancy</p>'
+  ].join('');
+  const msText = [
+    'Tuan/Puan ' + pic + ',', '',
+    'Terima kasih kerana mendaftar dengan Easy Latih Consultancy.', '',
+    'Program: ' + name, 'Tarikh: ' + when, 'Tempat: ' + where, (hrd ? 'No. sebut harga: ' : 'No. invois: ') + documentNo, '',
+    hrd ? 'Sebut harga dilampirkan. Semua dokumen untuk permohonan geran HRD Corp ada dalam e-mel ini.' : 'Invois dilampirkan. Sila buat bayaran berdasarkan invois ini.'
+  ].concat(outline ? ['Course outline: ' + outline] : [], trainer ? ['Profil jurulatih: ' + trainer] : [], guide ? ['Panduan permohonan geran HRD Corp: ' + guide] : [], [
+    '',
+    hrd ? 'Setelah geran diluluskan, sila balas e-mel ini bersama surat kelulusan atau nombor rujukan geran.' : 'Setelah bayaran dibuat, sila balas e-mel ini bersama bukti bayaran.',
+    '', 'Terima kasih.', 'Easy Latih Consultancy'
+  ]);
+
+  // ---- English ----
+  const enHtml = [
+    '<p>Dear ' + praEscape_(pic || 'Sir/Madam') + ',</p>',
+    '<p>Thank you for registering with Easy Latih Consultancy.</p>',
+    details(false),
+    hrd
+      ? '<p><b>The quotation is attached.</b> Everything you need for the HRD Corp grant application is in this email:</p>'
+      : '<p><b>The invoice is attached.</b> Please make payment based on this invoice.</p>',
+    links(false).length ? '<p>' + links(false).map(function (l) { return button(l[0], l[1]); }).join('') + '</p>' : '',
+    guide ? '<p>Please follow this guide to apply for the HRD Corp grant for this programme:</p><p>' + button(guide, 'HRD Corp grant application guide') + '</p>' : '',
+    hrd
+      ? '<p>Once your grant is approved, simply reply to this email with the approval letter or grant reference.</p>'
+      : '<p>Once payment is made, simply reply to this email with the proof of payment.</p>',
+    '<p>Thank you.<br>Easy Latih Consultancy<br><i>Easy Learning, Real Results!</i></p>'
+  ].join('');
+  const enText = [
+    'Dear ' + (pic || 'Sir/Madam') + ',', '',
+    'Thank you for registering with Easy Latih Consultancy.', '',
+    'Programme: ' + name, 'Date: ' + when, 'Venue: ' + where, (hrd ? 'Quotation no.: ' : 'Invoice no.: ') + documentNo, '',
+    hrd ? 'The quotation is attached. Everything you need for the HRD Corp grant application is in this email.' : 'The invoice is attached. Please make payment based on this invoice.'
+  ].concat(outline ? ['Course outline: ' + outline] : [], trainer ? ['Trainer profile: ' + trainer] : [], guide ? ['HRD Corp grant application guide: ' + guide] : [], [
+    '',
+    hrd ? 'Once your grant is approved, simply reply to this email with the approval letter or grant reference.' : 'Once payment is made, simply reply to this email with the proof of payment.',
+    '', 'Thank you.', 'Easy Latih Consultancy', 'Easy Learning, Real Results!'
+  ]);
+
+  const subject = (hrd ? 'Sebut Harga / Quotation' : 'Invois / Invoice') + ' – ' + name;
+  praSend_(to, subject, praBilingualText_(msText, enText), praBilingualHtml_(msHtml, enHtml), [pdf]);
+}
+
 // ---------------------------------------------------------------------------
 // Participant list
 // ---------------------------------------------------------------------------
