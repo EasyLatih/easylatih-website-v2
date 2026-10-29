@@ -151,7 +151,13 @@
       (d.registrations.length ? d.registrations.map(regCard).join('') : '<p class="empty">No registrations yet.</p>') + '</div>' +
       '<div class="danger-zone"><button type="button" id="archiveBtn"'+(archivable?' class="primary"':'')+'>Archive programme</button>' +
       (archivable ? '<span class="hint">All registrations are completed or cancelled.</span>' : '<label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="archiveForce"> Archive anyway (some registrations are not completed)</label>') + '</div></section></div>' +
-      '<aside class="col-side"><section class="panel"><div class="panel-head"><div><h2>Programme settings</h2><p>Used in the emails sent to PICs.</p></div></div>' +
+      '<aside class="col-side"><section class="panel"><div class="panel-head"><div><h2>Pax and deadline</h2><p>Changes apply to the website and the registration-close check straight away.</p></div></div>' +
+      '<form class="stack" id="limitsForm"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px">' +
+      '<label>Minimum pax<input id="l-min" type="number" min="1" step="1" required value="'+(p.minPax||'')+'"></label>' +
+      '<label>Maximum pax<input id="l-max" type="number" min="1" step="1" required value="'+(p.maxPax||'')+'"></label></div>' +
+      '<label>Registration close date<input id="l-close" type="date" value="'+esc(p.closeDate)+'"'+(p.startDate?' max="'+esc(p.startDate)+'"':'')+'></label>' +
+      '<button type="submit" class="primary">Save pax and deadline</button></form><p class="hint" id="limitsNote" style="margin-top:8px">'+(p.minPax?'':'No minimum set yet, so the participant list email can\'t say whether this programme runs.')+'</p></section>' +
+      '<section class="panel"><div class="panel-head"><div><h2>Programme settings</h2><p>Used in the emails sent to PICs.</p></div></div>' +
       '<form class="stack" id="settingsForm"><label>HRD Corp grant guideline (Google Drive link)<input id="s-guide" value="'+esc(s.guidelineUrl)+'" placeholder="https://drive.google.com/…"></label>' +
       '<label>WhatsApp group link<input id="s-wa" value="'+esc(s.whatsAppLink)+'" placeholder="https://chat.whatsapp.com/…"></label>' +
       '<label>Joining instructions<textarea id="s-join" placeholder="Arrive 8:30am for registration. Parking at… Bring laptop…">'+esc(s.joiningInstructions)+'</textarea></label>' +
@@ -270,6 +276,19 @@
         try { detail.settings = await call('regSaveSettings', {courseId: detail.program.courseId, guidelineUrl: $('s-guide').value.trim(), whatsAppLink: $('s-wa').value.trim(), joiningInstructions: $('s-join').value}); $('settingsNote').textContent = 'Saved. New emails will use these settings.'; }
         catch (er) { $('settingsNote').textContent = er.message; }
         b.disabled = false; return;
+      }
+      if (e.target.id === 'limitsForm') {
+        const minPax = Number($('l-min').value), maxPax = Number($('l-max').value);
+        if (maxPax < minPax) { $('limitsNote').textContent = 'Maximum pax cannot be lower than minimum pax.'; return; }
+        const pax = detail.registrations.filter(r => r.stage.key !== 'CANCELLED').reduce((n, r) => n + r.requestedPax, 0);
+        if (maxPax < pax && !confirm(pax + ' pax are already registered, more than the new maximum of ' + maxPax + '. Existing registrations stay, but the website will show this programme as full. Save anyway?')) return;
+        const b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Saving…';
+        try {
+          detail.program = await call('regSaveLimits', {courseId: detail.program.courseId, minPax, maxPax, closeDate: $('l-close').value});
+          renderDetail();
+          banner('Saved: minimum ' + detail.program.minPax + ', maximum ' + detail.program.maxPax + (detail.program.closeDate ? ', registration closes ' + nice(detail.program.closeDate) : ', no close date') + '.', 'success');
+        } catch (er) { b.disabled = false; b.textContent = 'Save pax and deadline'; $('limitsNote').textContent = er.message; }
+        return;
       }
       if (e.target.dataset.form) submitForm(e.target);
     });

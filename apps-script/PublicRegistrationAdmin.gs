@@ -37,6 +37,7 @@ function publicRegistrationActions_() {
     regPrograms: function () { return praPrograms_(); },
     regProgramDetail: function (d) { return praProgramDetail_(praText_(d.courseId)); },
     regSaveSettings: function (d) { return praSaveSettings_(d); },
+    regSaveLimits: function (d) { return praSaveLimits_(d); },
     regPaymentReceived: function (d) { return praPaymentReceived_(d); },
     regGrantApproved: function (d) { return praGrantApproved_(d); },
     regHrdStep: function (d) { return praHrdStep_(d); },
@@ -262,6 +263,7 @@ function praProgramDetail_(courseId) {
       venue: praText_(p.Venue),
       deliveryMode: praText_(p.DeliveryMode),
       status: praUpper_(p.Status) || 'DRAFT',
+      startDate: praIso_(p.StartDate),
       minPax: Number(p.MinPax || 0),
       maxPax: Number(p.MaxPax || 0),
       closeDate: praIso_(p.RegistrationCloseDate),
@@ -332,6 +334,53 @@ function praSaveSettings_(d) {
     UpdatedDate: new Date()
   });
   return praProgramDetail_(courseId).settings;
+}
+
+// Edits minimum pax, maximum pax and registration close date on the Programs sheet.
+function praSaveLimits_(d) {
+  const courseId = praText_(d.courseId);
+  const program = praProgramRecord_(courseId);
+  const whole = function (v, label) {
+    const n = Number(v);
+    if (praText_(v) === '' || !isFinite(n) || n < 1 || Math.floor(n) !== n) throw new Error(label + ' must be a whole number of 1 or more.');
+    return n;
+  };
+  const minPax = whole(d.minPax, 'Minimum pax');
+  const maxPax = whole(d.maxPax, 'Maximum pax');
+  if (maxPax < minPax) throw new Error('Maximum pax cannot be lower than minimum pax.');
+
+  const closeText = praText_(d.closeDate);
+  let closeDate = '';
+  if (closeText) {
+    const m = closeText.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) throw new Error('Registration close date is not a valid date.');
+    closeDate = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    const start = praIso_(program.StartDate);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(start) && closeText > start) throw new Error('Registration close date cannot be after the programme start date (' + start + ').');
+  }
+
+  praUpsert_(praBook_().getSheetByName('Programs'), 'CourseID', courseId, {
+    MinPax: minPax,
+    MaxPax: maxPax,
+    RegistrationCloseDate: closeDate,
+    UpdatedDate: new Date()
+  });
+
+  // A later close date means the participant list should go out again on the new date.
+  const previousClose = praIso_(program.RegistrationCloseDate);
+  if (closeText && closeText !== previousClose && closeText >= praToday_()) {
+    const s = praIndex_(praRead_(praSettingsSheet_()).rows, 'CourseID')[courseId];
+    if (s && praText_(s.ParticipantListSentDate)) {
+      praUpsert_(praSettingsSheet_(), 'CourseID', courseId, { ParticipantListSentDate: '', UpdatedDate: new Date() });
+    }
+  }
+
+  // Refresh the public training calendar so the website shows the new seats and deadline.
+  if (typeof syncPublicTrainingCalendarMirror === 'function') {
+    try { syncPublicTrainingCalendarMirror(); } catch (e) { console.error('Calendar sync after limits change failed: ' + e.message); }
+  }
+
+  return praProgramDetail_(courseId).program;
 }
 
 // ---------------------------------------------------------------------------
