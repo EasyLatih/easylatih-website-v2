@@ -276,6 +276,13 @@
       .portal-header-inner{align-items:flex-start;}
       .resource-filter{grid-template-columns:1fr;}
     }
+    .pool-card .pool-meta{font-size:.85rem;color:#475569;margin:.15rem 0}
+    .pool-tag{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:999px;background:#e0e7ff;color:#1e3a8a;margin-right:4px}
+    .pool-tag.released{background:#fef3c7;color:#92400e}
+    .pic-box{margin-top:.75rem;padding:.75rem;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
+    .pic-box input,.pic-box select{margin:.25rem 0}
+    .warn-badge{display:inline-block;font-size:.75rem;padding:3px 8px;border-radius:6px;background:#fee2e2;color:#991b1b;margin-bottom:.4rem}
+    .company-box{font-size:.85rem;background:#f1f5f9;border-radius:8px;padding:.5rem .65rem;margin:.4rem 0}
   </style>
 </head>
 
@@ -317,6 +324,7 @@
 
       <div class="tab-menu">
         <button class="tab-btn active" onclick="showTab('dashboardTab', this)">📊 Dashboard</button>
+        <button class="tab-btn" onclick="showTab('poolTab', this); loadPool();">🆕 Prospek Baharu</button>
         <button class="tab-btn" onclick="showTab('prospectsTab', this)">👥 Prospects</button>
         <button class="tab-btn" onclick="showTab('followupTab', this)">📞 Follow Up</button>
         <button class="tab-btn" onclick="showTab('resourcesTab', this)">📚 Resources</button>
@@ -325,6 +333,11 @@
 
     <!-- TAB 1: DASHBOARD -->
     <div id="dashboardTab" class="tab-content active">
+      <div id="releaseWarningsCard" class="sop-card hidden">
+        <h3>⏳ Akan Dilepaskan ke Pool</h3>
+        <p class="sop-muted">Prospek di bawah akan diberi kepada ejen lain jika tiada tindakan. Simpan call update atau kemas kini status untuk kekalkan.</p>
+        <div id="releaseWarnings" class="prospect-grid"></div>
+      </div>
       <div class="kpi">
         <div class="kpi-card">
           <h3>Total Prospects</h3>
@@ -374,6 +387,32 @@
           <div class="kpi-card"><h3>Potential Sales</h3><h1 id="potentialSales">RM0</h1></div>
           <div class="kpi-card"><h3>Confirmed Sales</h3><h1 id="confirmedSales">RM0</h1></div>
         </div>
+      </div>
+    </div>
+
+    <!-- TAB: PROSPECT POOL -->
+    <div id="poolTab" class="tab-content">
+      <div id="adminPoolCard" class="sop-card hidden">
+        <h3>🛠️ Ringkasan Pool (Admin)</h3>
+        <div id="adminPoolSummary">Loading...</div>
+      </div>
+
+      <div class="sop-card">
+        <h3>🆕 Prospek Baharu</h3>
+        <p class="sop-muted">
+          Syarikat baharu (anggaran 10 pekerja ke atas) ditambah setiap pagi. Siapa ambil dahulu, dia punya.
+          Butiran hubungan dipaparkan selepas anda ambil. Had: <strong>10 syarikat sehari</strong>.
+          Hubungi dalam <strong>3 hari</strong> selepas ambil, atau prospek kembali ke pool.
+        </p>
+        <div class="kpi">
+          <div class="kpi-card"><h3>Diambil Hari Ini</h3><h1 id="poolTaken">0/10</h1></div>
+          <div class="kpi-card"><h3>Tersedia</h3><h1 id="poolAvailableCount">0</h1></div>
+        </div>
+        <div class="resource-filter">
+          <input id="poolSearch" placeholder="Cari syarikat atau industri..." onkeyup="renderPool()">
+          <select id="poolDistrict" onchange="renderPool()"><option value="">Semua Daerah</option></select>
+        </div>
+        <div id="poolList" class="prospect-grid">Loading...</div>
       </div>
     </div>
 
@@ -581,9 +620,21 @@ function cleanPhone(phone){
   return String(phone || "").replace(/[^0-9]/g, "");
 }
 
+function esc(value){
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// wa.me needs the country code: 012-345 6789 -> 60123456789
+function waPhone(phone){
+  const digits = cleanPhone(phone);
+  return digits.startsWith("0") ? "6" + digits : digits;
+}
+
 function actionButtons(p){
-  const phone = cleanPhone(p.phone);
-  const email = p.email || "";
+  const phone = cleanPhone(p.phone || p.companyPhone);
+  const email = p.email || p.companyEmail || "";
   const message = encodeURIComponent(
     "Assalamualaikum dan salam sejahtera.\n\n" +
     "Saya dari EasyLatih Consultancy, HRD Corp Training Provider.\n\n" +
@@ -592,7 +643,7 @@ function actionButtons(p){
 
   return `
     <div class="prospect-actions">
-      <a href="https://wa.me/${phone}?text=${message}" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>
+      <a href="https://wa.me/${waPhone(phone)}?text=${message}" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>
       <a href="tel:${phone}" class="action-btn call-btn">📞 Call</a>
       <a href="mailto:${email}" class="action-btn email-btn">✉️ Email</a>
     </div>
@@ -701,6 +752,7 @@ async function loadDashboard(){
   renderFunnel(data.funnel || {});
   renderQuotation(data);
   renderProspects(data.prospects || []);
+  renderReleaseWarnings(data.releaseWarnings || []);
   setupResourceFilters();
   renderResources();
 }
@@ -837,9 +889,11 @@ function renderProspects(list){
   list.forEach(p => {
     html += `
       <div class="prospect-card">
+        ${releaseBadge(p)}
         <div class="status-badge">${p.status || "NEW LEAD"}</div>
-        <div class="prospect-company">${p.company || "-"}</div>
-        <div class="prospect-info">👤 ${p.contact || "-"}</div>
+        <div class="prospect-company">${esc(p.company) || "-"}</div>
+        ${companyBox(p)}
+        <div class="prospect-info">👤 ${esc(p.contact) || "-"}${p.position ? " · " + esc(p.position) : ""}</div>
         <div class="prospect-info">📞 ${p.phone || "-"}</div>
         <div class="prospect-info">✉️ ${p.email || "-"}</div>
         <div class="prospect-info">📍 ${p.state || "-"}</div>
@@ -864,6 +918,7 @@ function renderProspects(list){
             <option value="NOT INTERESTED" ${p.status=="NOT INTERESTED"?"selected":""}>NOT INTERESTED</option>
           </select>
         </div>
+        ${picForm(p)}
       </div>
     `;
   });
@@ -918,6 +973,171 @@ function renderResources(){
 
   document.getElementById("resourceList").innerHTML =
     html || "Tiada resource dijumpai.";
+}
+
+/* ---------- Prospect Pool ---------- */
+
+let poolItems = [];
+
+function companyBox(p){
+  if(!p.companyAddress && !p.companyPhone && !p.companyEmail && !p.industry) return "";
+  return `
+    <div class="company-box">
+      🏢 <strong>Maklumat syarikat</strong><br>
+      ${p.industry ? esc(p.industry) + "<br>" : ""}
+      ${p.companyAddress ? "📍 " + esc(p.companyAddress) + "<br>" : ""}
+      ${p.companyPhone ? "☎️ " + esc(p.companyPhone) + "<br>" : ""}
+      ${p.companyEmail ? "✉️ " + esc(p.companyEmail) : ""}
+    </div>`;
+}
+
+function releaseText(p){
+  const days = Number(p.releaseInDays);
+  const when = days <= 0 ? "esok pagi" : `dalam ${days} hari`;
+  return p.releaseRule === "FIRST_CONTACT"
+    ? `Belum dihubungi · kembali ke pool ${when}`
+    : `Tiada aktiviti · kembali ke pool ${when}`;
+}
+
+function releaseBadge(p){
+  if(!p.releaseRule) return "";
+  const days = Number(p.releaseInDays);
+  if(p.releaseRule === "IDLE_30" && days > 9) return "";
+  return `<div class="warn-badge">⏳ ${releaseText(p)}</div>`;
+}
+
+function renderReleaseWarnings(list){
+  const card = document.getElementById("releaseWarningsCard");
+  if(!card) return;
+  card.classList.toggle("hidden", list.length === 0);
+  document.getElementById("releaseWarnings").innerHTML = list.map(p => `
+    <div class="prospect-card overdue-card">
+      <div class="warn-badge">⏳ ${releaseText(p)}</div>
+      <div class="prospect-company">${esc(p.company) || "-"}</div>
+      <div class="prospect-info">Status: ${esc(p.status)}</div>
+      <div class="prospect-info">Aktiviti terakhir: ${esc(p.lastActivity) || "-"}</div>
+      ${actionButtons(p)}
+      <textarea id="remark_w${p.rowNumber}" placeholder="Call Remark"></textarea>
+      <input type="date" id="next_w${p.rowNumber}">
+      <button onclick="saveCallLog(${p.rowNumber}, 'w')">Save Call Update</button>
+    </div>`).join("");
+}
+
+function picForm(p){
+  const r = p.rowNumber;
+  const open = p.picMissing ? "open" : "";
+  return `
+    <details class="pic-box" ${open}>
+      <summary><strong>👤 Maklumat PIC${p.picMissing ? " (belum diisi)" : ""}</strong></summary>
+      <input id="picName_${r}" placeholder="Nama PIC" value="${esc(p.contact)}">
+      <input id="picPosition_${r}" placeholder="Jawatan (cth. Pengurus HR)" value="${esc(p.position)}">
+      <input id="picEmail_${r}" type="email" placeholder="Emel PIC" value="${esc(p.email)}">
+      <input id="picPhone_${r}" placeholder="No. HP PIC" value="${esc(p.phone)}">
+      <select id="picLevy_${r}">
+        <option value="">Status levi HRD (tidak pasti)</option>
+        <option value="YA" ${String(p.levyStatus).toUpperCase()==="YA"?"selected":""}>Bayar levi HRD</option>
+        <option value="TIDAK" ${String(p.levyStatus).toUpperCase()==="TIDAK"?"selected":""}>Tidak bayar levi</option>
+      </select>
+      <button onclick="savePic(${r})">Simpan PIC</button>
+    </details>`;
+}
+
+async function savePic(rowNumber){
+  const val = id => (document.getElementById(id + "_" + rowNumber)?.value || "").trim();
+  const params = new URLSearchParams({
+    action: "updatePic",
+    rowNumber: rowNumber,
+    picName: val("picName"),
+    picPosition: val("picPosition"),
+    picEmail: val("picEmail"),
+    picPhone: val("picPhone"),
+    levy: val("picLevy")
+  });
+  const data = await apiRequest(params);
+  alert(data.message || (data.success ? "Disimpan" : "Gagal simpan"));
+  if(data.success) loadDashboard();
+}
+
+async function loadPool(){
+  document.getElementById("poolList").innerHTML = "Loading...";
+  const data = await apiRequest(new URLSearchParams({ action: "getPool" }));
+  if(!data.success){
+    document.getElementById("poolList").innerHTML = `<div class="danger-box">${esc(data.message || "Gagal memuatkan pool")}</div>`;
+    return;
+  }
+  poolItems = data.available || [];
+  setText("poolTaken", `${data.takenToday || 0}/${data.limit || 10}`);
+  setText("poolAvailableCount", poolItems.length);
+  document.getElementById("poolList").dataset.remaining = data.remainingToday;
+
+  const select = document.getElementById("poolDistrict");
+  const current = select.value;
+  const districts = [...new Set(poolItems.map(i => i.district).filter(Boolean))].sort();
+  select.innerHTML = `<option value="">Semua Daerah</option>` +
+    districts.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join("");
+  select.value = districts.includes(current) ? current : "";
+
+  renderPool();
+  if(localStorage.getItem("role") === "ADMIN") loadAdminPool();
+}
+
+function renderPool(){
+  const search = (document.getElementById("poolSearch").value || "").toUpperCase();
+  const district = document.getElementById("poolDistrict").value;
+  const remaining = Number(document.getElementById("poolList").dataset.remaining || 0);
+
+  const list = poolItems
+    .filter(i => !district || i.district === district)
+    .filter(i => !search || `${i.company} ${i.industry}`.toUpperCase().includes(search));
+
+  if(list.length === 0){
+    document.getElementById("poolList").innerHTML = "Tiada prospek tersedia buat masa ini. Senarai baharu masuk setiap pagi.";
+    return;
+  }
+
+  document.getElementById("poolList").innerHTML = list.map(i => `
+    <div class="prospect-card pool-card">
+      <div>
+        ${i.origin === "RELEASED" ? `<span class="pool-tag released">Dilepaskan semula</span>` : `<span class="pool-tag">Baharu ${esc(i.dateAdded)}</span>`}
+      </div>
+      <div class="prospect-company">${esc(i.company)}</div>
+      <div class="pool-meta">🏭 ${esc(i.industry) || "-"}</div>
+      <div class="pool-meta">📍 ${esc(i.district) || "-"}, ${esc(i.state) || "-"}</div>
+      <div class="pool-meta">👥 ${i.employees ? "Anggaran " + esc(i.employees) + " pekerja" : "Saiz belum pasti"}${i.confidence ? " (" + esc(i.confidence) + ")" : ""}</div>
+      <button onclick="claimPool('${esc(i.poolId)}', this)" ${remaining <= 0 ? "disabled" : ""}>
+        ${remaining <= 0 ? "Had harian dicapai" : "✋ Ambil Prospek"}
+      </button>
+    </div>`).join("");
+}
+
+async function claimPool(poolId, btn){
+  btn.disabled = true;
+  btn.textContent = "Mengambil...";
+  const data = await apiRequest(new URLSearchParams({ action: "claimProspect", poolId: poolId }));
+  if(data.success){
+    alert(`✅ ${data.company} kini prospek anda.\n\nTelefon: ${data.companyPhone || "-"}\nEmel: ${data.companyEmail || "-"}\nAlamat: ${data.address || "-"}\n\nIsi maklumat PIC di tab Prospects selepas berhubung.`);
+    loadDashboard();
+  } else {
+    alert(data.message || "Gagal mengambil prospek.");
+  }
+  loadPool();
+}
+
+async function loadAdminPool(){
+  const card = document.getElementById("adminPoolCard");
+  const data = await apiRequest(new URLSearchParams({ action: "adminPool" }));
+  if(!data.success) return;
+  card.classList.remove("hidden");
+  const agents = (data.agents || []).map(a =>
+    `<tr><td>${esc(a.agentName)} (${esc(a.agentId)})</td><td>${a.claimedToday}</td></tr>`).join("");
+  document.getElementById("adminPoolSummary").innerHTML = `
+    <div class="kpi">
+      <div class="kpi-card"><h3>Tersedia</h3><h1>${data.available}</h1></div>
+      <div class="kpi-card"><h3>Diambil Hari Ini</h3><h1>${data.claimedToday}</h1></div>
+      <div class="kpi-card"><h3>Dilepaskan (7 hari)</h3><h1>${data.released7d}</h1></div>
+    </div>
+    <p class="sop-muted">Import terakhir: ${esc(data.lastImport) || "belum ada"}</p>
+    ${agents ? `<table><tr><th>Ejen</th><th>Ambil hari ini</th></tr>${agents}</table>` : ""}`;
 }
 
 function logout(){
@@ -1028,9 +1248,10 @@ async function updateStatus(rowNumber, status){
   }
 }
 
-async function saveCallLog(rowNumber){
-  const remark = document.getElementById(`remark_${rowNumber}`).value;
-  const nextDate = document.getElementById(`next_${rowNumber}`).value;
+async function saveCallLog(rowNumber, prefix){
+  const p = prefix || "";
+  const remark = document.getElementById(`remark_${p}${rowNumber}`).value;
+  const nextDate = document.getElementById(`next_${p}${rowNumber}`).value;
 
   const params = new URLSearchParams({
     action: "updateCallLog",

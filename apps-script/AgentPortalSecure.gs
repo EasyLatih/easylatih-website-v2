@@ -18,6 +18,10 @@ function doGet(e) {
   if (action === "updateCallLog") return updateCallLog(e, session);
   if (action === "checkProspect") return checkProspect(e, session);
 
+  // Prospect Pool actions live in ProspectPool.gs.
+  const poolResult = routeProspectPool_(action, e, session);
+  if (poolResult) return poolResult;
+
   return jsonOutput({ success: false, message: "Invalid action" });
 }
 
@@ -125,6 +129,7 @@ function getDashboard(e, session) {
     .getSheetByName(PROSPECT_SHEET);
 
   const data = sheet.getDataRange().getValues();
+  data.forEach(r => { while (r.length < PROSPECT_WIDTH) r.push(""); });
 
   const today = Utilities.formatDate(
     new Date(),
@@ -297,7 +302,9 @@ function getDashboard(e, session) {
       lastCallDate: lastCallDate,
       callRemark: callRemark,
       nextFollowUpDate: nextFollowUpDate,
-      lastCallType: lastCallType
+      lastCallType: lastCallType,
+
+      ...prospectExtras_(row)
     };
 
     prospects.push(prospectObj);
@@ -334,6 +341,7 @@ function getDashboard(e, session) {
     followUpDoneToday: followUpDoneToday,
 
     prospects: prospects,
+    releaseWarnings: releaseWarnings_(prospects),
     followUpsToday: followUpsToday,
     overdueFollowUps: overdueFollowUps,
     suggestedFollowUps: suggestedFollowUps.slice(0, 10),
@@ -546,7 +554,8 @@ function addProspect(e, session) {
     "",
     "",
     "",
-    ""
+    "",
+    "AGENT", "", "", "", "", "", new Date(), ""
   ]);
 
   return jsonOutput({
@@ -565,6 +574,7 @@ function updateStatus(e, session) {
   if (ALLOWED_STATUSES.indexOf(status) === -1) return jsonOutput({ success: false, message: "Status tidak sah." });
 
   sheet.getRange(rowNumber, 14).setValue(status);
+  touchProspect_(sheet, rowNumber);
   return jsonOutput({ success: true, message: "Status Updated" });
 }
 
@@ -585,6 +595,7 @@ function updateCallLog(e, session) {
 
   const currentStatus = String(sheet.getRange(rowNumber, 14).getValue()).toUpperCase();
   if (currentStatus === "NEW LEAD") sheet.getRange(rowNumber, 14).setValue("CONTACTED");
+  touchProspect_(sheet, rowNumber);
 
   return jsonOutput({ success: true, message: "Call Log Updated" });
 }

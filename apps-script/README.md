@@ -46,3 +46,15 @@ The Admin Centre page `internal/documents.html` runs the existing Document Gener
      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
    ```
 4. Save, then **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy** so the Web App URL stays the same.
+
+## Prospect Pool (ProspectPool.gs)
+
+Daily pool of new companies for agents: first agent to press **Ambil** gets the company, 10 per agent per day, then fills in the PIC. Prospects not contacted within 3 days of being taken, or with no activity for 30 days, go back to the pool (Quotation Sent, HRD Application, Registered and Not Interested are never released; 7-day grace at launch).
+
+1. In the same Apps Script project as `AgentPortalSecure.gs`, click **+ → Script**, name it `ProspectPool`, and paste in `ProspectPool.gs`.
+2. Replace `Code.gs` (or wherever `AgentPortalSecure.gs` lives) with the updated `AgentPortalSecure.gs`.
+3. In the function dropdown pick **setupProspectPool** and click **Run**. Approve the permission prompt (Google Drive and triggers). This creates the **Prospect Pool** tab, adds 8 columns to **Prospects** (Source … Industry), and creates two daily triggers: `releaseStaleProspects` at 7am and `importPoolFromDrive` at 8am (Asia/Kuala_Lumpur).
+4. **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**, so the Web App URL stays the same.
+5. Optional: pick **importPoolFromDrive** and click **Run** to load any CSV already waiting instead of waiting for 8am.
+
+The daily CSV goes to the Drive folder **EasyLatih Prospect Pool Import** (ID in `POOL_DEFAULT_IMPORT_FOLDER_ID`, or override with Script property `POOL_IMPORT_FOLDER_ID`). Headers: `company, industry, address, district, state, phone, email, website, est_employees, employee_confidence, source`. Imported files are renamed `DONE_…`; companies already in the pool or in Prospects are skipped.
