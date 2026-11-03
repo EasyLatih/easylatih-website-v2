@@ -119,7 +119,7 @@ async function amendInvoiceDates(b){
  const answer=prompt('Enter the date numbers to cancel, separated by commas. Keep at least one date.\n\n'+list,'');
  if(answer===null)return;
  const indexes=answer.split(',').map(x=>x.trim());
- if(!indexes.length||indexes.some(x=>!/^\\d+$/.test(x)))return notify('Enter date numbers such as 1,2.',true);
+ if(!indexes.length||indexes.some(x=>!/^\d+$/.test(x)))return notify('Enter date numbers such as 1,2.',true);
  const positions=indexes.map(Number);
  if(new Set(positions).size!==positions.length||positions.some(n=>n<1||n>linked.length)||positions.length>=linked.length)return notify('Choose valid dates to cancel and keep at least one date.',true);
  const cancel=positions.map(n=>linked[n-1]);
