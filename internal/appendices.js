@@ -88,8 +88,6 @@
   function build() {
     const title = val('f-title') || (src && src.programName) || '';
     const days = num(cur('days')) || 1;
-    const price = num(cur('price'));
-    const fee = price ? fix2(price / days) : '';
     const start = cur('start'), end = cur('end') || start;
     const L = (label, value, opts) => Object.assign({ label, value: String(value ?? '') }, opts || {});
     return [
@@ -110,8 +108,15 @@
       { k:'O', t:'Please Specify Full Address', lines:[ L('', val('f-address')) ] },
       { k:'P', t:'State', lines:[ L('', val('f-state')) ] },
       { k:'Q', t:'Training Schedule', lines:[ L('Start Date', dmy(start)), L('End Date', dmy(end)) ] },
-      { k:'R', t:'Course Fee', lines:[ L('Cost (RM) (A)', fee) ],
-        note: price ? rm(price) + ' per pax ÷ ' + days + (days === 1 ? ' day' : ' days') + ' = ' + rm(price / days) + '. Put ' + fee + ' in Cost (A).' : 'Enter the price per pax to calculate this.' }
+      // Clients may get a discounted price, so the fee is never a fixed number:
+      // they work it out from their own quotation and the actual training days.
+      { k:'R', t:'Course Fee', lines:[
+          L('Cost (RM) (A)', 'Harga per pax dalam sebut harga anda ÷ ' + days + ' hari latihan / Price per pax in your quotation ÷ ' + days + (days === 1 ? ' training day' : ' training days'))
+        ],
+        note: 'Isikan harga per pax seperti dalam sebut harga anda (termasuk jika anda mendapat harga diskaun), dibahagi dengan bilangan hari latihan sebenar. ' +
+          'Contoh: RM1,000.00 ÷ 2 hari = RM500.00, jadi isikan 500.00 dalam Cost (A). / ' +
+          'Use the price per pax in your own quotation (including any discounted price), divided by the actual number of training days. ' +
+          'Example: RM1,000.00 ÷ 2 days = RM500.00, so enter 500.00 in Cost (A).' }
     ];
   }
 
