@@ -58,3 +58,13 @@ Daily pool of new companies for agents: first agent to press **Ambil** gets the 
 5. Optional: pick **importPoolFromDrive** and click **Run** to load any CSV already waiting instead of waiting for 8am.
 
 The daily CSV goes to the Drive folder **EasyLatih Prospect Pool Import** (ID in `POOL_DEFAULT_IMPORT_FOLDER_ID`, or override with Script property `POOL_IMPORT_FOLDER_ID`). Headers: `company, industry, address, district, state, phone, email, website, est_employees, employee_confidence, source`. Imported files are renamed `DONE_…`; companies already in the pool or in Prospects are skipped.
+
+## Automatic HRD Corp grant folder (GrantPack.gs)
+
+Every time **Save details** is pressed on Admin Centre → Appendices, the programme gets its own Drive folder with the HRD Corp grant guideline PDF and an Appendices PDF, shared as view-only. The folder link is saved as the programme's guideline link, so HRD registration emails include it automatically. Saving again replaces the Appendices PDF in the same folder.
+
+1. In the **EasyLatih Management System V2 - STAGING** project, click **+ → Script**, name it `GrantPack`, and paste in `GrantPack.gs`.
+2. Replace `PublicRegistrationAdmin` with the updated `PublicRegistrationAdmin.gs`.
+3. **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**, so the Web App URL stays the same. Approve the Drive permission prompt if asked.
+
+Defaults: programme folders go in the parent folder `1rY5bAux_8QRD4y5x1q8TUyymlDW_jdoq` and the guideline is copied from file `14oLvOWU6OdlR7nTNcTK4i9bCJWHkteH4`. Override with Script properties `GRANT_PACK_PARENT_FOLDER_ID` and `GRANT_GUIDELINE_FILE_ID`. If a programme has no grant folder yet, the registration email links the master guideline PDF instead of leaving it out.

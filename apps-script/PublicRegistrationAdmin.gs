@@ -19,7 +19,7 @@
 
 const PRA_TZ_ = 'Asia/Kuala_Lumpur';
 const PRA_SETTINGS_SHEET_ = 'ProgrammeSettings';
-const PRA_SETTINGS_HEADERS_ = ['CourseID', 'GuidelineUrl', 'WhatsAppLink', 'JoiningInstructions', 'ParticipantListSentDate', 'ArchivedDate', 'UpdatedDate'];
+const PRA_SETTINGS_HEADERS_ = ['CourseID', 'GuidelineUrl', 'WhatsAppLink', 'JoiningInstructions', 'ParticipantListSentDate', 'ArchivedDate', 'UpdatedDate', 'GrantFolderId'];
 const PRA_PROGRESS_SHEET_ = 'RegistrationProgress';
 const PRA_PROGRESS_HEADERS_ = ['RegistrationID', 'CourseID', 'ConfirmationSentDate', 'ReceiptNo', 'ReceiptUrl', 'AmountReceived', 'JD14SentDate', 'JD14SignedDate', 'ClaimSubmittedDate', 'ClaimRefNo', 'ClaimAmount', 'ClaimPaidDate', 'UpdatedDate'];
 const PRA_HRD_STEPS_ = {
@@ -50,7 +50,8 @@ function publicRegistrationActions_() {
     regArchive: function (d) { return praArchive_(praText_(d.courseId), d.force === true); },
     regArchivedPrograms: function () { return praArchivedPrograms_(); },
     regFormerClients: function (d) { return praFormerClients_(praText_(d.query)); },
-    regAppendixSource: function (d) { return praAppendixSource_(praText_(d.courseId)); }
+    regAppendixSource: function (d) { return praAppendixSource_(praText_(d.courseId)); },
+    regPublishGrantPack: function (d) { return gpPublishGrantPack_(d); }
   };
 }
 
@@ -813,7 +814,8 @@ function praRegistrationEmail_(data, program, documentType, documentNo, pdfUrl) 
   const name = praText_(program && program.ProgramName);
   const pic = praText_(data.picName);
   const s = praSettingsFor_(data.courseId);
-  const guide = hrd ? praText_(s.GuidelineUrl) : '';
+  // No grant pack yet (Appendices not saved): still send the HRD Corp guideline itself.
+  const guide = hrd ? (praText_(s.GuidelineUrl) || (typeof gpGuidelineFallbackUrl_ === 'function' ? gpGuidelineFallbackUrl_() : '')) : '';
   const outline = praText_(program && (program.CourseContentURL || program.CourseContentUrl));
   const trainer = praText_(program && (program.TrainerProfileURL || program.TrainerProfileUrl));
   const when = praProgramDate_(program || {});

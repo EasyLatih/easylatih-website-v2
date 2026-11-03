@@ -308,9 +308,29 @@
       if (s.error) throw s.error;
       course = c.data; session = s.data;
       loadSaved();
-      $('saveState').textContent = 'Saved ' + new Date().toLocaleTimeString('en-MY', {hour:'2-digit', minute:'2-digit'}) + '.';
+      const savedAt = 'Saved ' + new Date().toLocaleTimeString('en-MY', {hour:'2-digit', minute:'2-digit'}) + '.';
+      $('saveState').textContent = savedAt;
+      if (!src.manual) await publishGrantPack(savedAt);
     } catch (e) { banner('Could not save: ' + (e.message || e), 'danger'); }
     finally { btn.disabled = false; btn.textContent = 'Save details'; }
+  }
+
+  // Builds the client grant folder (guideline PDF + Appendices PDF) and links it to the
+  // programme, so registration emails carry it automatically.
+  async function publishGrantPack(savedAt) {
+    const state = $('saveState');
+    state.textContent = savedAt + ' Updating the client grant folder…';
+    try {
+      const r = await call('regPublishGrantPack', {
+        courseId: src.courseId,
+        title: val('f-title') || src.programName || '',
+        html: docHtml()
+      });
+      state.innerHTML = esc(savedAt) + ' Client grant folder updated: <a href="' + esc(r.folderUrl) + '" target="_blank" rel="noopener">open folder</a>.';
+    } catch (e) {
+      state.textContent = savedAt;
+      banner('Details saved, but the client grant folder was not updated: ' + (e.message || e), 'danger');
+    }
   }
 
   // ---------- duplicate a saved one ----------
