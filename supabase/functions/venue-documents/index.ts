@@ -125,6 +125,20 @@ Deno.serve(async(req:Request)=>{
    if(saved.error)throw saved.error;
    return res(200,{ok:true,paid:true});
   }
+  if(action==="amend_dates"){
+   if(isReceipt||doc.status!=="FINAL")return res(409,{ok:false,error:"Only a finalized invoice can be amended."});
+   if(doc.payment_verified_at)return res(409,{ok:false,error:"A paid invoice cannot be amended. Handle the payment adjustment first."});
+   const cancelIds=input.bookingIds;
+   const reason=String(input.reason||"").trim();
+   if(!Array.isArray(cancelIds)||cancelIds.length<1||cancelIds.some((v:unknown)=>!isUuid(v)))
+    return res(400,{ok:false,error:"Select at least one valid booking date to cancel."});
+   if(reason.length<3||reason.length>500)return res(400,{ok:false,error:"A cancellation reason between 3 and 500 characters is required."});
+   const amended=await db.rpc("venue_amend_booking_dates",{
+    p_document_id:id,p_cancel_booking_ids:cancelIds,p_reason:reason,p_admin_id:user.id
+   });
+   if(amended.error)throw amended.error;
+   return res(200,{ok:true,replacementDocumentId:amended.data,voidedNumber:doc.document_number});
+  }
   if(action==="void"){
    if(isReceipt||doc.status!=="FINAL")return res(409,{ok:false,error:"Only a finalized invoice can be voided."});
    if(doc.payment_verified_at)return res(409,{ok:false,error:"A paid invoice cannot be voided. Record a refund or credit adjustment instead."});
