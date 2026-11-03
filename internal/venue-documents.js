@@ -110,6 +110,38 @@ async function load(){const [a,b]=await Promise.all([
  db.from('venue_bookings').select('*,venue_rooms(name)').order('created_at',{ascending:false}).limit(500),
  db.from('venue_documents').select('*').order('created_at',{ascending:false}).limit(1000)
 ]);if(a.error||b.error)throw a.error||b.error;bookings=(a.data||[]).filter(b=>b.booking_source!=='INTERNAL');docs=b.data||[];renderTable();}
+async function amendInvoiceDates(b){
+ const doc=invoiceFor(b),ids=Array.isArray(doc?.booking_ids)&&doc.booking_ids.length?doc.booking_ids:[doc?.booking_id];
+ if(!doc||doc.status!=='FINAL'||doc.payment_verified_at||ids.length<2)return notify('Only an unpaid multi-day finalized invoice can be amended.',true);
+ const linked=ordered(ids.map(id=>bookings.find(x=>x.id===id)).filter(Boolean));
+ if(linked.length!==ids.length||linked.some(x=>x.status!=='CONFIRMED'))return notify('All invoiced dates must still be confirmed before amendment.',true);
+ const list=linked.map((x,i)=>(i+1)+'. '+dateMY(x.booking_date)).join('\n');
+ const answer=prompt('Enter the date numbers to cancel, separated by commas. Keep at least one date.\n\n'+list,'');
+ if(answer===null)return;
+ const indexes=answer.split(',').map(x=>x.trim());
+ if(!indexes.length||indexes.some(x=>!/^\\d+$/.test(x)))return notify('Enter date numbers such as 1,2.',true);
+ const positions=indexes.map(Number);
+ if(new Set(positions).size!==positions.length||positions.some(n=>n<1||n>linked.length)||positions.length>=linked.length)return notify('Choose valid dates to cancel and keep at least one date.',true);
+ const cancel=positions.map(n=>linked[n-1]);
+ const keep=linked.filter(x=>!cancel.some(y=>y.id===x.id));
+ if(!isConsecutive(keep))return notify('The remaining invoice dates must be consecutive. Amend them in separate bookings instead.',true);
+ const reason=prompt('Reason for cancelling these booking dates (required):','Client requested to keep only the remaining booking date(s).');
+ if(reason===null)return;
+ if(reason.trim().length<3)return notify('Enter a reason of at least 3 characters.',true);
+ const cancelDates=cancel.map(x=>dateMY(x.booking_date)).join(', ');
+ const keepDates=keep.map(x=>dateMY(x.booking_date)).join(', ');
+ if(!confirm('Cancel '+cancelDates+'? Invoice '+doc.document_number+' will be voided and retained for audit. A replacement draft for '+keepDates+' will be created. Review and finalize that draft before sending it.'))return;
+ if(busy)return;
+ busy=true;notify('Amending invoice dates…');
+ try{
+  const result=await bridge('amend_dates',doc.id,{bookingIds:cancel.map(x=>x.id),reason:reason.trim()});
+  await load();
+  const target=bookings.find(x=>x.id===keep[0].id);
+  if(target){openBooking(target.id);refreshActions();}
+  notify('Cancelled '+cancelDates+'. Original invoice '+doc.document_number+' is void; replacement draft created for '+keepDates+'.');
+ }catch(e){notify('Date amendment failed: '+e.message,true);}
+ finally{busy=false;}
+}
 async function voidInvoice(b){
  const doc=invoiceFor(b);if(!doc||doc.status!=='FINAL'||doc.payment_verified_at)return notify('Only an unpaid finalized invoice can be voided.',true);
  const reason=prompt('Reason for voiding '+doc.document_number+' (required):','');
@@ -155,8 +187,14 @@ function wireEditor(b,d){
  $('vdPreview')?.addEventListener('click',()=>{$('vdLocalPreview').hidden=!$('vdLocalPreview').hidden;renderPreview(viewPayload(),false)});
  $('vdPayment')?.addEventListener('click',()=>verifyPayment(b));
  $('vdSend')?.addEventListener('click',()=>send(b,'INVOICE'));
- if(d?.status==='FINAL'&&!d.payment_verified_at){document.querySelector('#vdEditor .vd-buttons')?.insertAdjacentHTML('beforeend','<button type="button" id="vdVoid">Void Invoice</button>');}
+ if(d?.status==='FINAL'&&!d.payment_verified_at){
+  const actions=document.querySelector('#vdEditor .vd-buttons');
+  actions?.insertAdjacentHTML('beforeend','<button type="button" id="vdVoid">Void Invoice</button>');
+  if(Array.isArray(d.booking_ids)&&d.booking_ids.length>1)
+   actions?.insertAdjacentHTML('beforeend','<button type="button" id="vdAmendDates" class="primary">Cancel date(s) &amp; revise invoice</button>');
+ }
  $('vdVoid')?.addEventListener('click',()=>voidInvoice(b));
+ $('vdAmendDates')?.addEventListener('click',()=>amendInvoiceDates(b));
  $('vdReplacement')?.addEventListener('click',()=>replacementInvoice(b));
 }
 function openBooking(id){
