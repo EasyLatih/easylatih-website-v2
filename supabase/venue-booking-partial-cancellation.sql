@@ -142,7 +142,7 @@ begin
       'booking_date', v_first,
       'start_time', v_lines -> 0 ->> 'start_time',
       'end_time', v_lines -> 0 ->> 'end_time',
-      'session', v_keep_count || '-day rental',
+      'session', v_keep_count::text || '-day rental',
       'rate', v_rate
     );
   end if;
