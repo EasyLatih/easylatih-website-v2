@@ -25,6 +25,9 @@
       .journey-step.complete .journey-icon{background:#dcfce7;color:#166534}.journey-step.action .journey-icon{background:#fef3c7;color:#92400e}.journey-step.waiting .journey-icon{background:#dbeafe;color:#1d4ed8}
       .journey-step strong{font-size:.82rem;line-height:1.2}.journey-step-status{font-size:.73rem;line-height:1.25;color:#64748b}.journey-step.complete .journey-step-status{color:#166534}.journey-step.action .journey-step-status{color:#92400e}
       .journey-next{margin-top:.85rem}.journey-next strong{display:block;margin-bottom:.15rem}
+      .ob-part > h3{display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none}.ob-part > h3::after{content:'⌄';margin-left:auto;color:#64748b;transition:transform .2s}.ob-part.ob-collapsed > h3::after{transform:rotate(-90deg)}.ob-part.ob-collapsed > :not(h3){display:none!important}.ob-part.ob-collapsed > h3{margin:0}
+      .ob-status{font-size:.72rem;font-weight:700;border-radius:999px;padding:.2rem .6rem;background:#fef3c7;color:#92400e}.ob-status.done{background:#dcfce7;color:#166534}.ob-status.wait{background:#dbeafe;color:#1d4ed8}.ob-status.locked{background:#f1f5f9;color:#64748b}
+      .trainer-next-bar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1rem;padding:.7rem .9rem;border-radius:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:.88rem}.trainer-next-bar .btn{padding:.45rem .8rem;flex:0 0 auto}
       .sidebar [data-nav]{position:relative;padding-right:2.55rem}.trainer-nav-badge{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;line-height:1;background:#dc2626;color:#fff;box-shadow:0 0 0 2px #fff}
       .trainer-nav-badge.attention{background:#d97706}.trainer-nav-badge.info{background:#2563eb}
       @media(max-width:980px){.journey-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -48,6 +51,33 @@
       <div id="trainerJourneySteps" class="journey-steps"></div>
       <div id="trainerJourneyNext" class="journey-next"></div>`;
     host.insertAdjacentElement('afterbegin', card);
+    // Compact "next step" bar shown on the other tabs instead of the full journey card.
+    const bar = document.createElement('div');
+    bar.id = 'trainerNextBar';
+    bar.className = 'trainer-next-bar hidden';
+    card.insertAdjacentElement('afterend', bar);
+    document.querySelectorAll('.sidebar [data-nav]').forEach(btn => btn.addEventListener('click', () => setTimeout(syncJourneyVisibility, 0)));
+  }
+
+  let lastJourney = null;
+
+  function activeTab() {
+    return document.querySelector('.sidebar [data-nav].active')?.dataset.nav || 'overview';
+  }
+
+  // The full journey lives on Overview only; other tabs get one line when an action is waiting elsewhere.
+  function syncJourneyVisibility() {
+    const card = document.getElementById('trainerJourneyCard');
+    const bar = document.getElementById('trainerNextBar');
+    const tab = activeTab();
+    card?.classList.toggle('hidden', tab !== 'overview');
+    if (!bar) return;
+    const next = lastJourney?.next;
+    const show = tab !== 'overview' && next && next.type === 'warning' && next.tab && next.tab !== tab;
+    bar.classList.toggle('hidden', !show);
+    if (!show) return;
+    bar.innerHTML = `<span><strong>${esc(next.title.replace(/^Your Next Step:\s*/,'Next step: '))}</strong> ${esc(next.text)}</span><button type="button" class="btn btn-soft" data-next-tab="${esc(next.tab)}">Open</button>`;
+    bar.querySelector('[data-next-tab]')?.addEventListener('click', e => goTo(e.currentTarget.dataset.nextTab));
   }
 
   function buttonForNav(tab) {
@@ -141,7 +171,7 @@
       next = {type:'success',title:'You’re Up to Date',text:'Your trainer profile is active and your current required steps are complete.',tab:null};
     }
 
-    return {steps,next,approved,onboardingComplete,docsComplete,programmeSubmitted,active,programmeAmendments,proposalOnlyClarifications};
+    return {steps,next,approved,termsComplete,termsAcceptedAt:profile.terms_accepted_at,onboardingComplete,profileSaved:Boolean(onboarding?.onboarding_completed_at),docsComplete,docsUploaded,programmeSubmitted,active,programmeAmendments,proposalOnlyClarifications};
   }
 
   function renderJourney(journey) {
@@ -158,6 +188,52 @@
     holder.querySelectorAll('[data-journey-tab]').forEach(btn => btn.addEventListener('click',()=>{ if(btn.dataset.journeyTab) goTo(btn.dataset.journeyTab); }));
     next.innerHTML = `<div class="alert alert-${esc(journey.next.type)}"><strong>${esc(journey.next.title)}</strong><span>${esc(journey.next.text)}</span>${journey.next.tab?` <button type="button" class="btn btn-soft" style="margin-left:.5rem" data-next-tab="${esc(journey.next.tab)}">Open</button>`:''}</div>`;
     next.querySelector('[data-next-tab]')?.addEventListener('click',e=>goTo(e.currentTarget.dataset.nextTab));
+    // "Collaboration approved" only matters until onboarding is done.
+    document.getElementById('approvedNotice')?.classList.toggle('hidden', !journey.approved || journey.onboardingComplete);
+    lastJourney = journey;
+    syncJourneyVisibility();
+    renderOnboardingParts(journey);
+  }
+
+  // Onboarding tab: each numbered part gets a status and can be folded; finished parts start folded.
+  const userToggledParts = new Set();
+  function renderOnboardingParts(journey) {
+    const panel = document.querySelector('[data-section="onboarding"]');
+    if (!panel) return;
+    const termsBtn = document.getElementById('acceptTermsButton');
+    if (termsBtn) {
+      termsBtn.disabled = journey.termsComplete;
+      termsBtn.textContent = journey.termsComplete
+        ? '✓ Terms accepted' + (journey.termsAcceptedAt ? ' on ' + new Intl.DateTimeFormat('en-MY',{dateStyle:'medium'}).format(new Date(journey.termsAcceptedAt)) : '')
+        : 'Accept Collaboration Terms';
+      termsBtn.classList.toggle('btn-primary', !journey.termsComplete);
+      termsBtn.classList.toggle('btn-soft', journey.termsComplete);
+    }
+    const states = {
+      '1': journey.termsComplete ? ['done','Accepted'] : ['todo','Action needed'],
+      '2': journey.profileSaved ? ['done','Completed'] : ['todo','Incomplete'],
+      '3': journey.docsComplete ? ['done','Verified'] : journey.docsUploaded ? ['wait','Pending verification'] : ['todo','TTT & CV required'],
+      '4': journey.programmeSubmitted ? ['done','Submitted'] : journey.onboardingComplete ? ['todo','Not submitted'] : ['locked','After onboarding']
+    };
+    panel.querySelectorAll(':scope > .form-card, :scope > form.form-card').forEach(card => {
+      const h3 = card.querySelector(':scope > h3');
+      const n = /^(\d)\./.exec(h3?.textContent.trim() || '')?.[1];
+      if (!n || !states[n]) return;
+      const [kind, label] = states[n];
+      card.classList.add('ob-part');
+      if (!h3.dataset.obReady) {
+        h3.dataset.obReady = '1';
+        h3.setAttribute('role','button');
+        h3.tabIndex = 0;
+        const toggle = () => { userToggledParts.add(n); card.classList.toggle('ob-collapsed'); h3.setAttribute('aria-expanded', String(!card.classList.contains('ob-collapsed'))); };
+        h3.addEventListener('click', toggle);
+        h3.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+      }
+      h3.querySelector('.ob-status')?.remove();
+      h3.insertAdjacentHTML('beforeend', `<span class="ob-status ${kind}">${esc(label)}</span>`);
+      if (!userToggledParts.has(n)) card.classList.toggle('ob-collapsed', kind === 'done' || kind === 'locked');
+      h3.setAttribute('aria-expanded', String(!card.classList.contains('ob-collapsed')));
+    });
   }
 
   function renderBadges(s, journey) {

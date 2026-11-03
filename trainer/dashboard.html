@@ -38,19 +38,14 @@
           <div class="kpi-card"><strong id="proposalSlots">5</strong><span>Proposal slots available</span></div>
           <div class="kpi-card"><strong id="profileCompletion">0%</strong><span>Basic profile completion</span></div>
         </div>
-        <div class="panel">
-          <h3>Profile completion</h3>
-          <div class="progress"><div id="profileProgressBar" style="width:0%"></div></div>
-          <p class="muted">Detailed onboarding is only unlocked after EasyLatih approves a programme for collaboration.</p>
-        </div>
-        <div id="onboardingLocked" class="alert alert-info">Your account is currently in the applicant stage. Submit programme ideas for review. Once EasyLatih approves collaboration, full onboarding, documents and collaboration terms will be unlocked.</div>
-        <div data-onboarding class="hidden alert alert-success"><strong>Collaboration approved.</strong> Please complete the onboarding section and accept the Trainer Collaboration Terms before full programme submission and publication.</div>
+        <div id="onboardingLocked" class="alert alert-info hidden">Your account is currently in the applicant stage. Submit programme ideas for review. Once EasyLatih approves collaboration, full onboarding, documents and collaboration terms will be unlocked.</div>
+        <div id="approvedNotice" class="hidden alert alert-success"><strong>Collaboration approved.</strong> Please complete the onboarding section and accept the Trainer Collaboration Terms before full programme submission and publication.</div>
       </div>
 
       <div class="panel hidden" data-section="proposals">
-        <div class="panel-header"><div><h2>My Programme Proposals</h2><div class="muted">Maximum 5 active programme proposals at any one time.</div></div></div>
+        <div class="panel-header"><div><h2>My Programme Proposals</h2><div class="muted">Maximum 5 active programme proposals at any one time.</div></div><button id="newProposalButton" class="btn btn-primary" type="button">+ New programme idea</button></div>
         <div id="proposalMessage" class="hidden"></div>
-        <form id="proposalForm" class="form-card">
+        <form id="proposalForm" class="form-card hidden" style="margin-bottom:1rem">
           <h3 id="proposalFormTitle">Submit a new programme idea</h3>
           <p id="proposalFormHelp" class="muted">Keep it concise. EasyLatih only needs enough information to assess market potential and fit at this stage.</p>
           <div class="form-grid">
@@ -68,10 +63,9 @@
           </div>
           <div class="btn-row">
             <button id="proposalSubmitButton" class="btn btn-primary" type="submit">Submit Programme Idea</button>
-            <button id="cancelProposalEdit" class="btn btn-soft hidden" type="button">Cancel edit</button>
+            <button id="cancelProposalEdit" class="btn btn-soft" type="button">Cancel</button>
           </div>
         </form>
-        <div style="height:1rem"></div>
         <div id="proposalList" class="list"><div class="empty">Loading proposals…</div></div>
       </div>
 
@@ -158,7 +152,7 @@
         </form>
 
         <div class="form-card" style="margin-top:1rem">
-          <h3>3. Full Programme Details</h3>
+          <h3>4. Full Programme Details</h3>
           <p class="muted">Select an approved proposal and provide the complete details EasyLatih needs to review the programme before eTRiS registration and website publication.</p>
           <div id="programmeFormMessage" class="hidden"></div>
           <form id="fullProgrammeForm">
@@ -196,7 +190,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="app.js?v=7"></script>
+<!-- Portal add-ons: loaded in this order, before app.js -->
+<script src="etris-drive-documents.js"></script>
+<script src="programme-course-outline.js"></script>
+<script src="programme-admin-changes.js"></script>
+<script src="journey-notifications.js"></script>
+<script src="onboarding-ttt-override.js"></script>
+<script src="onboarding-save-fix.js"></script>
+<script src="onboarding-accordion.js"></script>
+<script src="ttt-evidence-sync.js"></script>
+<script src="consultancy-profile.js"></script>
+<script src="waiting-list-sync.js"></script>
+<script src="opportunity-fee-policy.js"></script>
+<script src="app.js?v=8"></script>
 <script src="onboarding.js"></script>
 <script>EasyLatihPortal.initDashboard();</script>
 </body>

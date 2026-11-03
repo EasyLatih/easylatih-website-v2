@@ -20,6 +20,9 @@
     el.textContent = text;
   }
 
+  const TRAINING_TYPE_LABELS = { BOTH:'Public & In-House', PUBLIC:'Public', INHOUSE:'In-House' };
+  const trainingTypeLabel = (value) => TRAINING_TYPE_LABELS[String(value || '').toUpperCase()] || value || '';
+
   function statusBadge(status) {
     const label = String(status || 'UNKNOWN').replaceAll('_',' ');
     const green = ['APPROVED_TO_COLLAB','ACTIVE','PUBLISHED','AWARDED','INTERESTED','APPROVED_FOR_ETRIS'].includes(status);
@@ -173,6 +176,8 @@
   function switchSection(name) {
     document.querySelectorAll('[data-section]').forEach(el => el.classList.toggle('hidden', el.dataset.section !== name));
     document.querySelectorAll('[data-nav]').forEach(el => el.classList.toggle('active', el.dataset.nav === name));
+    const bar = document.querySelector('.sidebar'), btn = document.querySelector(`.sidebar [data-nav="${name}"]`);
+    if (bar && btn && bar.scrollWidth > bar.clientWidth) bar.scrollTo({left: btn.offsetLeft - bar.clientWidth/2 + btn.offsetWidth/2, behavior:'smooth'});
   }
 
   async function loadProfile() {
@@ -191,7 +196,7 @@
     fillProfileForm(data,pref || {});
     const onboardingUnlocked = ['APPROVED_TO_COLLAB','ONBOARDING','ACTIVE'].includes(data.collaboration_status);
     document.querySelectorAll('[data-onboarding]').forEach(el => el.classList.toggle('hidden',!onboardingUnlocked));
-    if (!onboardingUnlocked && $('onboardingLocked')) $('onboardingLocked').classList.remove('hidden');
+    $('onboardingLocked')?.classList.toggle('hidden', onboardingUnlocked);
   }
 
   function fillProfileForm(p,pref) {
@@ -216,7 +221,7 @@
       ? '<span class="muted">This proposal has been approved. Editing is locked unless EasyLatih returns the full module for amendment.</span>'
       : '';
     return `<div class="btn-row">
-      ${canEdit ? `<button type="button" class="btn btn-primary" data-edit-proposal="${esc(proposal.id)}">Edit &amp; Resubmit</button>` : approvedMessage}
+      ${canEdit ? `<button type="button" class="btn btn-primary" data-edit-proposal="${esc(proposal.id)}">${proposal.status === 'CLARIFICATION_REQUIRED' ? 'Edit &amp; Resubmit' : 'Edit'}</button>` : approvedMessage}
       <button type="button" class="btn btn-soft" data-open-comments="${esc(proposal.id)}">View comments</button>
     </div>`;
   }
@@ -228,12 +233,20 @@
     const activeCount = currentProposals.filter(p => ACTIVE_PROPOSAL_STATUSES.includes(p.status)).length;
     if ($('activeProposalCount')) $('activeProposalCount').textContent = `${activeCount}/${cfg.maxActiveProposals || 5}`;
     if ($('proposalSlots')) $('proposalSlots').textContent = Math.max(0,(cfg.maxActiveProposals || 5)-activeCount);
-    if ($('proposalSubmitButton')) $('proposalSubmitButton').disabled = !editingProposalId && activeCount >= (cfg.maxActiveProposals || 5);
+    const slotsFull = activeCount >= (cfg.maxActiveProposals || 5);
+    if ($('proposalSubmitButton')) $('proposalSubmitButton').disabled = !editingProposalId && slotsFull;
+    if ($('newProposalButton')) {
+      $('newProposalButton').disabled = slotsFull;
+      $('newProposalButton').title = slotsFull ? 'You already have the maximum number of active proposals.' : '';
+    }
+    // First-time trainers see the form straight away; others open it when needed.
+    if (!currentProposals.length && !editingProposalId) $('proposalForm')?.classList.remove('hidden');
+    syncNewProposalButton();
     const holder = $('proposalList');
     if (!holder) return;
     holder.innerHTML = currentProposals.length ? currentProposals.map(p => `
       <div class="list-card">
-        <div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><span>${esc(p.category)}</span><span>${esc(p.training_type)}</span><span>${esc(p.duration)}</span></div></div>${statusBadge(p.status)}</div>
+        <div class="list-card-top"><div><h3>${esc(p.title)}</h3><div class="meta"><span>${esc(p.category)}</span><span>${esc(trainingTypeLabel(p.training_type))}</span><span>${esc(p.duration)}</span></div></div>${statusBadge(p.status)}</div>
         <div class="muted">Target: ${esc(p.target_audience)}</div>
         <div class="tag-wrap">${(p.key_learning_points || []).slice(0,5).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>
         ${trainerProposalActions(p)}
@@ -258,6 +271,11 @@
       preferred_location:String(f.get('preferred_location') || '').trim(),
       expected_fee:Number(f.get('expected_fee') || 0) || null
     };
+  }
+
+  // The "+ New programme idea" button only shows while the form is closed.
+  function syncNewProposalButton() {
+    $('newProposalButton')?.classList.toggle('hidden', !$('proposalForm')?.classList.contains('hidden'));
   }
 
   function setProposalFormMode(proposal=null) {
@@ -288,7 +306,7 @@
       if($('proposalFormTitle'))$('proposalFormTitle').textContent='Edit & resubmit programme idea';
       if($('proposalFormHelp'))$('proposalFormHelp').textContent='Update the details, then resubmit for EasyLatih review. The previous submission is kept in the admin revision history.';
       if($('proposalSubmitButton'))$('proposalSubmitButton').textContent='Save & Resubmit';
-      $('cancelProposalEdit')?.classList.remove('hidden');
+      formEl.classList.remove('hidden');
       switchSection('proposals');
       formEl.scrollIntoView?.({behavior:'smooth',block:'start'});
     }else{
@@ -296,8 +314,9 @@
       if($('proposalFormTitle'))$('proposalFormTitle').textContent='Submit a new programme idea';
       if($('proposalFormHelp'))$('proposalFormHelp').textContent='Keep it concise. EasyLatih only needs enough information to assess market potential and fit at this stage.';
       if($('proposalSubmitButton'))$('proposalSubmitButton').textContent='Submit Programme Idea';
-      $('cancelProposalEdit')?.classList.add('hidden');
+      if(currentProposals.length) formEl.classList.add('hidden');
     }
+    syncNewProposalButton();
 
     const activeCount=currentProposals.filter(p=>ACTIVE_PROPOSAL_STATUSES.includes(p.status)).length;
     if($('proposalSubmitButton'))$('proposalSubmitButton').disabled=!editingProposalId && activeCount >= (cfg.maxActiveProposals || 5);
@@ -434,8 +453,9 @@
     $('userEmail').textContent=currentUser.email;
     document.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>switchSection(btn.dataset.nav)));
     $('logoutButton')?.addEventListener('click',async()=>{await client.auth.signOut();location.replace('./index.html');});
-    $('proposalForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;showMessage('proposalMessage',editingProposalId?'Resubmitting…':'Submitting…','info');try{const result=await submitProposal(formEl);setProposalFormMode();showMessage('proposalMessage',result.resubmitted?'Proposal updated and resubmitted for EasyLatih review.':'Programme proposal submitted for EasyLatih review.','success');await loadProposals();}catch(err){showMessage('proposalMessage',err.message,'danger');}});
+    $('proposalForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;showMessage('proposalMessage',editingProposalId?'Resubmitting…':'Submitting…','info');try{const result=await submitProposal(formEl);editingProposalId=null;await loadProposals();setProposalFormMode();showMessage('proposalMessage',result.resubmitted?'Proposal updated and resubmitted for EasyLatih review.':'Programme proposal submitted for EasyLatih review.','success');}catch(err){showMessage('proposalMessage',err.message,'danger');}});
     $('cancelProposalEdit')?.addEventListener('click',()=>{setProposalFormMode();showMessage('proposalMessage','','info');});
+    $('newProposalButton')?.addEventListener('click',()=>{setProposalFormMode();const f=$('proposalForm');f?.classList.remove('hidden');syncNewProposalButton();f?.scrollIntoView?.({behavior:'smooth',block:'start'});f?.elements.title?.focus({preventScroll:true});});
     $('commentForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const formEl=e.currentTarget;const f=new FormData(formEl);const proposalId=String(f.get('proposal_id'));const body=String(f.get('body')).trim();if(!body)return;const{error}=await client.from('proposal_comments').insert({proposal_id:proposalId,author_id:currentUser.id,author_role:'TRAINER',visibility:'TRAINER',body});if(error)return alert(error.message);formEl.reset();$('commentProposalId').value=proposalId;loadProposalComments(proposalId);});
     $('profileForm')?.addEventListener('submit',async(e)=>{try{await saveProfile(e);}catch(err){showMessage('profileMessage',err.message,'danger');}});
     $('categoryChangeRequestForm')?.addEventListener('submit',async(e)=>{try{await requestCategoryChange(e);}catch(err){showMessage('categoryRequestMessage',err.message,'danger');}});

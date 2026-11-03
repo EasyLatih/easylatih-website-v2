@@ -10,19 +10,7 @@ window.EASYLATIH_TRAINER_PORTAL = {
   publicTrainingAppsScriptUrl: "https://script.google.com/macros/s/AKfycbw1PRE_G3xUUc9WEAOX6m2bAAJ4yvtY3ghMihC4dxGVfsT6JwPjIyJl_VhPdihGA3c/exec"
 };
 
-if (/\/trainer\/dashboard(?:\.html)?$/.test(window.location.pathname)) {
-  document.write('<script src="etris-drive-documents.js"><\/script>');
-  document.write('<script src="programme-course-outline.js"><\/script>');
-  document.write('<script src="programme-admin-changes.js"><\/script>');
-  document.write('<script src="journey-notifications.js"><\/script>');
-  document.write('<script src="onboarding-ttt-override.js"><\/script>');
-  document.write('<script src="onboarding-save-fix.js"><\/script>');
-  document.write('<script src="onboarding-accordion.js"><\/script>');
-  document.write('<script src="ttt-evidence-sync.js"><\/script>');
-  document.write('<script src="consultancy-profile.js"><\/script>');
-  document.write('<script src="waiting-list-sync.js"><\/script>');
-  document.write('<script src="opportunity-fee-policy.js"><\/script>');
-}
+// Trainer dashboard add-on scripts are listed directly in trainer/dashboard.html.
 
 if (/\/internal\/trainer-admin(?:\.html)?$/.test(window.location.pathname)) {
   document.write('<script src="trainer-admin-course-outline.js"><\/script>');
