@@ -27,12 +27,10 @@ declare
   v_total numeric(12,2);
   v_replacement_id uuid;
 begin
-  if not exists (
-    select 1 from auth.users u
-    where u.id = p_admin_id
-      and u.raw_app_meta_data ->> 'role' = 'admin'
-  ) then
-    raise exception 'Admin access required';
+  -- The Edge Function validates the signed-in admin before calling this
+  -- service_role-only function. The FK on voided_by validates the audit user.
+  if p_admin_id is null then
+    raise exception 'Admin identity is required';
   end if;
 
   if p_reason is null or length(btrim(p_reason)) not between 3 and 500 then
