@@ -130,7 +130,7 @@ async function amendInvoiceDates(b){
  if(reason.trim().length<3)return notify('Enter a reason of at least 3 characters.',true);
  const cancelDates=cancel.map(x=>dateMY(x.booking_date)).join(', ');
  const keepDates=keep.map(x=>dateMY(x.booking_date)).join(', ');
- if(!confirm('Cancel '+cancelDates+'? Invoice '+doc.document_number+' will be voided and retained for audit. A replacement draft for '+keepDates+' will be created. Review and finalize that draft before sending it.'))return;
+ if(!confirm('Cancel '+cancelDates+'? The customer will receive a cancellation notice for those dates. Invoice '+doc.document_number+' will be voided and retained for audit. A replacement draft for '+keepDates+' will be created. Review and finalize that draft before sending it.'))return;
  if(busy)return;
  busy=true;notify('Amending invoice dates…');
  try{
