@@ -97,8 +97,10 @@ begin
     raise exception 'Only confirmed booking dates can be cancelled';
   end if;
 
-  if jsonb_typeof(v_doc.payload -> 'lines') <> 'array'
-     or jsonb_array_length(v_doc.payload -> 'lines') <> cardinality(v_ids) then
+  if jsonb_typeof(v_doc.payload -> 'lines') is distinct from 'array' then
+    raise exception 'Invoice is missing its per-date rental breakdown';
+  end if;
+  if jsonb_array_length(v_doc.payload -> 'lines') <> cardinality(v_ids) then
     raise exception 'Invoice is missing its per-date rental breakdown';
   end if;
 
