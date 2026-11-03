@@ -58,6 +58,7 @@
           </div>`).join('')}
       </div>`;
     onboardingForm.insertAdjacentElement('afterend',card);
+    document.dispatchEvent(new CustomEvent('easylatih:documents-card-ready'));
 
     const panel=onboardingForm.closest('[data-section="onboarding"]');
     if(panel){

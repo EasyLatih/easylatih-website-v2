@@ -177,32 +177,14 @@
     return true;
   }
 
-  function improveSaveBehaviour() {
-    const form = $('onboardingForm');
-    if (!form || form.dataset.saveFix === '1') return;
-    form.dataset.saveFix = '1';
-    form.noValidate = true;
-    form.addEventListener('submit', event => {
+  // onboarding.js calls this before saving; it builds the TTT answer and shows inline hints.
+  window.EasyLatihOnboardingTtt = {
+    validate() {
       buildTttQuestion();
-      if (!validateTtt()) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    }, true);
-  }
+      return validateTtt();
+    }
+  };
 
-  function start() {
-    buildTttQuestion();
-    improveSaveBehaviour();
-    let checks = 0;
-    const timer = setInterval(() => {
-      buildTttQuestion();
-      restoreFromSavedValue();
-      improveSaveBehaviour();
-      checks += 1;
-      if (checks >= 20) clearInterval(timer);
-    }, 250);
-  }
-
-  document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0));
+  document.addEventListener('easylatih:onboarding-built', buildTttQuestion);
+  document.addEventListener('easylatih:onboarding-loaded', () => { buildTttQuestion(); restoreFromSavedValue(); });
 })();

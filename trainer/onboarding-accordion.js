@@ -165,18 +165,6 @@
     });
   }
 
-  function startHydrationRefresh(){
-    let ticks=0;
-    let stableCompleteTicks=0;
-    const timer=setInterval(()=>{
-      refreshStatuses();
-      ticks+=1;
-      const requiredComplete=ITEMS.filter(x=>x.required).every(x=>getState(x.key).complete);
-      stableCompleteTicks=requiredComplete ? stableCompleteTicks+1 : 0;
-      if(stableCompleteTicks>=3 || ticks>=48) clearInterval(timer);
-    },250);
-  }
-
   function build(){
     const form=$('onboardingForm');
     if(!form || form.dataset.accordionBuilt==='1') return false;
@@ -203,25 +191,10 @@
     form.addEventListener('change',()=>requestAnimationFrame(refreshStatuses));
     document.addEventListener('easylatih:onboarding-hydrated',refreshStatuses);
     refreshStatuses();
-    startHydrationRefresh();
     return true;
   }
 
-  function start(){
-    let attempts=0;
-    const timer=setInterval(()=>{
-      const built=build();
-      refreshStatuses();
-      attempts+=1;
-      if(built || attempts>=40){
-        clearInterval(timer);
-        setTimeout(refreshStatuses,300);
-        setTimeout(refreshStatuses,1000);
-        setTimeout(refreshStatuses,2500);
-        setTimeout(refreshStatuses,5000);
-      }
-    },150);
-  }
-
-  document.addEventListener('DOMContentLoaded',start);
+  // Build once the eTRiS fields exist; refresh the section statuses once saved data is filled in.
+  document.addEventListener('easylatih:onboarding-built',()=>{build();refreshStatuses();});
+  document.addEventListener('easylatih:onboarding-loaded',()=>{build();refreshStatuses();requestAnimationFrame(refreshStatuses);});
 })();

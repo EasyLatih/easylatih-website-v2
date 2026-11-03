@@ -207,91 +207,151 @@
     return {url:data.publicUrl,path};
   }
 
+  // Onboarding save. This is the single save path (it replaces onboarding-save-fix.js,
+  // which used to intercept the form and run this same logic).
+  let savingOnboarding=false;
+
+  function onboardingNotice(text,type='info'){
+    msg('onboardingMessage',text,type);
+    const el=$('onboardingMessage');
+    if(el&&text) requestAnimationFrame(()=>el.scrollIntoView({behavior:'smooth',block:'center'}));
+  }
+
+  function errorText(err){
+    if(err instanceof Error) return err.message;
+    if(err&&typeof err==='object') return String(err.message||err.details||err.hint||JSON.stringify(err));
+    return String(err||'Unable to save trainer onboarding.');
+  }
+
+  function validateTttStatus(value){
+    const status=String(value||'').trim();
+    if(!status) throw new Error('Please answer Yes or No for HRD Corp TTT / TTT Exemption.');
+    if(/^HRD Corp TTT Eligibility:\s*No$/i.test(status)||/^HRD Corp TTT:\s*No$/i.test(status)) return status;
+    if(/^HRD Corp TTT Eligibility:\s*Yes\s*\|\s*Type:\s*(HRD Corp TTT|HRD Corp TTT Exempted)\s*\|\s*Accreditation:\s*(Accredited|Pre-Accredited|Non-Accredited)\s*\|\s*Reference No:\s*(.+)$/i.test(status)) return status;
+    // Records saved with the earlier onboarding format.
+    if(/^HRD Corp TTT:\s*Yes\s*\|\s*Accreditation:\s*(Accredited|Pre-Accredited|Non-Accredited)\s*\|\s*TTT Certificate No:\s*.+$/i.test(status)) return status;
+    throw new Error('Please complete your HRD Corp TTT / Exemption type, trainer status and certificate/reference number.');
+  }
+
   async function saveOnboarding(e){
     e.preventDefault();
-    if(!user)return;
-    try{await refreshProfile();}catch(err){return msg('onboardingMessage',err.message||'Unable to refresh trainer status.','danger');}
-    if(!['ONBOARDING','ACTIVE'].includes(profile.collaboration_status)){
-      return msg('onboardingMessage','Please accept the Trainer Collaboration Terms before completing onboarding.','warning');
-    }
-    const f=new FormData(e.currentTarget);
-    if(!f.get('photo_consent')) return msg('onboardingMessage','Photo and marketing consent is required for an approved EasyLatih trainer profile.','danger');
+    const form=e.currentTarget;
+    // The TTT question (onboarding-ttt-override.js) checks its own fields and shows inline hints.
+    const ttt=window.EasyLatihOnboardingTtt;
+    if(ttt&&!ttt.validate()) return;
+    if(savingOnboarding) return;
+    savingOnboarding=true;
+    const button=form.querySelector('button[type="submit"]');
+    const oldLabel=button?.textContent||'Save Trainer Onboarding';
+    if(button){button.disabled=true;button.textContent='Saving…';}
+    onboardingNotice('Checking your onboarding details…','info');
 
-    const fullName=String($('etris_full_name')?.value||'').trim();
-    const identityNo=formatIdentityNo($('etris_identity_no')?.value||'');
-    const race=String($('etris_race')?.value||'').trim();
-    const mobile=String($('etris_mobile')?.value||'').trim();
-    const email=String($('etris_email')?.value||profile.email||user.email||'').trim();
-    const tttStatus=String(f.get('ttt_status')||'').trim();
-    const academic=collectRepeatRows('academicQualificationRows',['qualification','year_awarded','institution']);
-    const certifications=collectRepeatRows('professionalCertificationRows',['certification','certification_body','year_awarded']);
-    const career=collectRepeatRows('careerExperienceRows',['year_from','year_to','position','company_organization']);
-    const training=collectRepeatRows('trainingExperienceRows',['year_from','year_to','training_program_conducted']);
-
+    let uploadedNewPath=null;
     try{
+      const {data:userData,error:userError}=await client.auth.getUser();
+      if(userError) throw userError;
+      const current=userData?.user;
+      if(!current) throw new Error('Your login session has expired. Please log in again.');
+
+      const [{data:freshProfile,error:profileError},{data:freshOnboarding,error:onboardingError}]=await Promise.all([
+        client.from('profiles').select('*').eq('id',current.id).single(),
+        client.from('trainer_onboarding').select('*').eq('trainer_id',current.id).maybeSingle()
+      ]);
+      if(profileError) throw profileError;
+      if(onboardingError) throw onboardingError;
+      if(!['ONBOARDING','ACTIVE'].includes(freshProfile.collaboration_status)) throw new Error('Please accept the Trainer Collaboration Terms before completing onboarding.');
+      if(!$('photoConsent')?.checked) throw new Error('Please tick the photo and marketing consent checkbox.');
+
+      const fullName=String($('etris_full_name')?.value||'').trim();
+      const identityNo=formatIdentityNo($('etris_identity_no')?.value||'');
+      const race=String($('etris_race')?.value||'').trim();
+      const mobile=String($('etris_mobile')?.value||'').trim();
+      const email=String($('etris_email')?.value||freshProfile.email||current.email||'').trim();
       if(!fullName||!identityNo||!race||!mobile||!email) throw new Error('Please complete all Personal Details required for eTRiS.');
-      if(isNumericIdentity(identityNo) && !/^\d{6}-\d{2}-\d{4}$/.test(identityNo)) throw new Error('Malaysian IC number must contain 12 digits and will be saved in the format 030303-03-3333.');
+      if(isNumericIdentity(identityNo)&&!/^\d{6}-\d{2}-\d{4}$/.test(identityNo)) throw new Error('Malaysian IC number must contain 12 digits.');
+
+      const academic=collectRepeatRows('academicQualificationRows',['qualification','year_awarded','institution']);
+      const certifications=collectRepeatRows('professionalCertificationRows',['certification','certification_body','year_awarded']);
+      const career=collectRepeatRows('careerExperienceRows',['year_from','year_to','position','company_organization']);
+      const training=collectRepeatRows('trainingExperienceRows',['year_from','year_to','training_program_conducted']);
       validateCompleteRows(academic,['qualification','year_awarded','institution'],'academic qualification');
       if(certifications.some(row=>['certification','certification_body','year_awarded'].some(field=>!row[field]))) throw new Error('Please complete all fields for each professional certification, or remove the incomplete entry.');
       validateCompleteRows(career,['year_from','year_to','position','company_organization'],'career experience');
       validateCompleteRows(training,['year_from','year_to','training_program_conducted'],'training experience');
-      if(!tttStatus) throw new Error('Please provide your HRD Corp TTT / Trainer Status.');
 
-      msg('onboardingMessage','Saving eTRiS trainer profile…','info');
+      const tttStatus=validateTttStatus($('onboarding_ttt')?.value);
+      const now=new Date().toISOString();
+
+      let photoUrl=freshOnboarding?.profile_photo_url||null;
+      let photoPath=freshOnboarding?.profile_photo_storage_path||null;
+      const oldPhotoPath=photoPath;
       const photoFile=$('profilePhoto')?.files?.[0]||null;
-      const oldPhotoPath=onboarding?.profile_photo_storage_path||null;
-      let photoUrl=onboarding?.profile_photo_url||null;
-      let photoPath=oldPhotoPath;
       if(photoFile){
+        onboardingNotice('Uploading trainer photo…','info');
+        user=current;
         const uploaded=await uploadPhoto(photoFile);
-        photoUrl=uploaded.url; photoPath=uploaded.path;
+        photoUrl=uploaded.url; photoPath=uploaded.path; uploadedNewPath=uploaded.path;
       }
       if(!photoUrl) throw new Error('Please upload a professional trainer profile photo.');
 
-      const profileUpdate=await client.from('profiles').update({full_name:fullName,phone:mobile,updated_at:new Date().toISOString()}).eq('id',user.id);
+      onboardingNotice('Saving eTRiS trainer profile…','info');
+      const profileUpdate=await client.from('profiles').update({full_name:fullName,phone:mobile,updated_at:now}).eq('id',current.id);
       if(profileUpdate.error) throw profileUpdate.error;
 
-      const etrisRow={
-        trainer_id:user.id,
+      const etrisSave=await client.from('trainer_etris_profiles').upsert({
+        trainer_id:current.id,
         identity_no:identityNo,
         race,
         academic_qualifications:academic,
         professional_certifications:certifications,
         career_experience:career,
         training_experience:training,
-        updated_at:new Date().toISOString()
-      };
-      const etrisSave=await client.from('trainer_etris_profiles').upsert(etrisRow,{onConflict:'trainer_id'});
+        updated_at:now
+      },{onConflict:'trainer_id'});
       if(etrisSave.error) throw etrisSave.error;
 
-      const now=new Date().toISOString();
-      const row={
-        trainer_id:user.id,
+      const consentAt=freshOnboarding?.photo_consent_at||now;
+      const onboardingSave=await client.from('trainer_onboarding').upsert({
+        trainer_id:current.id,
         academic_qualification:academic.map(x=>`${x.qualification} (${x.year_awarded}) - ${x.institution}`).join('\n'),
         professional_certifications:certifications.map(x=>`${x.certification} - ${x.certification_body} (${x.year_awarded})`).join('\n'),
         working_experience:career.map(x=>`${x.year_from}-${x.year_to}: ${x.position}, ${x.company_organization}`).join('\n'),
         training_experience:training.map(x=>`${x.year_from}-${x.year_to}: ${x.training_program_conducted}`).join('\n'),
-        industry_experience:onboarding?.industry_experience||'',
+        industry_experience:freshOnboarding?.industry_experience||'',
         ttt_status:tttStatus,
         profile_photo_url:photoUrl,
         profile_photo_storage_path:photoPath,
         photo_consent_version:cfg.collaborationTermsVersion,
-        photo_consent_at:onboarding?.photo_consent_at||now,
-        onboarding_completed_at:onboarding?.onboarding_completed_at||now,
+        photo_consent_at:consentAt,
+        onboarding_completed_at:freshOnboarding?.onboarding_completed_at||now,
         updated_at:now
-      };
-      const {error}=await client.from('trainer_onboarding').upsert(row,{onConflict:'trainer_id'});
-      if(error)throw error;
-      if(!onboarding?.photo_consent_at){
-        const agreement=await client.from('trainer_agreements').insert({trainer_id:user.id,agreement_type:'PHOTO_MARKETING_CONSENT',version:cfg.collaborationTermsVersion,accepted_at:row.photo_consent_at});
-        if(agreement.error)throw agreement.error;
+      },{onConflict:'trainer_id'});
+      if(onboardingSave.error) throw onboardingSave.error;
+
+      if(!freshOnboarding?.photo_consent_at){
+        const {data:existingAgreement,error:agreementReadError}=await client.from('trainer_agreements')
+          .select('id').eq('trainer_id',current.id).eq('agreement_type','PHOTO_MARKETING_CONSENT').eq('version',cfg.collaborationTermsVersion).maybeSingle();
+        if(agreementReadError) throw agreementReadError;
+        if(!existingAgreement){
+          const agreement=await client.from('trainer_agreements').insert({trainer_id:current.id,agreement_type:'PHOTO_MARKETING_CONSENT',version:cfg.collaborationTermsVersion,accepted_at:consentAt});
+          if(agreement.error) throw agreement.error;
+        }
       }
+
       if(photoFile&&oldPhotoPath&&oldPhotoPath!==photoPath){
         await client.storage.from('trainer-profile-photos').remove([oldPhotoPath]);
       }
-      msg('onboardingMessage','eTRiS trainer profile saved and onboarding marked complete.','success');
-      await loadOnboarding();
-    }catch(err){msg('onboardingMessage',err.message||'Unable to save trainer profile.','danger')}
+
+      onboardingNotice('Trainer onboarding saved successfully. Your journey status is being refreshed…','success');
+      if(button) button.textContent='Saved ✓';
+      setTimeout(()=>location.reload(),900);
+    }catch(err){
+      if(uploadedNewPath) await client.storage.from('trainer-profile-photos').remove([uploadedNewPath]).catch(()=>{});
+      onboardingNotice(errorText(err),'danger');
+      if(button){button.disabled=false;button.textContent=oldLabel;}
+    }finally{
+      savingOnboarding=false;
+    }
   }
 
   async function loadProgrammeEditor(){
@@ -494,7 +554,8 @@
   }
 
   function wire(){
-    $('onboardingForm')?.addEventListener('submit',saveOnboarding);
+    const onboardingForm=$('onboardingForm');
+    if(onboardingForm){onboardingForm.noValidate=true;onboardingForm.addEventListener('submit',saveOnboarding);}
     $('profilePhoto')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)renderPhoto(URL.createObjectURL(f));});
     $('programmeProposal')?.addEventListener('change',e=>{
       const proposal=eligibleProposals.find(p=>p.id===e.target.value);
@@ -506,5 +567,11 @@
     $('acceptTermsButton')?.addEventListener('click',refreshAfterTermsAcceptance);
   }
 
-  document.addEventListener('DOMContentLoaded',async()=>{buildEtrisFields();wire();await loadOnboarding();});
+  // Add-on scripts (TTT question, accordion) wait for these instead of polling the page.
+  const announce=name=>document.dispatchEvent(new CustomEvent(name));
+  document.addEventListener('DOMContentLoaded',async()=>{
+    buildEtrisFields();wire();
+    announce('easylatih:onboarding-built');
+    try{await loadOnboarding();}finally{announce('easylatih:onboarding-loaded');}
+  });
 })();

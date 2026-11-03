@@ -195,14 +195,16 @@
     const auth = await client.auth.getUser();
     user = auth.data?.user || null;
     if (!user) return;
-    let attempts = 0;
-    const timer = setInterval(async () => {
-      attempts += 1;
-      if (buildCard()) {
-        clearInterval(timer);
-        await loadProfile();
-      } else if (attempts >= 40) clearInterval(timer);
-    }, 150);
+    // Sit below the Supporting Documents card when it exists; otherwise below the onboarding form.
+    let done = false;
+    const place = async () => {
+      if (done || !buildCard()) return;
+      done = true;
+      await loadProfile();
+    };
+    if ($('supportingDocumentsCard')) return place();
+    document.addEventListener('easylatih:documents-card-ready', place, { once: true });
+    setTimeout(place, 3000);
   }
 
   document.addEventListener('DOMContentLoaded', init);
