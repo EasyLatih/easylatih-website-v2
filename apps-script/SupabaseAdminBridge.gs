@@ -38,13 +38,15 @@ function supabaseAdminSession_(accessToken) {
   // Use the admin's own row in the Agents sheet when one matches their email,
   // otherwise the first active admin row, so the Agent Portal shows their prospects.
   const email = String(user.email || '').trim().toLowerCase();
-  const rows = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME).getDataRange().getValues();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const cols = agentColumns_(sheet);
+  const rows = sheet.getDataRange().getValues();
   let match = null;
   let fallback = null;
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const role = String(row[6] || '').trim().toUpperCase();
-    if (String(row[7]).toUpperCase() !== 'ACTIVE' || ADMIN_ROLES.indexOf(role) === -1) continue;
+    const role = String(row[cols.role] || '').trim().toUpperCase();
+    if (String(row[cols.status]).trim().toUpperCase() !== 'ACTIVE' || ADMIN_ROLES.indexOf(role) === -1) continue;
     if (!fallback) fallback = row;
     if (email && row.some(cell => String(cell).trim().toLowerCase() === email)) { match = row; break; }
   }

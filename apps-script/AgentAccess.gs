@@ -30,8 +30,6 @@ const AGENT_COL_AGREEMENT = "Data Agreement";
 const AGENT_COL_DEACTIVATED = "Deactivated At";
 const AGENT_COL_INVITED = "Login Invite Sent";
 const AGENT_COL_INVITE_EMAIL = "Login Invite Email";
-const AGENT_STATUS_COL = 7; // 0-based, "ACTIVE" / "INACTIVE"
-const AGENT_ROLE_COL = 6;
 const HOUSE_DEFAULT = { id: "EASYLATIH", name: "Easy Latih" };
 
 /* ---------- Agents sheet columns ---------- */
@@ -42,9 +40,16 @@ function agentSheet_() {
 
 // Finds (and if needed adds) the extra columns by header name. 0-based indexes.
 function agentColumns_(sheet) {
-  const width = Math.max(sheet.getLastColumn(), AGENT_STATUS_COL + 1);
+  // Columns are found by their header, so adding, removing or moving columns in
+  // the Agents sheet is safe. Agent ID and Name stay in columns A and B.
+  const width = Math.max(sheet.getLastColumn(), 2);
   const header = sheet.getRange(1, 1, 1, width).getValues()[0].map(h => String(h).trim());
   const find = name => header.findIndex(h => h.toLowerCase() === name.toLowerCase());
+  const status = find("Status");
+  const role = find("Role");
+  if (status === -1 || role === -1) {
+    throw new Error('Sheet Agents perlu lajur bertajuk "Status" dan "Role".');
+  }
   const ensure = name => {
     let i = find(name);
     if (i === -1) {
@@ -55,6 +60,8 @@ function agentColumns_(sheet) {
     return i;
   };
   const cols = {
+    status: status,
+    role: role,
     lastLogin: ensure(AGENT_COL_LAST_LOGIN),
     agreement: ensure(AGENT_COL_AGREEMENT),
     deactivated: ensure(AGENT_COL_DEACTIVATED),
@@ -149,12 +156,12 @@ function agreementRequired_() {
 
 /* ---------- daily job ---------- */
 
-function houseOwner_(agentRows) {
+function houseOwner_(agentRows, cols) {
   const props = PropertiesService.getScriptProperties();
   const id = props.getProperty("HOUSE_AGENT_ID");
   if (id) return { id: id, name: props.getProperty("HOUSE_AGENT_NAME") || HOUSE_DEFAULT.name };
   const admin = agentRows.find(r =>
-    isAdminRole_(r[AGENT_ROLE_COL]) && String(r[AGENT_STATUS_COL]).toUpperCase() === "ACTIVE");
+    isAdminRole_(r[cols.role]) && String(r[cols.status]).trim().toUpperCase() === "ACTIVE");
   return admin ? { id: String(admin[0]), name: String(admin[1]) } : HOUSE_DEFAULT;
 }
 
@@ -173,8 +180,8 @@ function runAgentCheck_(dryRun) {
 
   rows.forEach((row, i) => {
     const id = String(row[0] || "").trim();
-    if (!id || isAdminRole_(row[AGENT_ROLE_COL])) return;
-    const status = String(row[AGENT_STATUS_COL] || "").trim().toUpperCase();
+    if (!id || isAdminRole_(row[cols.role])) return;
+    const status = String(row[cols.status] || "").trim().toUpperCase();
 
     if (status !== "ACTIVE") {
       inactive[id] = String(row[1] || id);
@@ -188,7 +195,7 @@ function runAgentCheck_(dryRun) {
       summary.deactivated.push(id + " (" + row[1] + ")");
       inactive[id] = String(row[1] || id);
       if (!dryRun) {
-        sheet.getRange(i + 2, AGENT_STATUS_COL + 1).setValue("INACTIVE");
+        sheet.getRange(i + 2, cols.status + 1).setValue("INACTIVE");
         sheet.getRange(i + 2, cols.deactivated + 1).setValue(now);
         setRevoked_(id, true);
         props.deleteProperty("AGENT_WARN_" + id);
@@ -222,7 +229,7 @@ function runAgentCheck_(dryRun) {
     const poolSheet = poolSheet_();
     const prospects = readRows_(prospectSheet, PROSPECT_WIDTH);
     const pool = readRows_(poolSheet, POOL_HEADERS.length);
-    const house = houseOwner_(rows);
+    const house = houseOwner_(rows, cols);
 
     prospects.forEach((row, i) => {
       const owner = String(row[1] || "");
