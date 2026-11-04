@@ -141,6 +141,43 @@
     }
     return '';
   }
+  // WhatsApp to the PIC with the same bilingual content as the confirmation email.
+  function waNumber(p) { const d = String(p || '').replace(/\D/g, ''); return !d ? '' : d.startsWith('0') ? '6' + d : d; }
+  function waMessage(r) {
+    const p = detail.program, s = detail.settings || {};
+    const venue = p.venue + (p.deliveryMode ? ' (' + p.deliveryMode + ')' : '');
+    if (r.stage.key === 'CANCELLED') {
+      const why = (r.remarks || '').replace(/^Not approved:?\s*/i, '');
+      return ['Tuan/Puan ' + (r.picName || '') + ',', '',
+        'Terima kasih atas minat anda terhadap program ' + p.programName + ' (No. pendaftaran ' + r.registrationId + '). Dukacita dimaklumkan bahawa kami tidak dapat mengesahkan pendaftaran anda bagi sesi ini.' + (why ? ' Sebab: ' + why : ''),
+        '', '---', '',
+        'Dear ' + (r.picName || 'Sir/Madam') + ',', '',
+        'Thank you for your interest in ' + p.programName + ' (registration no. ' + r.registrationId + '). We regret that we are unable to confirm your registration for this session.' + (why ? ' Reason: ' + why : ''),
+        '', 'Easy Latih Consultancy'].join('\n');
+    }
+    const msOpen = r.paymentMethod === 'FREE' ? 'Pendaftaran anda bagi program percuma ini telah diluluskan dan disahkan. Tiada sebarang bayaran dikenakan.'
+      : r.paymentMethod === 'HRD' ? 'Kami telah menerima kelulusan geran HRD Corp anda. Pendaftaran anda telah disahkan.'
+      : 'Kami telah menerima bayaran anda. Pendaftaran anda telah disahkan.';
+    const enOpen = r.paymentMethod === 'FREE' ? 'Your registration for this free programme has been approved and confirmed. There is no fee.'
+      : r.paymentMethod === 'HRD' ? 'We have received your HRD Corp grant approval. Your registration is confirmed.'
+      : 'We have received your payment. Your registration is confirmed.';
+    const ms = ['Tuan/Puan ' + (r.picName || '') + ',', '', msOpen, '',
+      '*Program:* ' + p.programName, '*Tarikh:* ' + p.programDate, '*Tempat:* ' + venue, '*Bilangan peserta:* ' + r.requestedPax, '*No. pendaftaran:* ' + r.registrationId];
+    if (s.joiningInstructions) ms.push('', '*Arahan kehadiran:*', s.joiningInstructions);
+    if (s.whatsAppLink) ms.push('', '*Kumpulan WhatsApp program:* ' + s.whatsAppLink, 'Sila kongsikan pautan ini kepada semua peserta yang anda daftarkan.');
+    const en = ['Dear ' + (r.picName || 'Sir/Madam') + ',', '', enOpen, '',
+      '*Programme:* ' + p.programName, '*Date:* ' + p.programDate, '*Venue:* ' + venue, '*Participants:* ' + r.requestedPax, '*Registration no.:* ' + r.registrationId];
+    if (s.joiningInstructions) en.push('', '*Joining instructions:*', s.joiningInstructions);
+    if (s.whatsAppLink) en.push('', '*Programme WhatsApp group:* ' + s.whatsAppLink, 'Please share this link with all the participants you registered.');
+    return ms.concat(['', '---', ''], en, ['', 'Terima kasih / Thank you.', 'Easy Latih Consultancy']).join('\n');
+  }
+  function waButton(r) {
+    const n = waNumber(r.picPhone);
+    const st = r.stage.key;
+    const show = (['CONFIRMED', 'ATTENDED'].includes(st)) || (st === 'CANCELLED' && r.stage.label === 'Not approved');
+    if (!n || !show) return '';
+    return '<a class="small wa-btn" style="display:inline-flex;align-items:center;padding:6px 11px;border-radius:8px;font-size:.74rem;font-weight:600;background:#25D366;color:#fff;text-decoration:none" href="https://wa.me/' + n + '?text=' + encodeURIComponent(waMessage(r)) + '" target="_blank" rel="noopener">' + (st === 'CANCELLED' ? 'WhatsApp makluman' : 'WhatsApp pengesahan') + '</a>';
+  }
   function regCard(r) {
     const st = r.stage, id = esc(r.registrationId);
     const next = st.next === 'PAYMENT' ? '<button type="button" class="primary small" data-open-form="PAYMENT" data-id="'+id+'">Payment received</button>'
@@ -156,7 +193,7 @@
       '<p class="who">'+esc(r.picName)+' · <a href="mailto:'+esc(r.picEmail)+'">'+esc(r.picEmail)+'</a>'+(r.picPhone?' · '+esc(r.picPhone)+' '+phoneLink(r.picPhone):'')+'<br>'+esc(r.registrationId)+' · '+r.requestedPax+' pax'+(extra?' · '+extra:'')+'</p></div>' +
       '<div class="chips" style="align-content:flex-start;justify-content:flex-end"><span class="chip">'+(r.paymentMethod==='HRD'?'HRD Corp':r.paymentMethod==='FREE'?'Free programme':'Self payment')+'</span><span class="chip '+(STAGE_CLASS[st.key]||'')+'">'+esc(st.label)+'</span></div></div>' +
       stepsLine(r) + people +
-      '<div class="act">'+next+resend+cancel+receipt+'</div><div class="inline-form" data-slot="'+id+'"></div></article>';
+      '<div class="act">'+next+resend+waButton(r)+cancel+receipt+'</div><div class="inline-form" data-slot="'+id+'"></div></article>';
   }
   function statusPanel(p) {
     const opts = ['DRAFT','TENTATIVE'].concat(p.status === 'CONFIRMED' ? ['CONFIRMED'] : []).concat(['CANCELLED','COMPLETED']);
@@ -252,7 +289,7 @@
         res = await call('regFreeDecision', {registrationId:id, decision:decision, remarks:f.remarks});
       }
       const warn = res && res.warnings && res.warnings.length ? res.warnings.join(' ') : '';
-      banner(warn ? 'Saved, but: '+warn : kind === 'PAYMENT' ? 'Payment recorded. Receipt and confirmation emailed to the PIC.' : kind === 'GRANT' ? 'Grant recorded. Confirmation emailed to the PIC.' : kind === 'CANCEL' ? 'Registration cancelled.' : kind === 'APPROVE' ? (res && res.decision === 'REJECTED' ? 'Registration rejected. The PIC has been emailed.' : 'Registration approved. Confirmation emailed to the PIC.') : 'Step recorded.', warn ? 'danger' : 'success');
+      banner(warn ? 'Saved, but: '+warn : kind === 'PAYMENT' ? 'Payment recorded. Receipt and confirmation emailed to the PIC.' : kind === 'GRANT' ? 'Grant recorded. Confirmation emailed to the PIC.' : kind === 'CANCEL' ? 'Registration cancelled.' : kind === 'APPROVE' ? (res && res.decision === 'REJECTED' ? 'Registration rejected. The PIC has been emailed. Use the green WhatsApp button to message them too.' : 'Registration approved. Confirmation emailed to the PIC. Use the green WhatsApp button to send it by WhatsApp too.') : 'Step recorded.', warn ? 'danger' : 'success');
       detail = await call('regProgramDetail', {courseId: detail.program.courseId}); renderDetail();
     } catch (e) { btn.disabled = false; btn.textContent = old; banner(e.message, 'danger'); }
   }
