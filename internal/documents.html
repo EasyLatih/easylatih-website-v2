@@ -23,9 +23,19 @@ label.stack{gap:5px;font-size:.76rem;font-weight:600;color:var(--navy)}
 .result{margin-top:12px;display:flex;flex-direction:column;gap:6px}
 .result .item a{font-size:.8rem}
 .people{display:flex;flex-direction:column;gap:4px;max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:6px 10px}
-.people label{display:flex;gap:9px;align-items:center;font-size:.8rem;padding:5px 0;border-bottom:1px solid #edf2f5}
-.people label:last-child{border-bottom:0}
-.people input{width:16px;height:16px;accent-color:var(--green)}
+.person{border-bottom:1px solid #edf2f5;padding:5px 0}
+.person:last-child{border-bottom:0}
+.person-head{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.people .person-head label{display:flex;gap:9px;align-items:center;font-size:.8rem;flex:1;min-width:0}
+.people .person-head label span{min-width:0;overflow-wrap:anywhere}
+.person.editing{background:var(--soft);margin:0 -10px;padding:6px 10px;border-radius:8px}
+.amend{margin:8px 0 6px;padding-top:8px;border-top:1px dashed var(--line)}
+.amend .actions{margin-top:2px}
+.tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.tag{font-size:.64rem;font-weight:600;padding:2px 7px;border-radius:99px;background:#fff4e8;color:#a5520f}
+.tag.ok{background:#e9f6ef;color:#1d7a46}
+.hint.warn{color:#a5520f}
+.people input[type=checkbox]{flex:none;width:16px;height:16px;accent-color:var(--green)}
 .people small{color:var(--muted)}
 .counts{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;margin-top:8px}
 .counts b{display:block;font-size:1.15rem;color:var(--navy);font-variant-numeric:tabular-nums}
@@ -149,7 +159,7 @@ th{background:var(--soft);color:var(--muted);font-weight:600;text-transform:uppe
     <div class="layout">
       <div class="col-main">
         <section class="panel">
-          <div class="panel-head"><div><h2>Programme certificates</h2><p>Mark attendance, then generate and email certificates for everyone who attended.</p></div><button type="button" class="small" id="c-reloadPrograms">↻ Refresh</button></div>
+          <div class="panel-head"><div><h2>Programme certificates</h2><p>Mark attendance, then generate and email certificates for everyone who attended. If someone else came in place of a registered participant, press <b>Edit</b> on that name.</p></div><button type="button" class="small" id="c-reloadPrograms">↻ Refresh</button></div>
           <div class="row">
             <label class="stack" style="flex:1 1 280px">Programme<select id="c-program"><option value="">Loading programmes…</option></select></label>
             <button type="button" id="c-loadPeople">Load participants</button>

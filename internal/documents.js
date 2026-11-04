@@ -133,17 +133,59 @@
       $('c-program').innerHTML = (list && list.length) ? '<option value="">Select programme</option>' + list.map(p => '<option value="'+esc(p.courseId)+'">'+esc(p.programName)+' ('+esc(p.programDate)+')</option>').join('') : '<option value="">No active programmes</option>';
     } catch (e) { $('c-program').innerHTML = '<option value="">Programmes could not be loaded</option>'; note('c-result', esc(e.message), 'danger'); }
   }
+  let editing = -1;
+  function personRow(p, i) {
+    const tags = [];
+    if (p.originalName && p.originalName !== p.participantName) tags.push('<span class="tag">Replaces '+esc(p.originalName)+'</span>');
+    if (p.certificateStatus === 'GENERATED' || p.certificateUrl) tags.push('<span class="tag ok">Certificate made</span>');
+    if (p.emailStatus === 'SENT') tags.push('<span class="tag ok">Emailed</span>');
+    const head = '<div class="person-head"><label><input type="checkbox" data-i="'+i+'"'+(p.on?' checked':'')+'> <span>'+esc(p.participantName)+' <small>'+esc(p.icNo || '')+(p.email ? ' · '+esc(p.email) : '')+'</small>'+(tags.length ? '<span class="tags">'+tags.join('')+'</span>' : '')+'</span></label>'+
+      (canAmend ? '<button type="button" class="small" data-edit="'+i+'">'+(editing === i ? 'Close' : 'Edit')+'</button>' : '')+'</div>';
+    if (editing !== i) return '<div class="person">'+head+'</div>';
+    return '<div class="person editing">'+head+
+      '<form class="amend form-grid" data-amend="'+i+'">'+
+      '<p class="hint wide">Someone else attended? Enter their details. The certificate will be issued in this name.</p>'+
+      '<label class="wide">Full name (as on certificate)<input name="participantName" required value="'+esc(p.participantName)+'"></label>'+
+      '<label>IC / passport no.<input name="icNo" value="'+esc(p.icNo || '')+'" placeholder="e.g. 900101065555"></label>'+
+      '<label>Phone<input name="phone" value="'+esc(p.phone || '')+'" placeholder="e.g. 0123456789"></label>'+
+      '<label class="wide">Email (certificate is sent here)<input name="email" type="email" value="'+esc(p.email || '')+'"></label>'+
+      ((p.certificateStatus === 'GENERATED' || p.certificateUrl) ? '<p class="hint wide warn">A certificate was already made for '+esc(p.participantName)+'. Changing the name or IC clears it, so it can be generated again in the new name.</p>' : '')+
+      '<div class="actions wide"><button type="submit" class="primary">Save details</button><button type="button" data-cancel="1">Cancel</button></div>'+
+      '</form></div>';
+  }
   function renderPeople() {
     $('c-people').hidden = false;
     const att = people.filter(p => p.on).length;
-    $('c-peopleCount').textContent = people.length + ' participants · ' + att + ' marked attended';
-    $('c-peopleList').innerHTML = people.length ? people.map((p, i) => '<label><input type="checkbox" data-i="'+i+'"'+(p.on?' checked':'')+'> <span>'+esc(p.participantName)+' <small>'+esc(p.icNo || '')+'</small></span></label>').join('') : '<p class="empty">No participants registered for this programme.</p>';
+    const swapped = people.filter(p => p.originalName && p.originalName !== p.participantName).length;
+    $('c-peopleCount').textContent = people.length + ' participants · ' + att + ' marked attended' + (swapped ? ' · ' + swapped + ' replaced' : '');
+    $('c-peopleList').innerHTML = people.length ? people.map(personRow).join('') : '<p class="empty">No participants registered for this programme.</p>';
+    const f = $('c-peopleList').querySelector('form.amend input[name=participantName]'); if (f) f.focus();
   }
+  let canAmend = false;
   async function loadPeople(btn) {
     const c = val('c-program'); if (!c) return note('c-result', 'Choose a programme first.', 'danger');
     try {
-      const list = await busy(btn, 'Loading…', () => call('attendanceParticipants', {courseId:c}));
-      people = (list || []).map(p => ({...p, on: p.attendanceStatus === 'ATTENDED'})); note('c-result', ''); renderPeople();
+      const [list, details] = await busy(btn, 'Loading…', () => Promise.all([
+        call('attendanceParticipants', {courseId:c}),
+        call('attendanceDetails', {courseId:c}).catch(() => null)
+      ]));
+      canAmend = Array.isArray(details);
+      const byRow = {}; (details || []).forEach(d => { byRow[Number(d.rowNumber)] = d; });
+      editing = -1;
+      people = (list || []).map(p => ({...(byRow[Number(p.rowNumber)] || {}), ...p, on: p.attendanceStatus === 'ATTENDED'}));
+      note('c-result', canAmend ? '' : 'Editing participant details needs the latest Apps Script update. Attendance still works.', canAmend ? '' : 'info'); renderPeople();
+    } catch (e) { note('c-result', esc(e.message), 'danger'); }
+  }
+  async function amendPerson(form) {
+    const i = Number(form.dataset.amend), p = people[i], c = val('c-program');
+    const fd = new FormData(form), get = k => String(fd.get(k) || '').trim();
+    const btn = form.querySelector('button[type=submit]');
+    try {
+      const r = await busy(btn, 'Saving…', () => call('attendanceAmend', {courseId:c, rowNumber:Number(p.rowNumber), expectedName:p.participantName, participantName:get('participantName'), icNo:get('icNo'), email:get('email'), phone:get('phone')}));
+      Object.assign(p, {participantName:r.participantName, icNo:r.icNo, email:r.email, phone:r.phone, originalName:r.originalName});
+      if (r.resetCertificate) Object.assign(p, {certificateStatus:'', certificateUrl:'', emailStatus:''});
+      p.on = true; editing = -1; renderPeople();
+      note('c-result', 'Saved '+esc(r.participantName)+' and ticked as attended. Press <b>Save attendance</b> when you finish ticking'+(r.resetCertificate ? ', then generate certificates again for this person' : '')+'.', 'success');
     } catch (e) { note('c-result', esc(e.message), 'danger'); }
   }
   async function saveAttendance(btn) {
@@ -255,7 +297,13 @@
     $('jd14Form').addEventListener('submit', jd14Generate);
     $('c-reloadPrograms').onclick = () => loadPrograms();
     $('c-loadPeople').onclick = e => loadPeople(e.currentTarget);
-    $('c-peopleList').addEventListener('change', e => { const i = e.target.dataset.i; if (i != null) { people[i].on = e.target.checked; renderPeople(); } });
+    $('c-peopleList').addEventListener('change', e => { const i = e.target.dataset.i; if (i != null) { people[i].on = e.target.checked; const n = people.filter(p => p.on).length; $('c-peopleCount').textContent = $('c-peopleCount').textContent.replace(/\d+ marked attended/, n + ' marked attended'); } });
+    $('c-peopleList').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.edit != null) { const i = Number(b.dataset.edit); editing = editing === i ? -1 : i; renderPeople(); }
+      else if (b.dataset.cancel) { editing = -1; renderPeople(); }
+    });
+    $('c-peopleList').addEventListener('submit', e => { e.preventDefault(); amendPerson(e.target); });
     $('c-all').onclick = () => { people.forEach(p => p.on = true); renderPeople(); };
     $('c-none').onclick = () => { people.forEach(p => p.on = false); renderPeople(); };
     $('c-saveAttendance').onclick = e => saveAttendance(e.currentTarget);

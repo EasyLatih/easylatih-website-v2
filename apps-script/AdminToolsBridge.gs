@@ -41,7 +41,9 @@ function handleAdminTools_(e) {
     if (params.payload) {
       try { payload = JSON.parse(params.payload); } catch (error) { throw new Error('Request data could not be read.'); }
     }
-    return adminToolsJson_({ success: true, data: actions[action](payload || {}) });
+    payload = payload || {};
+    if (action === 'attendanceAmend') payload.__adminEmail = admin.email;
+    return adminToolsJson_({ success: true, data: actions[action](payload) });
   } catch (error) {
     return adminToolsJson_({ success: false, message: String((error && error.message) || error) });
   }
@@ -90,6 +92,8 @@ function adminToolsActions_() {
     attendancePrograms: function () { return getProgramsForAttendance(); },
     attendanceParticipants: function (d) { return getParticipantsByCourse(String(d.courseId || '')); },
     attendanceUpdate: function (d) { return updateAttendance(String(d.courseId || ''), Array.isArray(d.attendanceList) ? d.attendanceList : []); },
+    attendanceDetails: function (d) { return adminParticipantDetails_(String(d.courseId || '')); },
+    attendanceAmend: function (d) { return adminAmendParticipant_(d || {}); },
     certGenerateAll: function (d) { return generateAllCertificates(String(d.courseId || '')); },
     certSendAll: function (d) { return sendAllCertificates(String(d.courseId || '')); },
 
@@ -106,4 +110,131 @@ function adminToolsJson_(value) {
   return ContentService
     .createTextOutput(JSON.stringify(value))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---------------------------------------------------------------------------
+// Attendance: amend a participant when someone else attends in their place.
+// Works on the Participants sheet by header name, so column order doesn't matter.
+// ---------------------------------------------------------------------------
+const ADMIN_AMEND_AUDIT_HEADERS_ = ['OriginalParticipantName', 'OriginalICNo', 'AmendedDate', 'AmendedBy'];
+
+function adminParticipantsSheet_() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Participants');
+  if (!sheet) throw new Error('The Participants sheet was not found.');
+  return sheet;
+}
+
+function adminHeaderMap_(sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const map = {};
+  headers.forEach(function (h, i) { const k = String(h || '').trim(); if (k) map[k] = i; });
+  return map;
+}
+
+function adminCell_(row, map, key) {
+  if (!(key in map)) return '';
+  const v = row[map[key]];
+  return String(v == null ? '' : v).trim();
+}
+
+// Name, IC, email, phone, certificate state and amendment trail for one programme.
+function adminParticipantDetails_(courseId) {
+  if (!courseId) throw new Error('Choose a programme first.');
+  const sheet = adminParticipantsSheet_();
+  const map = adminHeaderMap_(sheet);
+  if (sheet.getLastRow() < 2) return [];
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  const out = [];
+  values.forEach(function (r, i) {
+    if (adminCell_(r, map, 'CourseID') !== courseId) return;
+    out.push({
+      rowNumber: i + 2,
+      participantName: adminCell_(r, map, 'ParticipantName'),
+      icNo: adminCell_(r, map, 'ICNo'),
+      email: adminCell_(r, map, 'Email'),
+      phone: adminCell_(r, map, 'Phone'),
+      attendanceStatus: adminCell_(r, map, 'AttendanceStatus').toUpperCase(),
+      certificateStatus: adminCell_(r, map, 'CertificateStatus').toUpperCase(),
+      certificateUrl: adminCell_(r, map, 'CertificateURL'),
+      emailStatus: adminCell_(r, map, 'EmailStatus').toUpperCase(),
+      originalName: adminCell_(r, map, 'OriginalParticipantName')
+    });
+  });
+  return out;
+}
+
+function adminAmendParticipant_(d) {
+  const courseId = String(d.courseId || '').trim();
+  const rowNumber = Number(d.rowNumber);
+  const name = String(d.participantName || '').replace(/\s+/g, ' ').trim();
+  const ic = String(d.icNo || '').replace(/[\s-]/g, '').toUpperCase();
+  const email = String(d.email || '').trim().toLowerCase();
+  const phone = String(d.phone || '').replace(/[^\d+]/g, '');
+  if (!courseId || !(rowNumber >= 2)) throw new Error('Load the participants again, then try once more.');
+  if (!name) throw new Error('Participant name is required.');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('That email address doesn\'t look right.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sheet = adminParticipantsSheet_();
+    let map = adminHeaderMap_(sheet);
+    ['ParticipantName', 'CourseID'].forEach(function (k) { if (!(k in map)) throw new Error('The Participants sheet has no ' + k + ' column.'); });
+
+    // Add the audit columns at the end the first time this is used.
+    const missing = ADMIN_AMEND_AUDIT_HEADERS_.filter(function (h) { return !(h in map); });
+    if (missing.length) {
+      sheet.getRange(1, sheet.getLastColumn() + 1, 1, missing.length).setValues([missing]);
+      map = adminHeaderMap_(sheet);
+    }
+
+    if (rowNumber > sheet.getLastRow()) throw new Error('This participant is no longer in the sheet. Load the participants again.');
+    const range = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn());
+    const row = range.getValues()[0];
+
+    // Guard against the sheet having changed since the list was loaded.
+    if (adminCell_(row, map, 'CourseID') !== courseId) throw new Error('The participant list has changed. Load the participants again.');
+    const expected = String(d.expectedName || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const currentName = adminCell_(row, map, 'ParticipantName');
+    if (expected && currentName.replace(/\s+/g, ' ').toLowerCase() !== expected) throw new Error('The participant list has changed. Load the participants again.');
+
+    const set = function (key, value) { if (key in map) row[map[key]] = value; };
+    const nameChanged = currentName !== name || adminCell_(row, map, 'ICNo').toUpperCase() !== ic;
+
+    // Keep the first registered person on record; later edits don't overwrite it.
+    if (nameChanged && !adminCell_(row, map, 'OriginalParticipantName')) {
+      set('OriginalParticipantName', currentName);
+      set('OriginalICNo', adminCell_(row, map, 'ICNo'));
+    }
+    set('ParticipantName', name);
+    set('ICNo', ic);
+    set('Email', email);
+    set('Phone', phone);
+    set('AmendedDate', new Date());
+    set('AmendedBy', (d.__adminEmail || '').toString());
+
+    // A certificate made for the previous person must be made again.
+    let resetCertificate = false;
+    if (nameChanged && (adminCell_(row, map, 'CertificateURL') || adminCell_(row, map, 'CertificateStatus'))) {
+      ['CertificateURL', 'CertificateStatus', 'IssueDate', 'EmailStatus', 'EmailSentDate'].forEach(function (k) { set(k, ''); });
+      resetCertificate = true;
+    }
+
+    // IC and phone as plain text so leading zeros stay.
+    ['ICNo', 'Phone'].forEach(function (k) { if (k in map) sheet.getRange(rowNumber, map[k] + 1).setNumberFormat('@'); });
+    range.setValues([row]);
+    SpreadsheetApp.flush();
+
+    return {
+      rowNumber: rowNumber,
+      participantName: name,
+      icNo: ic,
+      email: email,
+      phone: phone,
+      originalName: adminCell_(row, map, 'OriginalParticipantName'),
+      resetCertificate: resetCertificate
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
