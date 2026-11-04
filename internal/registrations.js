@@ -11,7 +11,9 @@
   const nice = k => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(k || '')); return m ? Number(m[3])+' '+MON[Number(m[2])-1]+' '+m[1] : (k || ''); };
   const days = (a, b) => Math.round((Date.parse(b+'T00:00:00Z') - Date.parse(a+'T00:00:00Z')) / 86400000);
   const money = n => 'RM' + Number(n || 0).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const phoneLink = p => { const d = String(p || '').replace(/\D/g, ''); if (!d) return ''; const intl = d.startsWith('0') ? '6'+d : d; return '<a href="https://wa.me/'+intl+'" target="_blank" rel="noopener">WhatsApp</a>'; };
+  // Malaysian numbers: 012… -> 6012…; Sheets may have dropped the leading 0 (12…/11… with 9–10 digits) -> 6012…
+  const myIntl = p => { const d = String(p || '').replace(/\D/g, ''); if (!d) return ''; if (d.startsWith('0')) return '6' + d; if (/^1\d{8,9}$/.test(d)) return '60' + d; return d; };
+  const phoneLink = p => { const intl = myIntl(p); if (!intl) return ''; return '<a href="https://wa.me/'+intl+'" target="_blank" rel="noopener">WhatsApp</a>'; };
 
   function banner(msg, type) { const el = $('message'); el.textContent = msg || ''; el.dataset.type = type || 'info'; el.hidden = !msg; if (msg) window.scrollTo({top:0, behavior:'smooth'}); }
 
@@ -142,7 +144,7 @@
     return '';
   }
   // WhatsApp to the PIC with the same bilingual content as the confirmation email.
-  function waNumber(p) { const d = String(p || '').replace(/\D/g, ''); return !d ? '' : d.startsWith('0') ? '6' + d : d; }
+  function waNumber(p) { return myIntl(p); }
   function waMessage(r) {
     const p = detail.program, s = detail.settings || {};
     const venue = p.venue + (p.deliveryMode ? ' (' + p.deliveryMode + ')' : '');

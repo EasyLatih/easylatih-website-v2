@@ -97,7 +97,7 @@ function freeRegistrationSubmit_(data) {
       PICName: data.picName,
       PICPosition: data.picPosition,
       PICEmail: data.picEmail,
-      PICPhone: data.picPhone,
+      PICPhone: freeAsText_(data.picPhone),
       PaymentMethod: 'FREE',
       RequestedPax: data.participants.length,
       DiscountCode: '',
@@ -113,11 +113,11 @@ function freeRegistrationSubmit_(data) {
     data.participants.forEach(function (person) {
       freeAppendByHeaders_(peopleSheet, {
         ParticipantName: praText_(person.name),
-        ICNo: praText_(person.icNo),
+        ICNo: freeAsText_(praText_(person.icNo)),
         Email: praText_(person.email),
         PICName: data.picName,
         PICEmail: data.picEmail,
-        Phone: praText_(person.phone),
+        Phone: freeAsText_(praText_(person.phone)),
         CourseID: data.courseId,
         AttendanceStatus: 'REGISTERED',
         ProgramName: program.ProgramName,
@@ -163,6 +163,9 @@ function freeNextRegistrationId_(book) {
   sheet.getRange(row, 2, 1, 2).setValues([[next, month]]);
   return 'REG' + yy + '/' + String(month).padStart(2, '0') + '-' + String(next).padStart(4, '0');
 }
+
+// Keep leading zeros (phone 012…, IC 0501…): Sheets would turn digits into a number.
+function freeAsText_(v) { const t = praText_(v); return /^\d+$/.test(t) ? "'" + t : t; }
 
 function freeAppendByHeaders_(sheet, record) {
   if (!sheet) throw new Error('Sheet is missing.');
