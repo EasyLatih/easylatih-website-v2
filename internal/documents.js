@@ -132,11 +132,22 @@
   function jdLink(url, label) { const u = safeUrl(url); return u ? '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+label+' ↗</a>' : ''; }
   function jdItem(x) {
     const st = x.status || 'DRAFT';
-    const meta = [fmtDate(x.trainingStartDate), x.picName || x.picEmail ? 'PIC: '+(x.picName || '')+(x.picEmail ? ' · '+x.picEmail : '') : 'No PIC on record', st === 'SENT' ? 'Sent '+fmtDate(x.sentDate)+(x.sentTo ? ' to '+x.sentTo : '') : ''].filter(Boolean).map(esc).join(' · ');
+    const meta = [fmtDate(x.trainingStartDate), x.picName || x.picEmail ? 'PIC: '+(x.picName || '')+(x.picEmail ? ' · '+x.picEmail : '') : 'No PIC on record', x.sentDate ? 'Sent '+fmtDate(x.sentDate)+(x.sentTo ? ' to '+x.sentTo : '') : '', x.signedDate ? 'Signed copy received '+fmtDate(x.signedDate) : ''].filter(Boolean).map(esc).join(' · ');
     const acts = [jdLink(x.slidesUrl, 'Edit draft')];
     acts.push('<button type="button" class="small'+(st === 'DRAFT' ? ' primary' : '')+'" data-jfin="'+esc(x.jd14Id)+'">'+(st === 'DRAFT' ? 'Finalise PDF' : 'Re-finalise')+'</button>');
     if (x.pdfUrl) acts.push(jdLink(x.pdfUrl, 'Open PDF'));
-    if (x.pdfUrl) acts.push('<button type="button" class="small'+(st === 'FINAL' ? ' primary' : '')+'" data-jmail="'+esc(x.jd14Id)+'">'+(st === 'SENT' ? 'Resend to PIC' : 'Email PIC')+'</button>');
+    if (x.pdfUrl) acts.push('<button type="button" class="small'+(st === 'FINAL' ? ' primary' : '')+'" data-jmail="'+esc(x.jd14Id)+'">'+(st === 'SENT' || st === 'SIGNED' ? 'Resend to PIC' : 'Email PIC')+'</button>');
+    if (st === 'SENT') acts.push('<button type="button" class="small primary" data-jsigned="'+esc(x.jd14Id)+'">Signed JD14 received</button>');
+    // HRD Corp invoice, once the signed JD14 is back
+    const inv = [];
+    if (st === 'SIGNED' && !x.invoiceNo) inv.push('<button type="button" class="small primary" data-idraft="'+esc(x.jd14Id)+'">Create HRD Corp invoice draft</button>');
+    if (x.invoiceNo) {
+      inv.push(jdLink(x.invoiceDocUrl, 'Edit invoice draft'));
+      inv.push('<button type="button" class="small'+(x.invoiceStatus === 'DRAFT' ? ' primary' : '')+'" data-ifin="'+esc(x.jd14Id)+'">'+(x.invoiceStatus === 'FINAL' ? 'Re-finalise invoice' : 'Finalise invoice PDF')+'</button>');
+      if (x.invoicePdfUrl) inv.push(jdLink(x.invoicePdfUrl, 'Open invoice PDF'));
+      const dl = safeUrl(x.invoiceDownloadUrl); if (dl) inv.push('<a class="btnlink" href="'+esc(dl)+'" target="_blank" rel="noopener">⬇ Download PDF</a>');
+    }
+    const invBlock = inv.length ? '<div class="jd-inv"><div class="jd-meta"><b>HRD Corp invoice</b>'+(x.invoiceNo ? ' · '+esc(x.invoiceNo)+' · <span class="chip '+esc(x.invoiceStatus || 'DRAFT')+'">'+esc(x.invoiceStatus || 'DRAFT')+'</span>' : '')+'</div><div class="actions">'+inv.filter(Boolean).join('')+'</div></div>' : '';
     const form = emailJd === x.jd14Id ? '<form class="form-grid" data-jsend="'+esc(x.jd14Id)+'">'+
       '<label>PIC name<input name="picName" value="'+esc(x.picName || '')+'"></label>'+
       '<label>PIC email<input name="to" type="email" required value="'+esc(x.picEmail || '')+'"></label>'+
@@ -144,7 +155,7 @@
       '<p class="hint wide">The email is in Bahasa Malaysia then English, with the JD14 PDF attached. It asks the PIC to fill in signature, name, MyKad no., designation, company stamp and date, then reply to the email with the signed form.</p>'+
       '<div class="actions wide"><button type="submit" class="primary">Send email</button><button type="button" data-jcancel="1">Cancel</button></div></form>' : '';
     return '<div class="jd'+(openJd === x.jd14Id ? ' focus' : '')+'"><div class="jd-head"><div><div class="jd-title">'+esc(x.companyName)+'</div><div class="jd-meta">'+esc(x.courseTitle)+'</div><div class="jd-meta">'+meta+'</div></div><span class="chip '+esc(st)+'">'+esc(st)+'</span></div>'+
-      '<div class="actions">'+acts.filter(Boolean).join('')+'</div>'+form+'</div>';
+      '<div class="actions">'+acts.filter(Boolean).join('')+'</div>'+form+invBlock+'</div>';
   }
   function renderJd() { $('j-list').innerHTML = jdDocs.length ? jdDocs.map(jdItem).join('') : '<p class="hint">No JD14 documents yet. Generate one above.</p>'; }
   async function loadJd(force) {
@@ -158,6 +169,12 @@
       jdDocs = jdDocs.map(x => x.jd14Id === id ? r : x); emailJd = id; renderJd();
       note('jd14Result', 'PDF ready for '+esc(r.companyName)+'. '+jdLink(r.pdfUrl, 'Open PDF')+' Check it, then send it to the PIC.', 'success');
       addSessionDoc('JD14 · '+r.companyName, safeUrl(r.pdfUrl));
+    } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
+  }
+  async function jdAct(action, id, btn, label, done) {
+    try {
+      const r = await busy(btn, label, () => call(action, {jd14Id:id}));
+      jdDocs = jdDocs.map(x => x.jd14Id === id ? r : x); renderJd(); note('jd14Result', done(r), 'success');
     } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
   }
   async function jdSend(form) {
@@ -348,6 +365,9 @@
       if (b.dataset.jfin) jdFinalise(b.dataset.jfin, b);
       else if (b.dataset.jmail) { emailJd = emailJd === b.dataset.jmail ? '' : b.dataset.jmail; renderJd(); }
       else if (b.dataset.jcancel) { emailJd = ''; renderJd(); }
+      else if (b.dataset.jsigned) { if (confirm('Record that the signed JD14 has come back from the PIC?')) jdAct('jd14Signed', b.dataset.jsigned, b, 'Saving…', r => 'Signed JD14 recorded for '+esc(r.companyName)+'. Next: create the HRD Corp invoice draft.'); }
+      else if (b.dataset.idraft) jdAct('hrdInvoiceDraft', b.dataset.idraft, b, 'Creating…', r => 'Invoice '+esc(r.invoiceNo)+' drafted. '+jdLink(r.invoiceDocUrl, 'Open the draft')+' to check it, then press <b>Finalise invoice PDF</b>.');
+      else if (b.dataset.ifin) jdAct('hrdInvoiceFinalise', b.dataset.ifin, b, 'Finalising…', r => 'Invoice '+esc(r.invoiceNo)+' saved as PDF in Google Drive. '+(safeUrl(r.invoiceDownloadUrl) ? '<a href="'+esc(r.invoiceDownloadUrl)+'" target="_blank" rel="noopener">⬇ Download PDF</a> to upload it to the HRD Corp system.' : ''));
     });
     $('j-list').addEventListener('submit', e => { e.preventDefault(); jdSend(e.target); });
     $('c-reloadPrograms').onclick = () => loadPrograms();

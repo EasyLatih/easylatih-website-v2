@@ -85,6 +85,9 @@ function adminToolsActions_() {
     jd14Finalise: function (d) { return adminJd14Finalise_(String(d.jd14Id || '')); },
     jd14Email: function (d) { return adminJd14Email_(d || {}); },
     jd14List: function () { return adminJd14List_(); },
+    jd14Signed: function (d) { return adminJd14MarkSigned_(String(d.jd14Id || '')); },
+    hrdInvoiceDraft: function (d) { return adminHrdInvoiceDraft_(String(d.jd14Id || '')); },
+    hrdInvoiceFinalise: function (d) { return adminHrdInvoiceFinalise_(String(d.jd14Id || '')); },
 
     // Certificates: template
     certSettings: function () { return getCertificateTemplateSettings(); },
@@ -360,7 +363,8 @@ function adminJd14Details_(id) {
 // Email sends the PDF to the PIC (bilingual) asking them to sign and reply.
 // ---------------------------------------------------------------------------
 const ADMIN_JD14_SHEET_ = 'JD14Documents';
-const ADMIN_JD14_HEADERS_ = ['JD14ID', 'SourceRef', 'CompanyName', 'CourseTitle', 'TrainingStartDate', 'TrainingEndDate', 'TotalPax', 'PICName', 'PICEmail', 'SlidesId', 'SlidesUrl', 'PdfId', 'PdfUrl', 'Status', 'CreatedDate', 'FinalisedDate', 'SentDate', 'SentTo', 'UpdatedDate'];
+const ADMIN_JD14_HEADERS_ = ['JD14ID', 'SourceRef', 'CompanyName', 'CourseTitle', 'TrainingStartDate', 'TrainingEndDate', 'TotalPax', 'PICName', 'PICEmail', 'SlidesId', 'SlidesUrl', 'PdfId', 'PdfUrl', 'Status', 'CreatedDate', 'FinalisedDate', 'SentDate', 'SentTo', 'UpdatedDate',
+  'CompanyAddress', 'Venue', 'TotalFee', 'ApprovalNo', 'EmployerCode', 'SignedDate', 'InvoiceNo', 'InvoiceDocId', 'InvoiceDocUrl', 'InvoicePdfId', 'InvoicePdfUrl', 'InvoiceStatus', 'InvoiceFinalisedDate'];
 
 function adminJd14Sheet_() {
   const book = SpreadsheetApp.openById(SHEET_ID);
@@ -369,7 +373,12 @@ function adminJd14Sheet_() {
     sheet = book.insertSheet(ADMIN_JD14_SHEET_);
     sheet.getRange(1, 1, 1, ADMIN_JD14_HEADERS_.length).setValues([ADMIN_JD14_HEADERS_]);
     sheet.setFrozenRows(1);
+    return sheet;
   }
+  // Add any columns introduced later (kept at the end).
+  const current = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0].map(function (h) { return String(h || '').trim(); });
+  const missing = ADMIN_JD14_HEADERS_.filter(function (h) { return current.indexOf(h) === -1; });
+  if (missing.length) sheet.getRange(1, sheet.getLastColumn() + 1, 1, missing.length).setValues([missing]);
   return sheet;
 }
 
@@ -419,7 +428,14 @@ function adminJd14Public_(rec) {
     status: String(rec.Status || ''),
     createdDate: iso(rec.CreatedDate),
     sentDate: iso(rec.SentDate),
-    sentTo: String(rec.SentTo || '')
+    sentTo: String(rec.SentTo || ''),
+    signedDate: iso(rec.SignedDate),
+    totalFee: String(rec.TotalFee || ''),
+    invoiceNo: String(rec.InvoiceNo || ''),
+    invoiceDocUrl: String(rec.InvoiceDocUrl || ''),
+    invoicePdfUrl: String(rec.InvoicePdfUrl || ''),
+    invoiceDownloadUrl: rec.InvoicePdfId ? 'https://drive.google.com/uc?export=download&id=' + String(rec.InvoicePdfId) : '',
+    invoiceStatus: String(rec.InvoiceStatus || '')
   };
 }
 
@@ -458,7 +474,9 @@ function adminJd14CreateDraft_(d) {
     TrainingStartDate: String(d.trainingStartDate || ''), TrainingEndDate: String(d.trainingEndDate || ''), TotalPax: String(d.totalPax || ''),
     PICName: pic.name || '', PICEmail: pic.email || '',
     SlidesId: copy.getId(), SlidesUrl: copy.getUrl(), PdfId: '', PdfUrl: '',
-    Status: 'DRAFT', CreatedDate: now, FinalisedDate: '', SentDate: '', SentTo: '', UpdatedDate: now
+    Status: 'DRAFT', CreatedDate: now, FinalisedDate: '', SentDate: '', SentTo: '', UpdatedDate: now,
+    CompanyAddress: String(d.companyAddress || ''), Venue: String(d.venue || ''), TotalFee: String(d.totalFee || ''),
+    ApprovalNo: String(d.approvalNo || ''), EmployerCode: String(d.employerCode || '')
   };
   const sheet = adminJd14Sheet_();
   const map = adminHeaderMap_(sheet);
@@ -481,7 +499,7 @@ function adminJd14Finalise_(jd14Id) {
   const pdf = folder.createFile(slides.getAs(MimeType.PDF)).setName(name + '.pdf');
   slides.setName(name + ' (editable)');
   const now = new Date();
-  const status = String(rec.Status) === 'SENT' ? 'SENT' : 'FINAL';
+  const status = ['SENT', 'SIGNED'].indexOf(String(rec.Status)) !== -1 ? String(rec.Status) : 'FINAL';
   adminJd14Set_(rec._row, { PdfId: pdf.getId(), PdfUrl: pdf.getUrl(), Status: status, FinalisedDate: now, UpdatedDate: now });
   rec.PdfId = pdf.getId(); rec.PdfUrl = pdf.getUrl(); rec.Status = status;
   return adminJd14Public_(rec);
@@ -559,4 +577,113 @@ function adminJd14List_() {
     .filter(function (x) { return x.jd14Id; })
     .reverse()
     .slice(0, 40);
+}
+
+// ---------------------------------------------------------------------------
+// Signed JD14 back from the PIC -> HRD Corp invoice draft -> final PDF.
+// The invoice is a Google Docs draft from the HRD Corp invoice template, with a
+// running invoice number (ELCyy/mm-xxxx). Finalise saves the PDF in the invoice
+// folder for download and upload to the HRD Corp system. Nothing is emailed.
+// ---------------------------------------------------------------------------
+function adminJd14Progress_(ref, fields) {
+  ref = String(ref || '');
+  if (ref.indexOf('REG:') !== 0 || typeof praUpsert_ !== 'function' || typeof praProgressSheet_ !== 'function') return;
+  try {
+    const p = adminJd14Pic_(ref);
+    fields.UpdatedDate = new Date();
+    if (p.courseId) fields.CourseID = p.courseId;
+    praUpsert_(praProgressSheet_(), 'RegistrationID', ref.slice(4), fields);
+  } catch (e) { console.warn('Registration progress not updated: ' + e.message); }
+}
+
+function adminJd14MarkSigned_(jd14Id) {
+  const rec = adminJd14Find_(jd14Id);
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  if (['SENT', 'SIGNED'].indexOf(String(rec.Status)) === -1) throw new Error('Email the JD14 to the PIC first.');
+  const now = new Date();
+  adminJd14Set_(rec._row, { Status: 'SIGNED', SignedDate: now, UpdatedDate: now });
+  adminJd14Progress_(rec.SourceRef, { JD14SignedDate: now });
+  rec.Status = 'SIGNED'; rec.SignedDate = now;
+  return adminJd14Public_(rec);
+}
+
+// Course duration and total time from the programme (public) or the request (in-house).
+function adminJd14Duration_(ref) {
+  ref = String(ref || '');
+  if (ref.indexOf('REG:') === 0) {
+    const p = adminJd14Programs_()[adminJd14Pic_(ref).courseId || ''];
+    return p ? { duration: String(p.Duration || ''), totalTime: String(p.TotalTime || '') } : {};
+  }
+  const q = adminJd14Rows_('QuotationRequests').filter(function (r) { return String(r.RequestID || '') === ref; })[0];
+  return q ? { duration: String(q.ProgramDuration || ''), totalTime: String(q.TotalTime || '') } : {};
+}
+
+function adminHrdInvoiceDraft_(jd14Id) {
+  const rec = adminJd14Find_(jd14Id);
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  if (String(rec.Status) !== 'SIGNED') throw new Error('Mark the signed JD14 as received first.');
+  if (rec.InvoiceDocId) throw new Error('An HRD Corp invoice (' + rec.InvoiceNo + ') already exists for this JD14. Edit that draft instead.');
+
+  const pax = Number(rec.TotalPax || 0);
+  const total = Number(String(rec.TotalFee || '').replace(/[^\d.]/g, '')) || 0;
+  const dur = adminJd14Duration_(rec.SourceRef);
+  const no = getRunningNumber('INVOICE');
+  const company = String(rec.CompanyName || '');
+  const dateText = (rec.TrainingStartDate && rec.TrainingEndDate) ? formatProgramDate(rec.TrainingStartDate, rec.TrainingEndDate) : String(rec.TrainingStartDate || '');
+
+  const folder = DriveApp.getFolderById(INVOICE_FOLDER_ID);
+  const copy = DriveApp.getFileById(HRD_INVOICE_TEMPLATE_ID).makeCopy(no + ' - HRD DRAFT - ' + company, folder);
+  const doc = DocumentApp.openById(copy.getId());
+  const body = doc.getBody();
+  const fill = {
+    '{{DOCUMENT_NO}}': no,
+    '{{DATE}}': formatDate(new Date()),
+    '{{CLIENT_NAME}}': company,
+    '{{CLIENT_ADDRESS}}': String(rec.CompanyAddress || ''),
+    '{{EMPLOYER_NAME}}': company,
+    '{{PROGRAM_NAME}}': String(rec.CourseTitle || ''),
+    '{{PROGRAM_DATE}}': dateText,
+    '{{PROGRAM_DURATION}}': dur.duration || '',
+    '{{TOTAL_TIME}}': dur.totalTime || '',
+    '{{VENUE}}': String(rec.Venue || ''),
+    '{{PAX}}': pax + ' pax',
+    '{{NUMBER_OF_GROUP}}': '',
+    '{{MAX_PAX_PER_GROUP}}': '',
+    '{{FEE}}': pax ? 'RM' + formatMoney(total / pax) : '',
+    '{{UNIT}}': pax + ' pax',
+    '{{AMOUNT}}': 'RM' + formatMoney(total),
+    '{{TOTAL}}': 'RM' + formatMoney(total)
+  };
+  Object.keys(fill).forEach(function (k) { body.replaceText(k.replace(/[{}]/g, '\\$&'), String(fill[k] == null ? '' : fill[k])); });
+  doc.saveAndClose();
+
+  saveDocumentRecord({
+    documentNo: no, documentType: 'HRD Invoice Draft', companyName: company, programName: String(rec.CourseTitle || ''),
+    amount: 'RM' + formatMoney(total), status: 'DRAFT', pdfLink: '', draftDocLink: copy.getUrl(), finalPdfLink: '', finalisedDate: ''
+  });
+  const now = new Date();
+  adminJd14Set_(rec._row, { InvoiceNo: no, InvoiceDocId: copy.getId(), InvoiceDocUrl: copy.getUrl(), InvoiceStatus: 'DRAFT', UpdatedDate: now });
+  rec.InvoiceNo = no; rec.InvoiceDocId = copy.getId(); rec.InvoiceDocUrl = copy.getUrl(); rec.InvoiceStatus = 'DRAFT';
+  return adminJd14Public_(rec);
+}
+
+function adminHrdInvoiceFinalise_(jd14Id) {
+  const rec = adminJd14Find_(jd14Id);
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  if (!rec.InvoiceDocId) throw new Error('Create the HRD Corp invoice draft first.');
+  const docFile = DriveApp.getFileById(String(rec.InvoiceDocId));
+  const folder = DriveApp.getFolderById(INVOICE_FOLDER_ID);
+  if (rec.InvoicePdfId) { try { DriveApp.getFileById(String(rec.InvoicePdfId)).setTrashed(true); } catch (e) { console.warn('Old invoice PDF not trashed: ' + e.message); } }
+
+  const no = String(rec.InvoiceNo);
+  const pdf = folder.createFile(docFile.getAs(MimeType.PDF)).setName(no.replace(/\//g, '-') + ' - HRD - ' + rec.CompanyName + '.pdf');
+  docFile.setName(no + ' - HRD - ' + rec.CompanyName + ' (editable)');
+  const now = new Date();
+  adminJd14Set_(rec._row, { InvoicePdfId: pdf.getId(), InvoicePdfUrl: pdf.getUrl(), InvoiceStatus: 'FINAL', InvoiceFinalisedDate: now, UpdatedDate: now });
+  try {
+    updateRowValue(SpreadsheetApp.openById(SHEET_ID).getSheetByName('Documents'), 'DocumentNo', no,
+      { DocumentType: 'HRD Invoice', Status: 'FINAL', PdfLink: pdf.getUrl(), FinalPDFLink: pdf.getUrl(), FinalisedDate: now });
+  } catch (e) { console.warn('Documents record not updated: ' + e.message); }
+  rec.InvoicePdfId = pdf.getId(); rec.InvoicePdfUrl = pdf.getUrl(); rec.InvoiceStatus = 'FINAL';
+  return adminJd14Public_(rec);
 }
