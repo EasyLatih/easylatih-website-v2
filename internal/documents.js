@@ -137,7 +137,7 @@
   function personRow(p, i) {
     const tags = [];
     if (p.originalName && p.originalName !== p.participantName) tags.push('<span class="tag">Replaces '+esc(p.originalName)+'</span>');
-    if (p.certificateStatus === 'GENERATED' || p.certificateUrl) tags.push('<span class="tag ok">Certificate made</span>');
+    if (p.certificateStatus === 'GENERATED') tags.push('<span class="tag ok">Certificate made</span>');
     if (p.emailStatus === 'SENT') tags.push('<span class="tag ok">Emailed</span>');
     const head = '<div class="person-head"><label><input type="checkbox" data-i="'+i+'"'+(p.on?' checked':'')+'> <span>'+esc(p.participantName)+' <small>'+esc(p.icNo || '')+(p.email ? ' · '+esc(p.email) : '')+'</small>'+(tags.length ? '<span class="tags">'+tags.join('')+'</span>' : '')+'</span></label>'+
       (canAmend ? '<button type="button" class="small" data-edit="'+i+'">'+(editing === i ? 'Close' : 'Edit')+'</button>' : '')+'</div>';
@@ -149,7 +149,7 @@
       '<label>IC / passport no.<input name="icNo" value="'+esc(p.icNo || '')+'" placeholder="e.g. 900101065555"></label>'+
       '<label>Phone<input name="phone" value="'+esc(p.phone || '')+'" placeholder="e.g. 0123456789"></label>'+
       '<label class="wide">Email (certificate is sent here)<input name="email" type="email" value="'+esc(p.email || '')+'"></label>'+
-      ((p.certificateStatus === 'GENERATED' || p.certificateUrl) ? '<p class="hint wide warn">A certificate was already made for '+esc(p.participantName)+'. Changing the name or IC clears it, so it can be generated again in the new name.</p>' : '')+
+      (p.certificateStatus === 'GENERATED' ? '<p class="hint wide warn">A certificate was already made for '+esc(p.participantName)+'. Changing the name or IC lets you generate it again in the new name, with the same certificate number.</p>' : '')+
       '<div class="actions wide"><button type="submit" class="primary">Save details</button><button type="button" data-cancel="1">Cancel</button></div>'+
       '</form></div>';
   }

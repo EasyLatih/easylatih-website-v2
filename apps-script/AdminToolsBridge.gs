@@ -219,7 +219,8 @@ function adminAmendParticipant_(d) {
     // A certificate made for the previous person must be made again.
     let resetCertificate = false;
     if (nameChanged && (adminCell_(row, map, 'CertificateURL') || adminCell_(row, map, 'CertificateStatus'))) {
-      ['CertificateURL', 'CertificateStatus', 'IssueDate', 'EmailStatus', 'EmailSentDate'].forEach(function (k) { set(k, ''); });
+      // CertificateNo and CertificateURL stay: regenerating reuses the number and trashes the old PDF.
+      ['CertificateStatus', 'IssueDate', 'EmailStatus', 'EmailSentDate'].forEach(function (k) { set(k, ''); });
       resetCertificate = true;
     }
 
