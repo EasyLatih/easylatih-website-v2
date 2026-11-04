@@ -10,8 +10,12 @@
  * - releaseStaleProspects() runs daily and returns to the pool:
  *     a) pool prospects not contacted within 3 days of being taken
  *     b) any prospect with no activity for 30 days (7-day grace at launch)
- *   Prospects at QUOTATION SENT, HRD APPLICATION, REGISTERED or NOT INTERESTED,
- *   or with a quotation sent/accepted, are never released.
+ *   Prospects at QUOTATION SENT, HRD APPLICATION, REGISTERED, NOT INTERESTED or
+ *   DO NOT CONTACT, or with a quotation sent/accepted, are never released.
+ * - recordContact saves the outcome of the first call (from the dashboard's
+ *   "Hubungi Sekarang" card), optionally with the PIC. "Maklumat salah" removes a
+ *   pool company and does not count it towards the daily limit.
+ * - Agents who stop logging in are handled in AgentAccess.gs.
  *
  * Lives in the same Apps Script project as AgentPortalSecure.gs and uses its
  * helpers (jsonOutput, isAdmin_, forbidden_, validRowNumber_, canEditRow_,
@@ -53,7 +57,13 @@ const X = { // Prospects column indexes (0-based) for the extra columns
   companyPhone: 28, companyEmail: 29, lastActivity: 30, industry: 31
 };
 const PROSPECT_WIDTH = 32;
-const CLOSED_STATUSES = ["QUOTATION SENT", "HRD APPLICATION", "REGISTERED", "NOT INTERESTED"];
+const CLOSED_STATUSES = ["QUOTATION SENT", "HRD APPLICATION", "REGISTERED", "NOT INTERESTED", "DO NOT CONTACT"];
+// Prospects that must never be called again or sent back to the pool.
+const DEAD_STATUSES = ["NOT INTERESTED", "DO NOT CONTACT", "INVALID INFO"];
+
+function isDeadStatus_(status) {
+  return DEAD_STATUSES.indexOf(String(status || "").toUpperCase()) !== -1;
+}
 
 /* ---------- routing (called from doGet in AgentPortalSecure.gs) ---------- */
 
@@ -61,6 +71,7 @@ function routeProspectPool_(action, e, session) {
   if (action === "getPool") return getPool_(e, session);
   if (action === "claimProspect") return claimProspect_(e, session);
   if (action === "updatePic") return updatePic_(e, session);
+  if (action === "recordContact") return recordContact_(e, session);
   if (action === "adminPool") return adminPool_(e, session);
   return null;
 }
@@ -328,24 +339,118 @@ function updatePic_(e, session) {
   if (!validRowNumber_(rowNumber, sheet)) return jsonOutput({ success: false, message: "Rekod tidak sah." });
   if (!canEditRow_(sheet, rowNumber, session)) return forbidden_();
 
-  const clean = v => String(v || "").trim().slice(0, 200);
-  const name = clean(e.parameter.picName);
-  const position = clean(e.parameter.picPosition);
-  const email = clean(e.parameter.picEmail).toLowerCase();
-  const mobile = clean(e.parameter.picPhone);
-  const levy = clean(e.parameter.levy).toUpperCase();
+  const pic = readPic_(e);
+  if (!pic.name || !pic.position) return jsonOutput({ success: false, message: "Isi nama dan jawatan PIC." });
+  const error = picError_(pic);
+  if (error) return jsonOutput({ success: false, message: error });
 
-  if (!name || !position) return jsonOutput({ success: false, message: "Isi nama dan jawatan PIC." });
-  if (!email && !mobile) return jsonOutput({ success: false, message: "Isi sekurang-kurangnya emel atau no. HP PIC." });
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonOutput({ success: false, message: "Format emel PIC tidak sah." });
-
-  sheet.getRange(rowNumber, 5, 1, 2).setValues([[name, position]]);
-  sheet.getRange(rowNumber, 7).setValue(mobile);
-  sheet.getRange(rowNumber, 9).setValue(email);
-  if (levy === "YA" || levy === "TIDAK") sheet.getRange(rowNumber, 12).setValue(levy);
+  writePic_(sheet, rowNumber, pic);
   sheet.getRange(rowNumber, X.lastActivity + 1).setValue(new Date());
 
   return jsonOutput({ success: true, message: "Maklumat PIC disimpan." });
+}
+
+function readPic_(e) {
+  const clean = v => String(v || "").trim().slice(0, 200);
+  return {
+    name: clean(e.parameter.picName),
+    position: clean(e.parameter.picPosition),
+    email: clean(e.parameter.picEmail).toLowerCase(),
+    mobile: clean(e.parameter.picPhone),
+    levy: clean(e.parameter.levy).toUpperCase()
+  };
+}
+
+function picError_(pic) {
+  if (!pic.email && !pic.mobile) return "Isi sekurang-kurangnya emel atau no. HP PIC.";
+  if (pic.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pic.email)) return "Format emel PIC tidak sah.";
+  return "";
+}
+
+function writePic_(sheet, rowNumber, pic) {
+  sheet.getRange(rowNumber, 5, 1, 2).setValues([[pic.name, pic.position]]);
+  sheet.getRange(rowNumber, 7).setValue(pic.mobile);
+  sheet.getRange(rowNumber, 9).setValue(pic.email);
+  if (pic.levy === "YA" || pic.levy === "TIDAK") sheet.getRange(rowNumber, 12).setValue(pic.levy);
+}
+
+// Outcome of contacting a prospect, from the "Hubungi Sekarang" card.
+const CONTACT_OUTCOMES = {
+  NO_ANSWER:      { status: "CONTACTED",      label: "Tiada jawapan",          needsDate: true },
+  CALLBACK:       { status: "CONTACTED",      label: "Minta hubungi semula",   needsDate: true },
+  INTERESTED:     { status: "INTERESTED",     label: "Berminat",               needsDate: true },
+  NOT_INTERESTED: { status: "NOT INTERESTED", label: "Tidak berminat",         needsDate: false },
+  DO_NOT_CONTACT: { status: "DO NOT CONTACT", label: "Minta jangan dihubungi", needsDate: false },
+  WRONG_INFO:     { status: "INVALID INFO",   label: "Maklumat syarikat salah", needsDate: false }
+};
+
+function recordContact_(e, session) {
+  const rowNumber = Number(e.parameter.rowNumber);
+  const outcomeKey = String(e.parameter.outcome || "").trim().toUpperCase();
+  const outcome = CONTACT_OUTCOMES[outcomeKey];
+  const remark = String(e.parameter.callRemark || "").trim().slice(0, 2000);
+  const nextDate = String(e.parameter.nextFollowUpDate || "").trim();
+  const sheet = prospectSheet_();
+
+  if (!validRowNumber_(rowNumber, sheet)) return jsonOutput({ success: false, message: "Rekod tidak sah." });
+  if (!canEditRow_(sheet, rowNumber, session)) return forbidden_();
+  if (!outcome) return jsonOutput({ success: false, message: "Pilih hasil panggilan." });
+  if (outcome.needsDate && !/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) {
+    return jsonOutput({ success: false, message: "Pilih tarikh follow up seterusnya." });
+  }
+  if (outcomeKey === "WRONG_INFO" && !remark) {
+    return jsonOutput({ success: false, message: "Nyatakan apa yang salah (cth. nombor tidak wujud, syarikat sudah tutup)." });
+  }
+
+  const pic = readPic_(e);
+  const hasPic = pic.name || pic.position || pic.email || pic.mobile;
+  if (hasPic) {
+    if (!pic.name) return jsonOutput({ success: false, message: "Isi nama PIC, atau kosongkan semua ruangan PIC." });
+    const error = picError_(pic);
+    if (error) return jsonOutput({ success: false, message: error });
+  }
+
+  const row = sheet.getRange(rowNumber, 1, 1, PROSPECT_WIDTH).getValues()[0];
+  const now = new Date();
+  const note = outcome.label + (remark ? ": " + remark : "");
+
+  if (outcomeKey === "WRONG_INFO") {
+    if (String(row[X.source] || "").toUpperCase().indexOf("POOL") !== 0) {
+      return jsonOutput({ success: false, message: "Laporan maklumat salah hanya untuk prospek dari pool." });
+    }
+    return reportWrongInfo_(sheet, rowNumber, row, session, remark, now);
+  }
+
+  sheet.getRange(rowNumber, 21, 1, 4).setValues([[now, note, nextDate, "FOLLOW UP"]]);
+  sheet.getRange(rowNumber, 14).setValue(outcome.status);
+  if (hasPic) writePic_(sheet, rowNumber, pic);
+  sheet.getRange(rowNumber, X.lastActivity + 1).setValue(now);
+
+  return jsonOutput({ success: true, message: "Hasil panggilan disimpan." });
+}
+
+// A pool company whose details are wrong: remove it from the agent and the pool,
+// and do not count it towards the agent's 10-a-day limit.
+function reportWrongInfo_(sheet, rowNumber, row, session, remark, now) {
+  const stamp = Utilities.formatDate(now, POOL_TZ, "dd/MM/yyyy");
+  sheet.getRange(rowNumber, 2, 1, 2).setValues([["", ""]]);
+  sheet.getRange(rowNumber, 14).setValue("INVALID INFO");
+  sheet.getRange(rowNumber, 16).setValue(
+    String(row[15] || "") + " [Maklumat salah " + stamp + " oleh " + session.name + " (" + session.agentId + "): " + remark + "]"
+  );
+  sheet.getRange(rowNumber, X.lastActivity + 1).setValue(now);
+
+  const key = String(row[X.key] || "");
+  if (key) {
+    const poolSheet = poolSheet_();
+    const pool = readRows_(poolSheet, POOL_HEADERS.length);
+    const i = pool.findIndex(r => String(r[P.key]) === key);
+    if (i !== -1) {
+      poolSheet.getRange(i + 2, P.status + 1).setValue("INVALID");
+      poolSheet.getRange(i + 2, P.notes + 1).setValue("Dilapor salah oleh " + session.agentId + " (" + stamp + "): " + remark);
+    }
+  }
+  return jsonOutput({ success: true, message: "Terima kasih. Syarikat ini dikeluarkan dan tidak dikira dalam had harian anda." });
 }
 
 function adminPool_(e, session) {
@@ -356,25 +461,30 @@ function adminPool_(e, session) {
   const byAgent = {};
   let available = 0, claimedToday = 0, released7d = 0;
 
+  let invalid7d = 0;
   pool.forEach(r => {
     const status = String(r[P.status]).toUpperCase();
     if (status === "AVAILABLE") available++;
     if (status === "AVAILABLE" && String(r[P.origin]).toUpperCase() === "RELEASED" && toTime_(r[P.added]) >= weekAgo) released7d++;
-    if (status === "CLAIMED" && dayKey_(r[P.claimedAt]) === today) {
-      claimedToday++;
+    if (status === "INVALID" && toTime_(r[P.claimedAt]) >= weekAgo) invalid7d++;
+    if ((status === "CLAIMED" || status === "INVALID") && dayKey_(r[P.claimedAt]) === today) {
       const id = String(r[P.claimedBy]);
-      byAgent[id] = byAgent[id] || { agentId: id, agentName: r[P.claimedName], claimedToday: 0 };
-      byAgent[id].claimedToday++;
+      byAgent[id] = byAgent[id] || { agentId: id, agentName: r[P.claimedName], claimedToday: 0, invalidToday: 0 };
+      if (status === "CLAIMED") { claimedToday++; byAgent[id].claimedToday++; }
+      else byAgent[id].invalidToday++;
     }
   });
 
+  const props = PropertiesService.getScriptProperties();
   return jsonOutput({
     success: true,
     available: available,
     claimedToday: claimedToday,
     released7d: released7d,
+    invalid7d: invalid7d,
     agents: Object.values(byAgent).sort((a, b) => b.claimedToday - a.claimedToday),
-    lastImport: PropertiesService.getScriptProperties().getProperty("POOL_LAST_IMPORT") || ""
+    lastImport: props.getProperty("POOL_LAST_IMPORT") || "",
+    lastAgentCheck: props.getProperty("AGENT_LAST_CHECK") || ""
   });
 }
 
@@ -396,49 +506,10 @@ function releaseStaleProspects() {
     prospects.forEach((row, i) => {
       const info = releaseInfo_(row, startTime);
       if (!info || info.daysLeft > 0) return;
-
-      const rowNumber = i + 2;
-      const fromAgent = String(row[1]);
-      const fromName = String(row[2]);
       const reason = info.rule === "FIRST_CONTACT"
         ? "Tidak dihubungi dalam " + POOL_FIRST_CONTACT_DAYS + " hari selepas diambil"
         : "Tiada aktiviti " + POOL_STALE_DAYS + " hari";
-      const key = String(row[X.key] || "") || Utilities.getUuid();
-
-      prospectSheet.getRange(rowNumber, 2, 1, 2).setValues([["", ""]]);
-      prospectSheet.getRange(rowNumber, 16).setValue(
-        String(row[15] || "") + " [Dilepaskan " + stamp + " dari " + fromName + ": " + reason + "]"
-      );
-      prospectSheet.getRange(rowNumber, X.key + 1).setValue(key);
-
-      const values = new Array(POOL_HEADERS.length).fill("");
-      values[P.added] = now;
-      values[P.company] = row[3];
-      values[P.industry] = row[X.industry];
-      values[P.address] = row[X.address];
-      values[P.district] = row[10];
-      values[P.state] = row[9];
-      values[P.phone] = row[X.companyPhone] || row[6];
-      values[P.email] = row[X.companyEmail] || row[8];
-      values[P.source] = "Dilepaskan";
-      values[P.status] = "AVAILABLE";
-      values[P.origin] = "RELEASED";
-      values[P.releasedFrom] = fromAgent;
-      values[P.key] = key;
-      values[P.notes] = reason;
-
-      const existing = pool.findIndex(r => String(r[P.key]) === key);
-      if (existing !== -1) {
-        values[P.id] = pool[existing][P.id];
-        values[P.website] = pool[existing][P.website];
-        values[P.employees] = pool[existing][P.employees];
-        values[P.confidence] = pool[existing][P.confidence];
-        poolSheet.getRange(existing + 2, 1, 1, values.length).setValues([values]);
-      } else {
-        values[P.id] = "R" + Utilities.formatDate(now, POOL_TZ, "yyMMdd") + "-" + rowNumber;
-        poolSheet.appendRow(values);
-        pool.push(values);
-      }
+      releaseRowToPool_(prospectSheet, poolSheet, pool, row, i + 2, reason, now, stamp);
       released++;
     });
 
@@ -447,6 +518,50 @@ function releaseStaleProspects() {
     );
   } finally {
     lock.releaseLock();
+  }
+}
+
+// Takes a prospect away from its agent and makes it available in the pool,
+// keeping the call history and PIC on the Prospects row for the next agent.
+function releaseRowToPool_(prospectSheet, poolSheet, pool, row, rowNumber, reason, now, stamp) {
+  const fromAgent = String(row[1]);
+  const fromName = String(row[2]);
+  const key = String(row[X.key] || "") || Utilities.getUuid();
+
+  prospectSheet.getRange(rowNumber, 2, 1, 2).setValues([["", ""]]);
+  prospectSheet.getRange(rowNumber, 16).setValue(
+    String(row[15] || "") + " [Dilepaskan " + stamp + " dari " + fromName + ": " + reason + "]"
+  );
+  prospectSheet.getRange(rowNumber, X.key + 1).setValue(key);
+
+  const values = new Array(POOL_HEADERS.length).fill("");
+  values[P.added] = now;
+  values[P.company] = row[3];
+  values[P.industry] = row[X.industry];
+  values[P.address] = row[X.address];
+  values[P.district] = row[10];
+  values[P.state] = row[9];
+  values[P.phone] = row[X.companyPhone] || row[6];
+  values[P.email] = row[X.companyEmail] || row[8];
+  values[P.source] = "Dilepaskan";
+  values[P.status] = "AVAILABLE";
+  values[P.origin] = "RELEASED";
+  values[P.releasedFrom] = fromAgent;
+  values[P.key] = key;
+  values[P.notes] = reason;
+
+  const existing = pool.findIndex(r => String(r[P.key]) === key);
+  if (existing !== -1) {
+    values[P.id] = pool[existing][P.id];
+    values[P.website] = pool[existing][P.website];
+    values[P.employees] = pool[existing][P.employees];
+    values[P.confidence] = pool[existing][P.confidence];
+    poolSheet.getRange(existing + 2, 1, 1, values.length).setValues([values]);
+    pool[existing] = values;
+  } else {
+    values[P.id] = "R" + Utilities.formatDate(now, POOL_TZ, "yyMMdd") + "-" + rowNumber;
+    poolSheet.appendRow(values);
+    pool.push(values);
   }
 }
 
@@ -546,6 +661,9 @@ function setupProspectPool() {
   });
   ScriptApp.newTrigger("releaseStaleProspects").timeBased().everyDays(1).atHour(7).inTimezone(POOL_TZ).create();
   ScriptApp.newTrigger("importPoolFromDrive").timeBased().everyDays(1).atHour(8).inTimezone(POOL_TZ).create();
+
+  // Agent access rules (AgentAccess.gs): last-login tracking, 30-day revoke, data agreement.
+  setupAgentAccess_();
 
   Logger.log("Prospect Pool ready. Import folder: " + (importFolderId_() || "NOT SET"));
 }

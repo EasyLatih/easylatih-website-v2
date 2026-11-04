@@ -283,6 +283,21 @@
     .pic-box input,.pic-box select{margin:.25rem 0}
     .warn-badge{display:inline-block;font-size:.75rem;padding:3px 8px;border-radius:6px;background:#fee2e2;color:#991b1b;margin-bottom:.4rem}
     .company-box{font-size:.85rem;background:#f1f5f9;border-radius:8px;padding:.5rem .65rem;margin:.4rem 0}
+    .contact-now{border:2px solid #0d3b66}
+    .contact-now.flash{animation:flash 1.6s ease-out 2}
+    @keyframes flash{0%{box-shadow:0 0 0 0 rgba(13,59,102,.45)}100%{box-shadow:0 0 0 14px rgba(13,59,102,0)}}
+    .contact-card{border-left:5px solid #0d3b66}
+    .contact-detail{font-size:1rem;line-height:1.7;margin:.4rem 0 .6rem}
+    .contact-detail a{color:#0d3b66;font-weight:600}
+    .contact-form label{display:block;font-size:.85rem;font-weight:600;color:#334155;margin:.35rem 0 .2rem}
+    .dnc-box{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d;border-radius:8px;padding:.5rem .65rem;margin-top:.4rem;font-size:.9rem}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000}
+    .modal{background:#fff;border-radius:14px;max-width:620px;width:100%;max-height:90vh;overflow:auto;padding:1.5rem}
+    .modal h3{margin-top:0;color:#0d3b66}
+    .modal ol{padding-left:1.2rem;line-height:1.65;color:#334155}
+    .modal .agree{display:flex;gap:.6rem;align-items:flex-start;margin:1rem 0}
+    .modal .agree input{width:auto;margin:.3rem 0 0}
+    .modal-actions{display:flex;gap:.6rem;flex-wrap:wrap}
   </style>
 </head>
 
@@ -333,6 +348,14 @@
 
     <!-- TAB 1: DASHBOARD -->
     <div id="dashboardTab" class="tab-content active">
+      <div id="contactNowCard" class="sop-card contact-now hidden">
+        <h3>📞 Hubungi Sekarang</h3>
+        <p class="sop-muted">
+          Syarikat yang anda ambil dari pool dan belum dihubungi. Hubungi dalam <strong>3 hari</strong> selepas ambil,
+          kemudian simpan hasilnya di sini. Maklumat PIC terus masuk ke senarai Prospects anda.
+        </p>
+        <div id="contactNowList" class="prospect-grid"></div>
+      </div>
       <div id="releaseWarningsCard" class="sop-card hidden">
         <h3>⏳ Akan Dilepaskan ke Pool</h3>
         <p class="sop-muted">Prospek di bawah akan diberi kepada ejen lain jika tiada tindakan. Simpan call update atau kemas kini status untuk kekalkan.</p>
@@ -375,6 +398,7 @@
           <tr><td>HRD Application</td><td id="funnelHrd">0</td></tr>
           <tr><td>Registered</td><td id="funnelRegistered">0</td></tr>
           <tr><td>Not Interested</td><td id="funnelNotInterested">0</td></tr>
+          <tr><td>Do Not Contact</td><td id="funnelDoNotContact">0</td></tr>
         </table>
       </div>
 
@@ -401,8 +425,9 @@
         <h3>🆕 Prospek Baharu</h3>
         <p class="sop-muted">
           Syarikat baharu (anggaran 10 pekerja ke atas) ditambah setiap pagi. Siapa ambil dahulu, dia punya.
-          Butiran hubungan dipaparkan selepas anda ambil. Had: <strong>10 syarikat sehari</strong>.
-          Hubungi dalam <strong>3 hari</strong> selepas ambil, atau prospek kembali ke pool.
+          Selepas anda ambil, telefon, emel dan alamat syarikat dipaparkan di kad <strong>📞 Hubungi Sekarang</strong> di Dashboard.
+          Had: <strong>10 syarikat sehari</strong>. Hubungi dalam <strong>3 hari</strong> selepas ambil, atau prospek kembali ke pool.
+          Maklumat syarikat salah? Laporkan di kad tersebut. Ia tidak dikira dalam had harian anda.
         </p>
         <div class="kpi">
           <div class="kpi-card"><h3>Diambil Hari Ini</h3><h1 id="poolTaken">0/10</h1></div>
@@ -542,6 +567,27 @@
   </div>
 </footer>
 
+<div id="agreementModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="agreementTitle">
+  <div class="modal">
+    <h3 id="agreementTitle">Notis Pemilikan Data Prospek</h3>
+    <p class="sop-muted">Sila baca sebelum menggunakan Agent Portal.</p>
+    <ol>
+      <li>Semua maklumat prospek dalam portal ini, <strong>termasuk prospek yang anda isi sendiri</strong>, ialah milik <strong>Easy Latih Consultancy</strong>.</li>
+      <li>Anda diberi hak untuk menghubungi dan mengurus prospek bagi pihak Easy Latih sahaja, selagi akaun anda aktif.</li>
+      <li>Prospek yang tidak diurus boleh diberikan kepada ejen lain: prospek dari pool yang tidak dihubungi dalam <strong>3 hari</strong> selepas diambil, dan mana-mana prospek tanpa aktiviti selama <strong>30 hari</strong>.</li>
+      <li>Akaun yang <strong>tidak log masuk selama 30 hari</strong> akan dinyahaktifkan. Semua prospeknya akan diberikan kepada ejen yang aktif. Amaran dihantar melalui emel 9 hari dan 2 hari sebelum itu.</li>
+      <li>Maklumat prospek tidak boleh disalin, dikongsi, dijual atau digunakan untuk pihak lain atau tujuan selain urusan Easy Latih.</li>
+      <li>Hormati permintaan syarikat. Jika syarikat minta tidak dihubungi lagi, tandakan <strong>“Minta jangan dihubungi”</strong>. Syarikat itu tidak akan dihubungi oleh mana-mana ejen.</li>
+      <li>Wakili Easy Latih secara jujur dan profesional dalam setiap panggilan, mesej dan emel, demi menjaga nama baik syarikat.</li>
+    </ol>
+    <label class="agree"><input type="checkbox" id="agreeCheck"> <span>Saya telah membaca dan bersetuju dengan notis di atas.</span></label>
+    <div class="modal-actions">
+      <button id="agreeBtn" onclick="acceptAgreement()">Setuju &amp; Teruskan</button>
+      <button class="secondary-btn" onclick="logout()">Log Keluar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script>
 <script src="../trainer/config.js"></script>
 <script src="admin-session.js"></script>
@@ -567,11 +613,36 @@ async function apiRequest(params){
       if (fresh) { params.delete("sessionToken"); params.set("_retried", "1"); return apiRequest(params); }
     }
     localStorage.clear();
-    alert("Sesi anda tamat. Sila log masuk semula.");
+    alert("Sesi anda tamat atau akaun tidak aktif. Sila log masuk semula.");
     location.reload();
     throw new Error("Session required");
   }
+  if (data.code === "AGREEMENT_REQUIRED") {
+    showAgreement();
+    throw new Error("Agreement required");
+  }
   return data;
+}
+
+function showAgreement(){
+  document.getElementById("agreementModal").classList.remove("hidden");
+}
+
+async function acceptAgreement(){
+  if(!document.getElementById("agreeCheck").checked){
+    alert("Sila tanda kotak persetujuan dahulu.");
+    return;
+  }
+  const btn = document.getElementById("agreeBtn");
+  btn.disabled = true;
+  const data = await apiRequest(new URLSearchParams({ action: "acceptAgreement", accept: "YES" }));
+  btn.disabled = false;
+  if(!data.success){
+    alert(data.message || "Gagal merekod persetujuan.");
+    return;
+  }
+  document.getElementById("agreementModal").classList.add("hidden");
+  loadDashboard();
 }
 
 
@@ -690,10 +761,12 @@ async function checkProspect(){
     (data.matches || []).forEach(m => {
       html += `
         <div class="match-card">
-          <strong>${m.company || "-"}</strong><br>
-          Owner: ${m.ownerName || "-"} (${m.ownerAgent || "-"})<br>
-          Status: ${m.status || "-"}<br>
-          State: ${m.state || "-"}
+          <strong>${esc(m.company) || "-"}</strong><br>
+          Owner: ${esc(m.ownerName) || "-"} (${esc(m.ownerAgent) || "-"})<br>
+          Status: ${esc(m.status) || "-"}<br>
+          State: ${esc(m.state) || "-"}
+          ${String(m.status).toUpperCase() === "DO NOT CONTACT"
+            ? `<div class="dnc-box">⛔ Syarikat ini minta untuk tidak dihubungi lagi. Jangan hubungi.</div>` : ""}
         </div>
       `;
     });
@@ -716,7 +789,7 @@ async function login(){
   const data = await response.json();
 
   if(!data.success){
-    alert("Invalid Login");
+    alert((data.message || "Login tidak berjaya.") + "\n\nJika akaun anda telah dinyahaktifkan, sila hubungi admin Easy Latih.");
     return;
   }
 
@@ -752,7 +825,8 @@ async function loadDashboard(){
   renderFunnel(data.funnel || {});
   renderQuotation(data);
   renderProspects(data.prospects || []);
-  renderReleaseWarnings(data.releaseWarnings || []);
+  renderContactNow((data.prospects || []).filter(p => p.releaseRule === "FIRST_CONTACT"));
+  renderReleaseWarnings((data.releaseWarnings || []).filter(p => p.releaseRule !== "FIRST_CONTACT"));
   setupResourceFilters();
   renderResources();
 }
@@ -850,6 +924,7 @@ function renderFunnel(funnel){
   setText("funnelHrd", funnel["HRD APPLICATION"] || 0);
   setText("funnelRegistered", funnel["REGISTERED"] || 0);
   setText("funnelNotInterested", funnel["NOT INTERESTED"] || 0);
+  setText("funnelDoNotContact", funnel["DO NOT CONTACT"] || 0);
 }
 
 function renderQuotation(data){
@@ -916,6 +991,7 @@ function renderProspects(list){
             <option value="HRD APPLICATION" ${p.status=="HRD APPLICATION"?"selected":""}>HRD APPLICATION</option>
             <option value="REGISTERED" ${p.status=="REGISTERED"?"selected":""}>REGISTERED</option>
             <option value="NOT INTERESTED" ${p.status=="NOT INTERESTED"?"selected":""}>NOT INTERESTED</option>
+            <option value="DO NOT CONTACT" ${p.status=="DO NOT CONTACT"?"selected":""}>DO NOT CONTACT (minta jangan dihubungi)</option>
           </select>
         </div>
         ${picForm(p)}
@@ -1023,6 +1099,127 @@ function renderReleaseWarnings(list){
     </div>`).join("");
 }
 
+/* ---------- Hubungi Sekarang ---------- */
+
+function contactButtons(p){
+  const phone = cleanPhone(p.companyPhone || p.phone);
+  const email = p.companyEmail || p.email || "";
+  const message = encodeURIComponent(
+    "Assalamualaikum dan salam sejahtera.\n\n" +
+    "Saya dari EasyLatih Consultancy, HRD Corp Training Provider.\n\n" +
+    "Boleh saya tahu siapa yang menguruskan latihan staf di syarikat Tuan/Puan?"
+  );
+  return `
+    <div class="prospect-actions">
+      ${phone ? `<a href="tel:${phone}" class="action-btn call-btn">📞 Call</a>` : ""}
+      ${phone ? `<a href="https://wa.me/${waPhone(phone)}?text=${message}" target="_blank" rel="noopener" class="action-btn whatsapp-btn">💬 WhatsApp</a>` : ""}
+      ${email ? `<a href="mailto:${esc(email)}" class="action-btn email-btn">✉️ Email</a>` : ""}
+    </div>`;
+}
+
+function tomorrow(){
+  const d = new Date(Date.now() + 86400000);
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+}
+
+function renderContactNow(list){
+  const card = document.getElementById("contactNowCard");
+  card.classList.toggle("hidden", list.length === 0);
+  if(list.length === 0) document.getElementById("contactNowNotice")?.remove();
+  document.getElementById("contactNowList").innerHTML = list.map(p => {
+    const r = p.rowNumber;
+    return `
+    <div class="prospect-card contact-card" id="contact_${r}">
+      <div class="warn-badge">⏳ ${releaseText(p)}</div>
+      <div class="prospect-company">${esc(p.company) || "-"}</div>
+      <div class="contact-detail">
+        ${p.industry ? "🏭 " + esc(p.industry) + "<br>" : ""}
+        ☎️ ${p.companyPhone ? `<a href="tel:${cleanPhone(p.companyPhone)}">${esc(p.companyPhone)}</a>` : "-"}<br>
+        ✉️ ${p.companyEmail ? `<a href="mailto:${esc(p.companyEmail)}">${esc(p.companyEmail)}</a>` : "-"}<br>
+        📍 ${esc(p.companyAddress || [p.district, p.state].filter(Boolean).join(", ")) || "-"}
+      </div>
+      ${contactButtons(p)}
+      <div class="contact-form">
+        <label for="outcome_${r}">Hasil panggilan</label>
+        <select id="outcome_${r}" onchange="outcomeChanged(${r})">
+          <option value="">— Pilih —</option>
+          <option value="INTERESTED">Berminat</option>
+          <option value="CALLBACK">Minta hubungi semula</option>
+          <option value="NO_ANSWER">Tiada jawapan</option>
+          <option value="NOT_INTERESTED">Tidak berminat</option>
+          <option value="DO_NOT_CONTACT">Minta jangan dihubungi lagi</option>
+          <option value="WRONG_INFO">Maklumat syarikat salah</option>
+        </select>
+        <div id="dateWrap_${r}">
+          <label for="cnext_${r}">Follow up seterusnya</label>
+          <input type="date" id="cnext_${r}" value="${tomorrow()}">
+        </div>
+        <label for="cremark_${r}">Catatan</label>
+        <textarea id="cremark_${r}" placeholder="Apa yang dibincangkan / kenapa"></textarea>
+        <details class="pic-box" id="picWrap_${r}">
+          <summary><strong>👤 Maklumat PIC (jika dapat)</strong></summary>
+          <input id="cpicName_${r}" placeholder="Nama PIC">
+          <input id="cpicPosition_${r}" placeholder="Jawatan (cth. Pengurus HR)">
+          <input id="cpicPhone_${r}" placeholder="No. HP PIC">
+          <input id="cpicEmail_${r}" type="email" placeholder="Emel PIC">
+          <select id="cpicLevy_${r}">
+            <option value="">Status levi HRD (tidak pasti)</option>
+            <option value="YA">Bayar levi HRD</option>
+            <option value="TIDAK">Tidak bayar levi</option>
+          </select>
+        </details>
+        <button onclick="saveContact(${r}, this)">Simpan Hasil</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function outcomeChanged(r){
+  const outcome = document.getElementById("outcome_" + r).value;
+  const noDate = ["NOT_INTERESTED", "DO_NOT_CONTACT", "WRONG_INFO"].includes(outcome);
+  document.getElementById("dateWrap_" + r).classList.toggle("hidden", noDate);
+  document.getElementById("picWrap_" + r).classList.toggle("hidden", outcome === "WRONG_INFO" || outcome === "DO_NOT_CONTACT");
+  if(outcome === "INTERESTED" || outcome === "CALLBACK") document.getElementById("picWrap_" + r).open = true;
+  const remark = document.getElementById("cremark_" + r);
+  remark.placeholder = outcome === "WRONG_INFO"
+    ? "Wajib: apa yang salah? (cth. nombor tidak wujud, syarikat sudah tutup)"
+    : "Apa yang dibincangkan / kenapa";
+}
+
+async function saveContact(r, btn){
+  const val = id => (document.getElementById(id + "_" + r)?.value || "").trim();
+  const outcome = val("outcome");
+  if(!outcome){ alert("Pilih hasil panggilan dahulu."); return; }
+  if(outcome === "DO_NOT_CONTACT" &&
+     !confirm("Syarikat ini akan ditanda 'Jangan Hubungi' dan tidak akan dihubungi oleh mana-mana ejen lagi. Teruskan?")) return;
+  if(outcome === "WRONG_INFO" &&
+     !confirm("Syarikat ini akan dikeluarkan dari senarai anda dan dari pool. Teruskan?")) return;
+
+  const skipPic = outcome === "WRONG_INFO" || outcome === "DO_NOT_CONTACT";
+  const params = new URLSearchParams({
+    action: "recordContact",
+    rowNumber: r,
+    outcome: outcome,
+    callRemark: val("cremark"),
+    nextFollowUpDate: ["NOT_INTERESTED", "DO_NOT_CONTACT", "WRONG_INFO"].includes(outcome) ? "" : val("cnext"),
+    picName: skipPic ? "" : val("cpicName"),
+    picPosition: skipPic ? "" : val("cpicPosition"),
+    picPhone: skipPic ? "" : val("cpicPhone"),
+    picEmail: skipPic ? "" : val("cpicEmail"),
+    levy: skipPic ? "" : val("cpicLevy")
+  });
+  btn.disabled = true;
+  btn.textContent = "Menyimpan...";
+  const data = await apiRequest(params);
+  btn.disabled = false;
+  btn.textContent = "Simpan Hasil";
+  alert(data.message || (data.success ? "Disimpan" : "Gagal simpan"));
+  if(data.success){
+    document.getElementById("contactNowNotice")?.remove();
+    loadDashboard();
+  }
+}
+
 function picForm(p){
   const r = p.rowNumber;
   const open = p.picMissing ? "open" : "";
@@ -1115,12 +1312,33 @@ async function claimPool(poolId, btn){
   btn.textContent = "Mengambil...";
   const data = await apiRequest(new URLSearchParams({ action: "claimProspect", poolId: poolId }));
   if(data.success){
-    alert(`✅ ${data.company} kini prospek anda.\n\nTelefon: ${data.companyPhone || "-"}\nEmel: ${data.companyEmail || "-"}\nAlamat: ${data.address || "-"}\n\nIsi maklumat PIC di tab Prospects selepas berhubung.`);
-    loadDashboard();
+    btn.textContent = "✅ Diambil";
+    showClaimed(data.company);
+    await loadDashboard();
+    const card = document.getElementById("contact_" + data.rowNumber);
+    const box = document.getElementById("contactNowCard");
+    if(box){ box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash"); }
+    if(card) card.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
     alert(data.message || "Gagal mengambil prospek.");
   }
   loadPool();
+}
+
+// After a claim, jump to the Dashboard where the company's contacts are shown.
+function showClaimed(company){
+  const btn = document.querySelector('.tab-btn[onclick*="dashboardTab"]');
+  if(btn) showTab("dashboardTab", btn);
+  setText("contactNowNotice", "");
+  const card = document.getElementById("contactNowCard");
+  let note = document.getElementById("contactNowNotice");
+  if(!note){
+    note = document.createElement("div");
+    note.id = "contactNowNotice";
+    note.className = "success-box";
+    card.insertBefore(note, card.children[1]);
+  }
+  note.innerHTML = `✅ <strong>${esc(company)}</strong> kini prospek anda. Hubungi sekarang dan simpan hasilnya di bawah.`;
 }
 
 async function loadAdminPool(){
@@ -1129,15 +1347,17 @@ async function loadAdminPool(){
   if(!data.success) return;
   card.classList.remove("hidden");
   const agents = (data.agents || []).map(a =>
-    `<tr><td>${esc(a.agentName)} (${esc(a.agentId)})</td><td>${a.claimedToday}</td></tr>`).join("");
+    `<tr><td>${esc(a.agentName)} (${esc(a.agentId)})</td><td>${a.claimedToday}</td><td>${a.invalidToday || 0}</td></tr>`).join("");
   document.getElementById("adminPoolSummary").innerHTML = `
     <div class="kpi">
       <div class="kpi-card"><h3>Tersedia</h3><h1>${data.available}</h1></div>
       <div class="kpi-card"><h3>Diambil Hari Ini</h3><h1>${data.claimedToday}</h1></div>
       <div class="kpi-card"><h3>Dilepaskan (7 hari)</h3><h1>${data.released7d}</h1></div>
+      <div class="kpi-card"><h3>Lapor Salah (7 hari)</h3><h1>${data.invalid7d || 0}</h1></div>
     </div>
-    <p class="sop-muted">Import terakhir: ${esc(data.lastImport) || "belum ada"}</p>
-    ${agents ? `<table><tr><th>Ejen</th><th>Ambil hari ini</th></tr>${agents}</table>` : ""}`;
+    <p class="sop-muted">Import terakhir: ${esc(data.lastImport) || "belum ada"}<br>
+    Semakan ejen tidak aktif: ${esc(data.lastAgentCheck) || "belum berjalan"}</p>
+    ${agents ? `<table><tr><th>Ejen</th><th>Ambil hari ini</th><th>Lapor salah</th></tr>${agents}</table>` : ""}`;
 }
 
 function logout(){

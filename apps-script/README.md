@@ -68,3 +68,19 @@ Every time **Save details** is pressed on Admin Centre → Appendices, the progr
 3. **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**, so the Web App URL stays the same. Approve the Drive permission prompt if asked.
 
 Defaults: programme folders go in the parent folder `1rY5bAux_8QRD4y5x1q8TUyymlDW_jdoq` and the guideline is copied from file `14oLvOWU6OdlR7nTNcTK4i9bCJWHkteH4`. Override with Script properties `GRANT_PACK_PARENT_FOLDER_ID` and `GRANT_GUIDELINE_FILE_ID`. If a programme has no grant folder yet, the registration email links the master guideline PDF instead of leaving it out.
+
+## Agent access rules (AgentAccess.gs)
+
+Last-login tracking, automatic deactivation and the data-ownership notice.
+
+1. In the same Apps Script project, click **+ → Script**, name it `AgentAccess`, and paste in `AgentAccess.gs`. Update `AgentPortalSecure.gs` (Code.gs) and `ProspectPool.gs` too.
+2. Run **setupProspectPool** again and approve the new permission (sending email). This adds the **Last Login**, **Data Agreement** and **Deactivated At** columns to **Agents** and a daily `checkInactiveAgents` trigger at 6am.
+3. Optional: run **previewAgentCheck** to see in the log what the next daily check will do, without changing anything.
+4. **Deploy → Manage deployments → Edit → New version → Deploy**.
+
+What the daily check does:
+- An ACTIVE agent (not an admin) with no login for 30 days becomes INACTIVE and loses access at once. Days are counted from the later of last login, the day the rules started, or the last deactivation (so an agent an admin reactivates gets a fresh 30 days).
+- Warning email 9 days and 2 days before, to the address in the Agents sheet's email column.
+- Every prospect owned by an agent who is not ACTIVE, including ones they keyed in, goes back to the Prospect Pool. Prospects at Quotation Sent / HRD Application / Registered or Not Interested / Do Not Contact go to the house account instead (Script properties `HOUSE_AGENT_ID` / `HOUSE_AGENT_NAME`, or the first active admin row).
+
+Agents accept the notice once in the portal; the time and version are stored in **Data Agreement**.

@@ -11,6 +11,10 @@ function doGet(e) {
   const session = getSession_(e);
   if (!session) return unauthorized_();
 
+  // Agents must accept the data-ownership notice once (AgentAccess.gs).
+  if (action === "acceptAgreement") return acceptAgreement_(e, session);
+  if (!isAdmin_(session) && !session.agreed) return agreementRequired_();
+
   if (action === "getDashboard") return getDashboard(e, session);
   if (action === "adminDashboard") return adminDashboard(e, session);
   if (action === "addProspect") return addProspect(e, session);
@@ -30,7 +34,7 @@ const SESSION_TTL_SECONDS = 6 * 60 * 60;
 const LOGIN_LIMIT_PREFIX = "agent-login-limit:";
 const ALLOWED_STATUSES = [
   "NEW LEAD", "CONTACTED", "INTERESTED", "QUOTATION SENT",
-  "HRD APPLICATION", "REGISTERED", "NOT INTERESTED"
+  "HRD APPLICATION", "REGISTERED", "NOT INTERESTED", "DO NOT CONTACT"
 ];
 
 function sessionCache_() {
@@ -42,19 +46,27 @@ function getSession_(e) {
   if (token.length < 30) return null;
   const stored = sessionCache_().get(SESSION_PREFIX + token);
   if (!stored) return null;
+  let session = null;
   try {
-    return JSON.parse(stored);
+    session = JSON.parse(stored);
   } catch (error) {
     return null;
   }
+  // An agent deactivated by the daily check loses access at once.
+  if (!isAdmin_(session) && isRevokedAgent_(session.agentId)) {
+    sessionCache_().remove(SESSION_PREFIX + token);
+    return null;
+  }
+  return session;
 }
 
-function createSession_(agentId, name, role) {
+function createSession_(agentId, name, role, agreed) {
   const token = Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
   const session = {
     agentId: String(agentId),
     name: String(name),
-    role: String(role || "").trim().toUpperCase()
+    role: String(role || "").trim().toUpperCase(),
+    agreed: !!agreed
   };
   sessionCache_().put(SESSION_PREFIX + token, JSON.stringify(session), SESSION_TTL_SECONDS);
   return token;
@@ -106,12 +118,14 @@ function loginAgent(e) {
     if (String(row[0]) === agentId && String(row[5]) === password && String(row[7]).toUpperCase() === "ACTIVE") {
       cache.remove(rateKey);
       const role = String(row[6] || "").trim().toUpperCase();
+      const agreed = recordAgentLogin_(sheet, i + 1, row);
       return jsonOutput({
         success: true,
         agentId: String(row[0]),
         name: String(row[1]),
         role: role,
-        sessionToken: createSession_(row[0], row[1], role),
+        needsAgreement: !agreed && !isAdminRole_(role),
+        sessionToken: createSession_(row[0], row[1], role, agreed),
         expiresInSeconds: SESSION_TTL_SECONDS
       });
     }
@@ -161,7 +175,8 @@ function getDashboard(e, session) {
     "QUOTATION SENT": 0,
     "HRD APPLICATION": 0,
     "REGISTERED": 0,
-    "NOT INTERESTED": 0
+    "NOT INTERESTED": 0,
+    "DO NOT CONTACT": 0
   };
 
   for (let i = 1; i < data.length; i++) {
@@ -214,7 +229,7 @@ function getDashboard(e, session) {
       nextFollowUpDate &&
       nextFollowUpDate < today &&
       status !== "REGISTERED" &&
-      status !== "NOT INTERESTED"
+      !isDeadStatus_(status)
     ) {
       overdueFollowUps.push({
         rowNumber: i + 1,
@@ -315,7 +330,7 @@ function getDashboard(e, session) {
 
     if (
       status !== "REGISTERED" &&
-      status !== "NOT INTERESTED"
+      !isDeadStatus_(status)
     ) {
       const priorityDate = nextFollowUpDate || lastCallDate || "1900-01-01";
 
@@ -446,7 +461,7 @@ function adminDashboard(e, session) {
       nextFollowUpDate &&
       nextFollowUpDate < today &&
       status !== "REGISTERED" &&
-      status !== "NOT INTERESTED"
+      !isDeadStatus_(status)
     ) {
       const daysOverdue = Math.floor(
         (new Date(today) - new Date(nextFollowUpDate)) /
@@ -529,6 +544,20 @@ function addProspect(e, session) {
   const sheet = SpreadsheetApp
     .getActiveSpreadsheet()
     .getSheetByName(PROSPECT_SHEET);
+
+  // A company that asked not to be contacted again stays off every agent's list.
+  const name = normalizeCompany(e.parameter.company);
+  if (name.length >= 3) {
+    const rows = sheet.getDataRange().getValues();
+    const blocked = rows.some((r, i) =>
+      i > 0 && String(r[13] || "").toUpperCase() === "DO NOT CONTACT" && normalizeCompany(r[3]) === name);
+    if (blocked) {
+      return jsonOutput({
+        success: false,
+        message: "Syarikat ini telah meminta untuk tidak dihubungi lagi. Sila jangan hubungi syarikat ini."
+      });
+    }
+  }
 
   sheet.appendRow([
     new Date(),
