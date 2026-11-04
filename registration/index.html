@@ -517,8 +517,8 @@ function addParticipant() {
     <label>Full Name (as printed on certificate)</label>
     <input id="pName${participantCount}" data-case="upper" autocapitalize="characters">
 
-    <label>IC No</label>
-    <input id="pIC${participantCount}" data-case="upper" autocapitalize="characters">
+    <label>IC No (12 digits, without -)</label>
+    <input id="pIC${participantCount}" data-case="ic" inputmode="numeric" maxlength="12" placeholder="900101061234">
 
     <label>Email (e-certificate will be sent here)</label>
     <input id="pEmail${participantCount}" type="email" data-case="lower" autocapitalize="off" inputmode="email" placeholder="participant@example.com">
@@ -535,8 +535,11 @@ function addParticipant() {
 document.getElementById("registrationForm").addEventListener("input", function (event) {
   const el = event.target;
   const mode = el && el.dataset ? el.dataset.case : "";
-  if (mode !== "upper" && mode !== "lower") return;
-  const next = mode === "upper" ? el.value.toUpperCase() : el.value.toLowerCase();
+  if (mode !== "upper" && mode !== "lower" && mode !== "ic") return;
+  // IC: digits only, no "-" or spaces, at most 12.
+  const next = mode === "ic" ? el.value.replace(/\D/g, "").slice(0, 12)
+    : mode === "upper" ? el.value.toUpperCase() : el.value.toLowerCase();
+  if (mode === "ic") { if (next !== el.value) el.value = next; return; }
   if (next === el.value) return;
   let start = null, end = null;
   try { start = el.selectionStart; end = el.selectionEnd; } catch (_) {}
@@ -592,6 +595,14 @@ function submitRegistration() {
     alert("Please add at least one participant.");
     return;
   }
+
+  // IC: exactly 12 digits (MyKad), stored without "-".
+  const badIc = participants.findIndex(p => !/^\d{12}$/.test(String(p.icNo || "").replace(/\D/g, "")));
+  if (badIc !== -1) {
+    alert("No. IC peserta " + participants[badIc].name + " mesti 12 digit tanpa tanda - (contoh: 900101061234).\nThe IC number for " + participants[badIc].name + " must be 12 digits without - (e.g. 900101061234).");
+    return;
+  }
+  participants.forEach(p => { p.icNo = String(p.icNo || "").replace(/\D/g, ""); });
 
   // Each participant needs a valid email: the e-certificate is sent there.
   const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || "").trim());
