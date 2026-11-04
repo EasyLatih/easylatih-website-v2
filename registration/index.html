@@ -163,6 +163,10 @@ button{
     <p class="muted" style="margin:.25rem 0 0;font-size:.85rem">Sila isi nombor telefon yang mempunyai WhatsApp. Pengesahan pendaftaran akan dihantar melalui e-mel dan WhatsApp.<br>Please enter a number that has WhatsApp. Registration confirmation is sent by email and WhatsApp.</p>
 
     <h2>Participant Details</h2>
+    <p class="status-note" style="margin:.25rem 0 1rem;font-size:.9rem">
+      <strong>Penting:</strong> Sila isi <strong>e-mel peribadi setiap peserta</strong> dengan betul. E-sijil akan dihantar terus ke e-mel ini selepas program. Nama peserta akan dicetak pada sijil, jadi gunakan nama penuh.<br>
+      <strong>Important:</strong> Please enter <strong>each participant's own email</strong> correctly. The e-certificate is sent straight to this email after the programme. The participant's name is printed on the certificate, so use their full name.
+    </p>
     <div id="participants"></div>
 
     <button type="button" onclick="addParticipant()">+ Add Participant</button>
@@ -510,14 +514,14 @@ function addParticipant() {
   div.innerHTML = `
     <h3>Participant ${participantCount}</h3>
 
-    <label>Name</label>
+    <label>Full Name (as printed on certificate)</label>
     <input id="pName${participantCount}">
 
     <label>IC No</label>
     <input id="pIC${participantCount}">
 
-    <label>Email</label>
-    <input id="pEmail${participantCount}">
+    <label>Email (e-certificate will be sent here)</label>
+    <input id="pEmail${participantCount}" type="email" inputmode="email" placeholder="participant@example.com">
 
     <label>Phone</label>
     <input id="pPhone${participantCount}">
@@ -572,6 +576,14 @@ function submitRegistration() {
 
   if (participants.length === 0) {
     alert("Please add at least one participant.");
+    return;
+  }
+
+  // Each participant needs a valid email: the e-certificate is sent there.
+  const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || "").trim());
+  const badEmail = participants.findIndex(p => !emailOk(p.email));
+  if (badEmail !== -1) {
+    alert("Sila isi e-mel yang sah untuk peserta: " + participants[badEmail].name + ". E-sijil akan dihantar ke e-mel ini.\nPlease enter a valid email for participant: " + participants[badEmail].name + ". The e-certificate is sent to this email.");
     return;
   }
 
