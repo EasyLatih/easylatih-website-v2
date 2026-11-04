@@ -242,36 +242,44 @@
       slotList.append(empty);
       validateTime();return;
     }
-    SESSION_PERIODS.forEach(period=>{
-      const state=sessionState(selected,period),canBook=sessionIsBookable(selected,period);
-      const card=document.createElement('div');card.className='vr-session-card';card.dataset.state=state;
-      const row=document.createElement('div');row.className='vr-session-head';
-      const title=document.createElement('strong');title.textContent=period.short+' · '+period.name;
-      const status=document.createElement('span');status.className='vr-session-status';status.dataset.state=state;
-      status.textContent=state==='past'?'Session passed':state==='available'?'Available':state==='full'?'Fully booked':'Partially booked';
-      row.append(title,status);card.append(row);
-      const hours=document.createElement('span');hours.className='vr-session-hours';
-      hours.textContent=timeDisplay(period.from)+' – '+timeDisplay(period.to);
-      card.append(hours);
-      const b=dayBookings(selected).filter(x=>tmin(x.start_time)<period.to&&tmin(x.end_time)>period.from);
-      const details=document.createElement('div');details.className='vr-session-details';
-      if(!b.length){details.textContent='No confirmed bookings';}
-      else {
-        details.textContent='Booked: '+b.map(x=>{
-          const from=Math.max(period.from,tmin(x.start_time));
-          const to=Math.min(period.to,tmin(x.end_time));
-          return timeDisplay(from)+' – '+timeDisplay(to);
-        }).join('; ');
-      }
-      card.append(details);
-      const btn=document.createElement('button');btn.type='button';btn.className='vr-session-choose';
-      btn.disabled=!canBook||!calendarReady;
-      btn.textContent=!canBook?(state==='past'?'Time passed':'No hourly slots'):state==='partial'?'Choose available hour':period.key==='night'?'Choose night hours':'Choose '+period.short;
-      btn.addEventListener('click',()=>selectSession(period));
-      card.append(btn);
-      slotList.append(card);
+    const kinds=updatePackageAvailability();
+    const packages=[
+      {key:'FULL',label:'Full Day',hours:'9:00 AM – 5:00 PM',available:kinds.FULL},
+      {key:'HALF_MORNING',label:'Half Day · Morning',hours:'9:00 AM – 1:00 PM',available:kinds.HALF_MORNING},
+      {key:'HALF_AFTERNOON',label:'Half Day · Afternoon',hours:'1:00 PM – 5:00 PM',available:kinds.HALF_AFTERNOON},
+      {key:'DAY_HOURLY',label:'Hourly · Daytime',hours:'Choose 1–3 hours between 9:00 AM and 5:00 PM',available:kinds.DAY_HOURLY},
+      {key:'NIGHT',label:'Hourly · Night',hours:'Choose hours between 8:00 PM and midnight',available:kinds.NIGHT}
+    ];
+    packages.forEach(option=>{
+      const card=document.createElement('div');
+      card.className='vr-package-option';
+      card.classList.toggle('is-selected',$('vrPackage').value===option.key);
+      const button=document.createElement('button');
+      button.type='button';button.className='vr-package-choice';
+      button.disabled=!option.available;
+      button.setAttribute('aria-pressed',String($('vrPackage').value===option.key));
+      const title=document.createElement('strong');title.textContent=option.label;
+      const hours=document.createElement('span');hours.className='vr-package-hours';hours.textContent=option.hours;
+      const status=document.createElement('span');status.className='vr-package-status';
+      status.textContent=option.available?'Available':'Unavailable';
+      button.append(title,hours,status);
+      button.addEventListener('click',()=>{
+        $('vrPackage').value=option.key;
+        applyPackage();
+        if(option.key==='DAY_HOURLY'||option.key==='NIGHT') {
+          const from=option.key==='DAY_HOURLY'?540:1200;
+          const to=option.key==='DAY_HOURLY'?1020:1440;
+          const first=findFreeHour(selected,from,to);
+          if(first){$('vrStart').value=first;adjustHourlyEnd();refreshQuote();}
+        }
+        renderSlots();
+        $('vrForm').scrollIntoView({behavior:'smooth',block:'start'});
+      });
+      card.append(button);slotList.append(card);
     });
-    updatePackageAvailability();
+    const note=document.createElement('p');note.className='vr-muted vr-booking-note';
+    note.textContent='Choose a booking type above. Your request is not confirmed until EasyLatih reviews it. Different sessions on the same date can be reserved separately.';
+    slotList.append(note);
     refreshQuote();
   }
 
