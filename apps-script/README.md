@@ -113,3 +113,13 @@ Agents tick which public programmes they offered a prospect (Prospects column
 programmes comes from the public calendar (`public_training_calendar_mirror`):
 not started and registration not closed. The Prospects tab filters by programme,
 including "not offered any programme yet".
+
+## Free programmes with admin approval (FreeRegistration.gs)
+
+A public programme with Self Payment fee **RM0** and no HRD fee (or non-HRD claimable) is a free programme. The website form shows "Program Percuma / Free Programme" with no payment choice. A registration is saved as `PaymentMethod = FREE`, `RegistrationStatus = PENDING`; the PIC gets a bilingual "registration received, awaiting confirmation" email and the admin gets a notice. No quotation or invoice is made. In Admin Centre → Registrations, **Approve / Reject** (or **Approve all pending**) sends the confirmation email or a polite rejection. Code.gs does not change: the website uses the existing `adminTools.` hook.
+
+1. In the **EasyLatih Management System V2 - STAGING** project, click **+ → Script**, name it `FreeRegistration`, and paste in `FreeRegistration.gs`.
+2. Replace `AdminToolsBridge` and `PublicRegistrationAdmin` with the updated files.
+3. **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**, so the Web App URL stays the same.
+
+To make a programme free, set its Self Payment fee to 0 and its HRD fee to 0 (or mark it non-HRD claimable).

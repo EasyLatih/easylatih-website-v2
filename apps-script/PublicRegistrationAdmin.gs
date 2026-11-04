@@ -45,6 +45,7 @@ function publicRegistrationActions_() {
     regGrantApproved: function (d) { return praGrantApproved_(d); },
     regHrdStep: function (d) { return praHrdStep_(d); },
     regCancel: function (d) { return praCancel_(d); },
+    regFreeDecision: function (d) { return freeRegistrationDecision_(d); },
     regResendConfirmation: function (d) { return praResendConfirmation_(d); },
     regEmailParticipantList: function (d) { return praEmailParticipantList_(praText_(d.courseId)); },
     regArchive: function (d) { return praArchive_(praText_(d.courseId), d.force === true); },
@@ -143,6 +144,9 @@ function praProgramDate_(p) {
 // ---------------------------------------------------------------------------
 // Stages
 // ---------------------------------------------------------------------------
+// HRD, FREE (free programme, admin approval) or SELF.
+function praMethod_(v) { const m = praUpper_(v); return m === 'HRD' || m === 'FREE' ? m : 'SELF'; }
+
 function praParticipantKey_(courseId, picEmail) { return praText_(courseId) + '|' + praLower_(picEmail); }
 
 function praParticipantIndex_(participants) {
@@ -159,14 +163,21 @@ function praParticipantIndex_(participants) {
 function praStage_(reg, progress, people) {
   progress = progress || {};
   people = people || [];
-  const method = praUpper_(reg.PaymentMethod) === 'HRD' ? 'HRD' : 'SELF';
+  const method = praMethod_(reg.PaymentMethod);
   const attendedPeople = people.filter(function (p) { return praUpper_(p.AttendanceStatus) === 'ATTENDED'; });
   const attended = attendedPeople.length > 0;
   const certSent = attended && attendedPeople.every(function (p) { return praUpper_(p.EmailStatus) === 'SENT'; });
   const paid = praUpper_(reg.PaymentStatus) === 'RECEIVED';
   const grant = praUpper_(reg.GrantStatus) === 'APPROVED';
 
-  if (praUpper_(reg.RegistrationStatus) === 'CANCELLED') return { key: 'CANCELLED', label: 'Cancelled', next: '', done: true, method: method };
+  if (praUpper_(reg.RegistrationStatus) === 'CANCELLED') return { key: 'CANCELLED', label: method === 'FREE' && praUpper_(reg.PaymentStatus) === 'REJECTED' ? 'Not approved' : 'Cancelled', next: '', done: true, method: method };
+
+  if (method === 'FREE') {
+    if (praUpper_(reg.RegistrationStatus) !== 'CONFIRMED') return { key: 'AWAITING_APPROVAL', label: 'Awaiting approval', next: 'APPROVE', done: false, method: method };
+    if (!attended) return { key: 'CONFIRMED', label: 'Approved · confirmed', next: '', done: false, method: method };
+    if (!certSent) return { key: 'ATTENDED', label: 'Attended · certificate pending', next: '', done: false, method: method };
+    return { key: 'COMPLETED', label: 'Completed', next: '', done: true, method: method };
+  }
 
   if (method === 'SELF') {
     if (!paid) return { key: 'AWAITING_PAYMENT', label: 'Awaiting payment', next: 'PAYMENT', done: false, method: method };
@@ -214,7 +225,7 @@ function praPrograms_() {
   }).map(function (p) {
     const id = praText_(p.CourseID);
     const list = byCourse[id] || [];
-    const counts = { total: 0, pax: 0, cancelled: 0, awaitingPayment: 0, awaitingGrant: 0, confirmed: 0, inClaim: 0, completed: 0 };
+    const counts = { total: 0, pax: 0, cancelled: 0, awaitingPayment: 0, awaitingGrant: 0, awaitingApproval: 0, confirmed: 0, inClaim: 0, completed: 0 };
     list.forEach(function (r) {
       const st = praStage_(r, progress[praText_(r.RegistrationID)], people[praParticipantKey_(r.CourseID, r.PICEmail)]);
       if (st.key === 'CANCELLED') { counts.cancelled++; return; }
@@ -222,6 +233,7 @@ function praPrograms_() {
       counts.pax += Number(r.RequestedPax || 0);
       if (st.key === 'AWAITING_PAYMENT') counts.awaitingPayment++;
       else if (st.key === 'AWAITING_GRANT') counts.awaitingGrant++;
+      else if (st.key === 'AWAITING_APPROVAL') counts.awaitingApproval++;
       else if (st.key === 'COMPLETED') counts.completed++;
       else if (['CERT_SENT', 'JD14_SENT', 'JD14_SIGNED', 'CLAIM_SUBMITTED'].indexOf(st.key) !== -1) counts.inClaim++;
       else counts.confirmed++;
@@ -278,6 +290,7 @@ function praProgramDetail_(courseId) {
       closeDate: praIso_(p.RegistrationCloseDate),
       hrdFee: Number(p.HRDFee || 0),
       selfFee: Number(p.SelfFee || 0),
+      isFree: typeof isFreeProgramme_ === 'function' ? isFreeProgramme_(p) : false,
       confirm: praConfirmCheck_(p, courseId)
     },
     settings: {
@@ -296,7 +309,7 @@ function praProgramDetail_(courseId) {
         picName: praText_(r.PICName),
         picEmail: praText_(r.PICEmail),
         picPhone: praText_(r.PICPhone),
-        paymentMethod: praUpper_(r.PaymentMethod) === 'HRD' ? 'HRD' : 'SELF',
+        paymentMethod: praMethod_(r.PaymentMethod),
         requestedPax: Number(r.RequestedPax || 0),
         discountAmount: Number(r.DiscountAmount || 0),
         paymentDate: praIso_(r.PaymentDate),
@@ -400,6 +413,16 @@ function praConfirmCheck_(p, courseId) {
     const summary = buildProgramRegistrationSummary_(praBook_().getSheetByName('Registrations'));
     confirmedPax = Number((summary[courseId] || {}).confirmedPax || 0);
   } catch (e) { /* summary unavailable */ }
+  // Also count by stage, so approved free registrations count as confirmed.
+  try {
+    const book = praBook_();
+    const progress = praIndex_(praRead_(praProgressSheet_()).rows, 'RegistrationID');
+    const people = praParticipantIndex_(praRead_(book.getSheetByName('Participants')).rows.filter(function (x) { return praText_(x.CourseID) === courseId; }));
+    const byStage = praRead_(book.getSheetByName('Registrations')).rows.filter(function (r) { return praText_(r.CourseID) === courseId && praText_(r.RegistrationID); })
+      .filter(function (r) { return ['CANCELLED', 'AWAITING_PAYMENT', 'AWAITING_GRANT', 'AWAITING_APPROVAL'].indexOf(praStage_(r, progress[praText_(r.RegistrationID)], people[praParticipantKey_(r.CourseID, r.PICEmail)]).key) === -1; })
+      .reduce(function (n, r) { return n + Number(r.RequestedPax || 0); }, 0);
+    confirmedPax = Math.max(confirmedPax, byStage);
+  } catch (e) { /* keep summary figure */ }
   const status = praUpper_(p.Status) || 'DRAFT';
   const isActive = praFlag_(p.IsActive);
   const trainerStatus = praUpper_(p.TrainerConfirmationStatus) || 'TENTATIVE';
@@ -485,6 +508,7 @@ function praPaymentReceived_(d) {
   const reg = found.reg;
   if (praUpper_(reg.RegistrationStatus) === 'CANCELLED') throw new Error('This registration is cancelled.');
   if (praUpper_(reg.PaymentMethod) === 'HRD') throw new Error('This is an HRD Corp registration. Record the grant approval instead.');
+  if (praUpper_(reg.PaymentMethod) === 'FREE') throw new Error('This is a free programme registration. Use Approve instead.');
   const paymentDate = praText_(d.paymentDate) || praToday_();
   const amount = Number(d.amount || 0);
   if (!(amount > 0)) throw new Error('Enter the amount received.');
@@ -520,7 +544,7 @@ function praGrantApproved_(d) {
   const found = praRegistration_(registrationId);
   const reg = found.reg;
   if (praUpper_(reg.RegistrationStatus) === 'CANCELLED') throw new Error('This registration is cancelled.');
-  if (praUpper_(reg.PaymentMethod) !== 'HRD') throw new Error('This is a self-payment registration. Record the payment instead.');
+  if (praUpper_(reg.PaymentMethod) !== 'HRD') throw new Error('This is not an HRD Corp registration. Record the payment or approval instead.');
   const grantRef = praText_(d.grantRef);
   if (!grantRef) throw new Error('Enter the HRD Corp grant reference.');
   const approvalDate = praText_(d.approvalDate) || praToday_();
@@ -549,6 +573,12 @@ function praResendConfirmation_(d) {
   const reg = found.reg;
   const program = praProgramRecord_(praText_(reg.CourseID));
   const isHrd = praUpper_(reg.PaymentMethod) === 'HRD';
+  if (praUpper_(reg.PaymentMethod) === 'FREE') {
+    if (praUpper_(reg.RegistrationStatus) !== 'CONFIRMED') throw new Error('Approve the registration first.');
+    praSendConfirmation_(reg, program, 'FREE', {});
+    praMarkConfirmationSent_(found.sheet, registrationId, praText_(reg.CourseID));
+    return { ok: true };
+  }
   if (isHrd ? praUpper_(reg.GrantStatus) !== 'APPROVED' : praUpper_(reg.PaymentStatus) !== 'RECEIVED') {
     throw new Error(isHrd ? 'Record the grant approval first.' : 'Record the payment first.');
   }
@@ -691,10 +721,14 @@ function praSendConfirmation_(reg, program, kind, extra) {
   const joining = praText_(s.JoiningInstructions);
   const wa = praText_(s.WhatsAppLink);
 
-  const msOpening = kind === 'GRANT'
+  const msOpening = kind === 'FREE'
+    ? 'Pendaftaran anda bagi program percuma ini telah diluluskan dan disahkan. Tiada sebarang bayaran dikenakan.'
+    : kind === 'GRANT'
     ? 'Kami telah menerima kelulusan geran HRD Corp anda' + (extra.grantRef ? ' (rujukan ' + extra.grantRef + ')' : '') + '. Pendaftaran anda telah disahkan.'
     : 'Kami telah menerima bayaran anda. Pendaftaran anda telah disahkan' + (extra.receipt ? ' dan resit rasmi dilampirkan bersama e-mel ini.' : '.');
-  const enOpening = kind === 'GRANT'
+  const enOpening = kind === 'FREE'
+    ? 'Your registration for this free programme has been approved and confirmed. There is no fee.'
+    : kind === 'GRANT'
     ? 'We have received your HRD Corp grant approval' + (extra.grantRef ? ' (reference ' + extra.grantRef + ')' : '') + '. Your registration is confirmed.'
     : 'We have received your payment. Your registration is confirmed' + (extra.receipt ? ' and the official receipt is attached.' : '.');
 
@@ -927,7 +961,7 @@ function praEmailParticipantList_(courseId) {
   const p = built.detail.program;
   const regs = built.detail.registrations.filter(function (r) { return r.stage.key !== 'CANCELLED'; });
   const pax = regs.reduce(function (n, r) { return n + r.requestedPax; }, 0);
-  const confirmedPax = regs.filter(function (r) { return ['AWAITING_PAYMENT', 'AWAITING_GRANT'].indexOf(r.stage.key) === -1; }).reduce(function (n, r) { return n + r.requestedPax; }, 0);
+  const confirmedPax = regs.filter(function (r) { return ['AWAITING_PAYMENT', 'AWAITING_GRANT', 'AWAITING_APPROVAL'].indexOf(r.stage.key) === -1; }).reduce(function (n, r) { return n + r.requestedPax; }, 0);
   const verdict = p.minPax ? (pax >= p.minPax ? 'Minimum pax met (' + pax + ' of ' + p.minPax + ').' : 'Below minimum: ' + pax + ' registered, minimum ' + p.minPax + '.') : pax + ' registered (no minimum set).';
   const header = ['Participant', 'IC / Passport', 'Email', 'Phone', 'Company', 'PIC', 'PIC email', 'PIC phone', 'Payment', 'Stage', 'Registration'];
   const csv = praCsv_([header].concat(built.rows));
@@ -935,7 +969,7 @@ function praEmailParticipantList_(courseId) {
   const text = [
     'Participant list for ' + p.programName + ' (' + p.programDate + ').',
     verdict,
-    'Confirmed (paid or grant approved): ' + confirmedPax + ' pax.',
+    'Confirmed (paid, grant approved or free approved): ' + confirmedPax + ' pax.',
     'Registrations: ' + regs.length + ' companies, ' + built.rows.length + ' participants listed.',
     '',
     'The full list is attached as a CSV file.'
@@ -1071,9 +1105,10 @@ function praFormerClients_(query) {
     const email = praLower_(r.PICEmail);
     if (email || praText_(r.PICName)) c.contacts[email || praLower_(r.PICName)] = { name: praText_(r.PICName), position: praText_(r.PICPosition), email: praText_(r.PICEmail), phone: praText_(r.PICPhone) };
     const start = praIso_(p.StartDate) || praIso_(r.Timestamp || r.CreatedDate || r.RegistrationDate);
-    c.programmes.push({ courseId: praText_(r.CourseID), programName: praText_(p.ProgramName) || praText_(r.CourseID), date: start, pax: Number(r.RequestedPax || 0), payment: praUpper_(r.PaymentMethod) === 'HRD' ? 'HRD' : 'SELF' });
+    c.programmes.push({ courseId: praText_(r.CourseID), programName: praText_(p.ProgramName) || praText_(r.CourseID), date: start, pax: Number(r.RequestedPax || 0), payment: praMethod_(r.PaymentMethod) });
     c.pax += Number(r.RequestedPax || 0);
-    if (praUpper_(r.PaymentMethod) === 'HRD') c.hrd++; else c.self++;
+    const pm = praMethod_(r.PaymentMethod);
+    if (pm === 'HRD') c.hrd++; else if (pm === 'FREE') c.free = (c.free || 0) + 1; else c.self++;
     if (start > c.lastDate) c.lastDate = start;
   });
   let list = Object.keys(companies).map(function (k) {

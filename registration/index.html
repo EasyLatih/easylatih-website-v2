@@ -258,7 +258,7 @@ function loadProgramme() {
       const rows = await response.json().catch(() => []);
       if (!response.ok || !Array.isArray(rows) || !rows.length) throw new Error("Programme is not mirrored yet.");
       const row = rows[0];
-      return { courseId: row.course_id, programName: row.programme_name, programDate: row.programme_date, venue: row.venue, duration: row.duration, totalTime: row.total_time, hrdClaimable: row.hrd_claimable, hrdFee: Number(row.hrd_fee || 0), selfFee: Number(row.self_fee || 0) };
+      return { courseId: row.course_id, programName: row.programme_name, programDate: row.programme_date, venue: row.venue, duration: row.duration, totalTime: row.total_time, hrdClaimable: row.hrd_claimable, hrdFee: Number(row.hrd_fee || 0), selfFee: Number(row.self_fee || 0), selfFeeSet: row.self_fee !== null && row.self_fee !== undefined && row.self_fee !== "" };
     })
     .then(renderProgramme)
     .catch(() => loadProgrammeFromAppsScript());
@@ -283,9 +283,35 @@ function loadProgrammeFromAppsScript() {
   document.body.appendChild(script);
 }
 
+function isFreeProgramme(data) {
+  const hrdClaimable = data.hrdClaimable !== false;
+  if (data.selfFeeSet === false || data.selfFee === undefined || data.selfFee === null || data.selfFee === "") return false;
+  return Number(data.selfFee || 0) === 0 && (!hrdClaimable || Number(data.hrdFee || 0) === 0);
+}
+
 function renderProgramme(data) {
     currentProgram = data;
     const isHrdClaimable = data.hrdClaimable !== false;
+
+    if (isFreeProgramme(data)) {
+      document.getElementById("programCard").innerHTML = `
+        <h2>${data.programName}</h2>
+        <p>📅 ${data.programDate}</p>
+        <p>📍 ${data.venue}</p>
+        <hr>
+        <p class="muted">Duration</p>
+        <strong>${data.duration} (${data.totalTime})</strong>
+        <hr>
+        <div class="success" style="margin-bottom:1rem;">PROGRAM PERCUMA / FREE PROGRAMME</div>
+        <div class="price">RM 0</div>
+        <p class="muted">Pendaftaran akan disemak dan disahkan oleh pihak kami. Anda akan menerima e-mel pengesahan setelah diluluskan.<br>
+        Registrations are reviewed and approved by our team. You will receive a confirmation email once approved.</p>
+        <input type="hidden" id="paymentMethod" value="FREE">
+        <br>
+        <button type="button" onclick="showRegistrationForm()">Continue Registration</button>
+      `;
+      return;
+    }
 
     document.getElementById("programCard").innerHTML = `
       <h2>${data.programName}</h2>
@@ -444,7 +470,7 @@ function applyPromoCodeFromAppsScript(promoCode) {
 }
 
 function updateFinalFee() {
-  if (!currentProgram) return;
+  if (!currentProgram || !document.getElementById("finalPrice")) return;
 
   const paymentMethod = document.getElementById("paymentMethod").value;
   const isHrdClaimable = currentProgram.hrdClaimable !== false;
@@ -593,8 +619,10 @@ function submitRegistration() {
     registrationDone = true;
     const btn = document.getElementById("submitRegistrationBtn");
     if (btn) { btn.disabled = true; btn.textContent = "Registration submitted"; btn.style.opacity = "0.6"; btn.style.cursor = "default"; }
-    document.getElementById("submitResult").innerHTML =
-      `<div class="success">${message}<br>Check your email for the quotation or invoice. To register more participants, reload this page.</div>`;
+    const isFree = payload.paymentMethod === "FREE";
+    document.getElementById("submitResult").innerHTML = isFree
+      ? `<div class="success">${message}<br>Pendaftaran anda sedang menunggu pengesahan. Sila semak e-mel anda. / Your registration is awaiting confirmation. Please check your email.</div>`
+      : `<div class="success">${message}<br>Check your email for the quotation or invoice. To register more participants, reload this page.</div>`;
   })
   .catch(err => {
     registrationSubmitting = false;

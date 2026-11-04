@@ -31,6 +31,31 @@ export default async function handler(req, res) {
       params.set(key, value === undefined || value === null ? "" : String(value));
     });
 
+    // Free programmes: pending registration, approved later in the Admin Centre.
+    if (String(body.paymentMethod || "").toUpperCase() === "FREE") {
+      const payload = {};
+      fields.forEach((key) => { payload[key] = params.get(key); });
+      const freeParams = new URLSearchParams();
+      freeParams.set("action", "adminTools.publicFreeRegister");
+      freeParams.set("payload", JSON.stringify(payload));
+      const freeResponse = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: freeParams.toString(),
+        redirect: "follow"
+      });
+      const freeText = await freeResponse.text();
+      let result = null;
+      try { result = JSON.parse(freeText); } catch (_) { result = null; }
+      if (!result) {
+        return res.status(502).json({ ok: false, message: "Free registration is not available yet. Please contact Easy Latih." });
+      }
+      return res.status(result.success ? 200 : 400).json({
+        ok: !!result.success,
+        message: result.success ? (result.data && result.data.message) || "Registration received, awaiting confirmation." : result.message || "Registration submission failed."
+      });
+    }
+
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       headers: {

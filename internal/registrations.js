@@ -73,6 +73,7 @@
       const chips = [
         c.awaitingPayment ? '<span class="chip warn">'+c.awaitingPayment+' awaiting payment</span>' : '',
         c.awaitingGrant ? '<span class="chip warn">'+c.awaitingGrant+' awaiting grant</span>' : '',
+        c.awaitingApproval ? '<span class="chip warn">'+c.awaitingApproval+' awaiting approval</span>' : '',
         c.confirmed ? '<span class="chip good">'+c.confirmed+' confirmed</span>' : '',
         c.inClaim ? '<span class="chip">'+c.inClaim+' in HRD claim</span>' : '',
         c.completed ? '<span class="chip grey">'+c.completed+' completed</span>' : ''
@@ -91,7 +92,7 @@
 
   // ---------- programme detail ----------
   let detail = null;
-  const STAGE_CLASS = {AWAITING_PAYMENT:'warn', AWAITING_GRANT:'warn', CONFIRMED:'good', ATTENDED:'good', CERT_SENT:'', JD14_SENT:'', JD14_SIGNED:'', CLAIM_SUBMITTED:'', COMPLETED:'grey', CANCELLED:'bad'};
+  const STAGE_CLASS = {AWAITING_PAYMENT:'warn', AWAITING_GRANT:'warn', AWAITING_APPROVAL:'warn', CONFIRMED:'good', ATTENDED:'good', CERT_SENT:'', JD14_SENT:'', JD14_SIGNED:'', CLAIM_SUBMITTED:'', COMPLETED:'grey', CANCELLED:'bad'};
   const HRD_STEP = {JD14_SENT:'JD14 sent to PIC', JD14_SIGNED:'JD14 signed', CLAIM_SUBMITTED:'Claim submitted', CLAIM_PAID:'Claim paid'};
 
   function stepsLine(r) {
@@ -99,7 +100,8 @@
     const attended = r.participants.some(p => p.attendance === 'ATTENDED');
     const cert = attended && r.participants.filter(p => p.attendance === 'ATTENDED').every(p => p.certificateStatus === 'SENT');
     const parts = [s(true, 'Registered')];
-    if (r.paymentMethod === 'SELF') parts.push(s(!!r.paymentDate || r.stage.key !== 'AWAITING_PAYMENT', 'Paid'+(r.paymentDate?' '+nice(r.paymentDate):'')));
+    if (r.paymentMethod === 'FREE') parts.push(s(r.stage.key !== 'AWAITING_APPROVAL' && r.stage.key !== 'CANCELLED', 'Approved'));
+    else if (r.paymentMethod === 'SELF') parts.push(s(!!r.paymentDate || r.stage.key !== 'AWAITING_PAYMENT', 'Paid'+(r.paymentDate?' '+nice(r.paymentDate):'')));
     else parts.push(s(!!r.grantDate || r.stage.key !== 'AWAITING_GRANT', 'Grant approved'+(r.grantDate?' '+nice(r.grantDate):'')));
     parts.push(s(!!r.confirmationSentDate, 'Confirmation sent'), s(attended, 'Attended'), s(cert, 'Certificate sent'));
     if (r.paymentMethod === 'HRD') parts.push(s(!!r.jd14SentDate, 'JD14 sent'), s(!!r.jd14SignedDate, 'JD14 signed'), s(!!r.claimSubmittedDate, 'Claim submitted'), s(!!r.claimPaidDate, 'Claim paid'));
@@ -129,6 +131,10 @@
         (kind === 'CLAIM_SUBMITTED' ? '<label>Claim reference<input name="ref" placeholder="HRD Corp claim ID"></label><label>Claim amount (RM)<input name="amount" type="number" min="0" step="0.01" value="'+(claim?claim.toFixed(2):'')+'"></label>' : '') +
         '<div class="act wide"><button type="submit" class="primary">Mark '+esc(HRD_STEP[kind].toLowerCase())+'</button><button type="button" data-close>Cancel</button></div></form>';
     }
+    if (kind === 'APPROVE') {
+      return '<form class="form-grid" data-form="APPROVE" data-id="'+id+'"><label class="wide">Remarks / reason (optional; a reason is included in the rejection email)<input name="remarks" placeholder="e.g. Seats are full for this session"></label>' +
+        '<div class="act wide"><button type="submit" class="primary" data-decision="APPROVE">Approve and email PIC</button><button type="submit" data-decision="REJECT">Reject and email PIC</button><button type="button" data-close>Cancel</button></div></form>';
+    }
     if (kind === 'CANCEL') {
       return '<form class="form-grid" data-form="CANCEL" data-id="'+id+'"><label class="wide">Reason<input name="remarks" placeholder="Client withdrew, moved to next intake…"></label>' +
         '<div class="act wide"><button type="submit" class="primary">Cancel this registration</button><button type="button" data-close>Keep it</button></div></form>';
@@ -138,16 +144,17 @@
   function regCard(r) {
     const st = r.stage, id = esc(r.registrationId);
     const next = st.next === 'PAYMENT' ? '<button type="button" class="primary small" data-open-form="PAYMENT" data-id="'+id+'">Payment received</button>'
+      : st.next === 'APPROVE' ? '<button type="button" class="primary small" data-open-form="APPROVE" data-id="'+id+'">Approve / Reject</button>'
       : st.next === 'GRANT' ? '<button type="button" class="primary small" data-open-form="GRANT" data-id="'+id+'">Grant approved</button>'
       : HRD_STEP[st.next] ? '<button type="button" class="primary small" data-open-form="'+st.next+'" data-id="'+id+'">'+esc(HRD_STEP[st.next])+'</button>' : '';
     const resend = r.confirmationSentDate || ['CONFIRMED','ATTENDED'].includes(st.key) ? '<button type="button" class="small" data-resend="'+id+'">Resend confirmation</button>' : '';
-    const cancel = !st.done ? '<button type="button" class="small" data-open-form="CANCEL" data-id="'+id+'">Cancel</button>' : '';
+    const cancel = !st.done && st.next !== 'APPROVE' ? '<button type="button" class="small" data-open-form="CANCEL" data-id="'+id+'">Cancel</button>' : '';
     const receipt = httpsUrl(r.receiptUrl) ? '<a href="'+esc(r.receiptUrl)+'" target="_blank" rel="noopener">Receipt '+esc(r.receiptNo)+' ↗</a>' : '';
     const people = r.participants.length ? '<details><summary>'+r.participants.length+' participant'+(r.participants.length===1?'':'s')+'</summary><ul class="people">'+r.participants.map(p => '<li><span>'+esc(p.name)+'</span><small>'+esc(p.icNo)+' · '+esc(p.email)+'</small><span class="chip '+(p.attendance==='ATTENDED'?'good':p.attendance==='ABSENT'?'bad':'grey')+'">'+esc(p.attendance)+'</span>'+(p.certificateStatus==='SENT'?'<span class="chip good">Certificate sent</span>':'')+'</li>').join('')+'</ul></details>' : '';
     const extra = [r.grantRef?'Grant '+esc(r.grantRef):'', r.paymentRef?'Payment ref '+esc(r.paymentRef):'', r.claimRefNo?'Claim '+esc(r.claimRefNo)+(r.claimAmount?' · '+money(r.claimAmount):''):'', r.remarks?esc(r.remarks):''].filter(Boolean).join(' · ');
     return '<article class="reg" id="reg-'+id+'"><div class="reg-top"><div><h4>'+esc(r.companyName || 'Company')+'</h4>' +
       '<p class="who">'+esc(r.picName)+' · <a href="mailto:'+esc(r.picEmail)+'">'+esc(r.picEmail)+'</a>'+(r.picPhone?' · '+esc(r.picPhone)+' '+phoneLink(r.picPhone):'')+'<br>'+esc(r.registrationId)+' · '+r.requestedPax+' pax'+(extra?' · '+extra:'')+'</p></div>' +
-      '<div class="chips" style="align-content:flex-start;justify-content:flex-end"><span class="chip">'+(r.paymentMethod==='HRD'?'HRD Corp':'Self payment')+'</span><span class="chip '+(STAGE_CLASS[st.key]||'')+'">'+esc(st.label)+'</span></div></div>' +
+      '<div class="chips" style="align-content:flex-start;justify-content:flex-end"><span class="chip">'+(r.paymentMethod==='HRD'?'HRD Corp':r.paymentMethod==='FREE'?'Free programme':'Self payment')+'</span><span class="chip '+(STAGE_CLASS[st.key]||'')+'">'+esc(st.label)+'</span></div></div>' +
       stepsLine(r) + people +
       '<div class="act">'+next+resend+cancel+receipt+'</div><div class="inline-form" data-slot="'+id+'"></div></article>';
   }
@@ -173,13 +180,13 @@
     return '<section class="panel"><div class="panel-head"><div><h2>Confirm programme</h2><p>Sets the status to CONFIRMED and emails every PIC (Program Disahkan / Programme Confirmed).</p></div></div>' +
       '<ul style="list-style:none;padding:0;margin:0 0 12px;font-size:.84rem">'+list+'</ul>' +
       '<button type="button" id="confirmProgrammeBtn"'+(c.ready?' class="primary"':' disabled')+'>Confirm programme and email PICs</button>' +
-      '<p class="hint" style="margin-top:8px">'+(c.ready?'All checks passed.':'Confirmed pax counts paid and grant-approved registrations only. Change Status and Active in the panel above.')+'</p></section>';
+      '<p class="hint" style="margin-top:8px">'+(c.ready?'All checks passed.':'Confirmed pax counts paid, grant-approved and approved free registrations only. Change Status and Active in the panel above.')+'</p></section>';
   }
   function renderDetail() {
     const d = detail, p = d.program, s = d.settings;
     const active = d.registrations.filter(r => r.stage.key !== 'CANCELLED');
     const pax = active.reduce((n, r) => n + r.requestedPax, 0);
-    const confirmedPax = active.filter(r => !['AWAITING_PAYMENT','AWAITING_GRANT'].includes(r.stage.key)).reduce((n, r) => n + r.requestedPax, 0);
+    const confirmedPax = active.filter(r => !['AWAITING_PAYMENT','AWAITING_GRANT','AWAITING_APPROVAL'].includes(r.stage.key)).reduce((n, r) => n + r.requestedPax, 0);
     const completed = active.filter(r => r.stage.done).length;
     const archivable = active.length ? completed === active.length : d.registrations.length > 0;
     $('programmeDetail').innerHTML =
@@ -189,6 +196,7 @@
       (p.minPax && pax < p.minPax ? '<p class="notice" data-type="danger" style="margin-top:12px">Below minimum: '+pax+' of '+p.minPax+' pax registered.</p>' : '') +
       '</section>' +
       '<div class="layout" style="margin-top:18px"><div class="col-main"><section class="panel"><div class="panel-head"><div><h2>Registrations</h2><p>Mark attendance and send certificates in <a href="documents.html#certs" style="color:var(--orange);font-weight:600">Documents → Certificates</a>.</p></div></div><div class="list">' +
+      (d.registrations.filter(r => r.stage.key === 'AWAITING_APPROVAL').length > 1 ? '<div class="act" style="margin-bottom:10px"><button type="button" class="primary small" id="approveAllBtn">Approve all '+d.registrations.filter(r => r.stage.key === 'AWAITING_APPROVAL').length+' pending</button></div>' : '') +
       (d.registrations.length ? d.registrations.map(regCard).join('') : '<p class="empty">No registrations yet.</p>') + '</div>' +
       '<div class="danger-zone"><button type="button" id="archiveBtn"'+(archivable?' class="primary"':'')+'>Archive programme</button>' +
       (archivable ? '<span class="hint">All registrations are completed or cancelled.</span>' : '<label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="archiveForce"> Archive anyway (some registrations are not completed)</label>') + '</div></section></div>' +
@@ -227,8 +235,8 @@
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
 
-  async function submitForm(form) {
-    const btn = form.querySelector('button[type=submit]'), old = btn.textContent;
+  async function submitForm(form, submitter) {
+    const btn = (submitter && submitter.type === 'submit') ? submitter : form.querySelector('button[type=submit]'), old = btn.textContent;
     const f = Object.fromEntries(new FormData(form).entries());
     const id = form.dataset.id, kind = form.dataset.form;
     btn.disabled = true; btn.textContent = 'Working…';
@@ -238,8 +246,13 @@
       else if (kind === 'GRANT') res = await call('regGrantApproved', {registrationId:id, grantRef:f.grantRef, approvalDate:f.approvalDate, remarks:f.remarks});
       else if (kind === 'STEP') res = await call('regHrdStep', {registrationId:id, step:form.dataset.step, date:f.date, ref:f.ref, amount:f.amount});
       else if (kind === 'CANCEL') res = await call('regCancel', {registrationId:id, remarks:f.remarks});
+      else if (kind === 'APPROVE') {
+        const decision = btn.dataset.decision === 'REJECT' ? 'REJECT' : 'APPROVE';
+        if (decision === 'REJECT' && !confirm('Reject this registration and email the PIC?')) { btn.disabled = false; btn.textContent = old; return; }
+        res = await call('regFreeDecision', {registrationId:id, decision:decision, remarks:f.remarks});
+      }
       const warn = res && res.warnings && res.warnings.length ? res.warnings.join(' ') : '';
-      banner(warn ? 'Saved, but: '+warn : kind === 'PAYMENT' ? 'Payment recorded. Receipt and confirmation emailed to the PIC.' : kind === 'GRANT' ? 'Grant recorded. Confirmation emailed to the PIC.' : kind === 'CANCEL' ? 'Registration cancelled.' : 'Step recorded.', warn ? 'danger' : 'success');
+      banner(warn ? 'Saved, but: '+warn : kind === 'PAYMENT' ? 'Payment recorded. Receipt and confirmation emailed to the PIC.' : kind === 'GRANT' ? 'Grant recorded. Confirmation emailed to the PIC.' : kind === 'CANCEL' ? 'Registration cancelled.' : kind === 'APPROVE' ? (res && res.decision === 'REJECTED' ? 'Registration rejected. The PIC has been emailed.' : 'Registration approved. Confirmation emailed to the PIC.') : 'Step recorded.', warn ? 'danger' : 'success');
       detail = await call('regProgramDetail', {courseId: detail.program.courseId}); renderDetail();
     } catch (e) { btn.disabled = false; btn.textContent = old; banner(e.message, 'danger'); }
   }
@@ -253,9 +266,9 @@
       const res = await call('regFormerClients', {query:q});
       clients = res.clients || [];
       $('clientCount').textContent = res.total + ' compan' + (res.total === 1 ? 'y' : 'ies') + (q ? ' match "'+q+'"' : '') + (res.total > clients.length ? ' · showing the latest '+clients.length : '');
-      $('clientList').innerHTML = clients.length ? clients.map(c => '<article class="client"><div><h4>'+esc(c.companyName)+'</h4><p class="who">'+(c.address?esc(c.address)+'<br>':'')+c.programmes.length+' registration'+(c.programmes.length===1?'':'s')+' · '+c.pax+' pax · '+c.hrd+' HRD, '+c.self+' self-paid<br>Last programme '+esc(nice(c.lastDate)||'—')+'</p>' +
+      $('clientList').innerHTML = clients.length ? clients.map(c => '<article class="client"><div><h4>'+esc(c.companyName)+'</h4><p class="who">'+(c.address?esc(c.address)+'<br>':'')+c.programmes.length+' registration'+(c.programmes.length===1?'':'s')+' · '+c.pax+' pax · '+c.hrd+' HRD, '+c.self+' self-paid'+(c.free?', '+c.free+' free':'')+'<br>Last programme '+esc(nice(c.lastDate)||'—')+'</p>' +
         c.contacts.map(x => '<p class="who">'+esc(x.name)+(x.position?', '+esc(x.position):'')+'<br>'+(x.email?'<a href="mailto:'+esc(x.email)+'">'+esc(x.email)+'</a>':'')+(x.phone?' · '+esc(x.phone)+' '+phoneLink(x.phone):'')+'</p>').join('') + '</div>' +
-        '<div><p class="hint">Programmes attended</p><ul>'+c.programmes.slice(0, 12).map(x => '<li>'+esc(x.programName)+' · '+esc(nice(x.date))+' · '+x.pax+' pax · '+(x.payment==='HRD'?'HRD':'Self')+'</li>').join('')+'</ul></div></article>').join('')
+        '<div><p class="hint">Programmes attended</p><ul>'+c.programmes.slice(0, 12).map(x => '<li>'+esc(x.programName)+' · '+esc(nice(x.date))+' · '+x.pax+' pax · '+(x.payment==='HRD'?'HRD':x.payment==='FREE'?'Free':'Self')+'</li>').join('')+'</ul></div></article>').join('')
         : '<p class="empty">No clients match that search.</p>';
     } catch (e) { $('clientList').innerHTML = ''; banner(e.message, 'danger'); }
   }
@@ -292,6 +305,20 @@
         const r = detail.registrations.find(x => x.registrationId === of.dataset.id);
         slot.innerHTML = actionForm(r, of.dataset.openForm); slot.classList.add('open');
         const first = slot.querySelector('input'); if (first) first.focus();
+        return;
+      }
+      if (t.closest('#approveAllBtn')) {
+        const pending = detail.registrations.filter(r => r.stage.key === 'AWAITING_APPROVAL');
+        if (!confirm('Approve all ' + pending.length + ' pending registrations? Each PIC gets the confirmation email.')) return;
+        const b = t.closest('#approveAllBtn'); b.disabled = true;
+        let done = 0; const failed = [];
+        for (const r of pending) {
+          b.textContent = 'Approving ' + (done + failed.length + 1) + ' of ' + pending.length + '…';
+          try { await call('regFreeDecision', {registrationId: r.registrationId, decision: 'APPROVE'}); done++; }
+          catch (er) { failed.push(r.registrationId + ': ' + er.message); }
+        }
+        banner(failed.length ? done + ' approved. Not approved: ' + failed.join('; ') : done + ' registrations approved. Confirmation emails sent.', failed.length ? 'danger' : 'success');
+        detail = await call('regProgramDetail', {courseId: detail.program.courseId}); renderDetail();
         return;
       }
       if (t.closest('[data-close]')) { const slot = t.closest('.inline-form'); slot.classList.remove('open'); slot.innerHTML = ''; return; }
@@ -363,7 +390,7 @@
         } catch (er) { b.disabled = false; b.textContent = 'Save pax and deadline'; $('limitsNote').textContent = er.message; }
         return;
       }
-      if (e.target.dataset.form) submitForm(e.target);
+      if (e.target.dataset.form) submitForm(e.target, e.submitter);
     });
     $('clientSearch').addEventListener('submit', e => { e.preventDefault(); searchClients($('clientQuery').value.trim()); });
     $('clientExport').onclick = exportClients;

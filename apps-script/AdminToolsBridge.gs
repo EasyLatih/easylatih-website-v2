@@ -21,6 +21,11 @@ const ADMIN_TOOLS_SUPABASE_KEY_ = 'sb_publishable_1AW0hE-8BHIHnzmo2sGDNg_n2kvWkv
 function handleAdminTools_(e) {
   try {
     const params = (e && e.parameter) || {};
+    // The one public action: website registration for a FREE programme (FreeRegistration.gs).
+    // It only creates a pending registration that the admin must approve.
+    if (String(params.action || '') === 'adminTools.publicFreeRegister' && typeof freeRegistrationPublic_ === 'function') {
+      return adminToolsJson_({ success: true, data: freeRegistrationPublic_(params) });
+    }
     const admin = verifyAdminToolsUser_(String(params.accessToken || ''));
 
     // The existing admin functions check the signed-in Google user. Requests from
