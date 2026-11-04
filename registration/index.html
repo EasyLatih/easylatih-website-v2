@@ -144,19 +144,19 @@ button{
     <h2>Company / Contact Person Details</h2>
 
     <label>Company Name</label>
-    <input id="companyName">
+    <input id="companyName" data-case="upper" autocapitalize="characters">
 
     <label>Company Address</label>
-    <textarea id="companyAddress"></textarea>
+    <textarea id="companyAddress" data-case="upper" autocapitalize="characters"></textarea>
 
     <label>PIC Name</label>
-    <input id="picName">
+    <input id="picName" data-case="upper" autocapitalize="characters">
 
     <label>PIC Position</label>
-    <input id="picPosition">
+    <input id="picPosition" data-case="upper" autocapitalize="characters">
 
     <label>PIC Email</label>
-    <input id="picEmail">
+    <input id="picEmail" type="email" inputmode="email" data-case="lower" autocapitalize="off">
 
     <label>PIC Phone (WhatsApp)</label>
     <input id="picPhone" type="tel" inputmode="tel" placeholder="e.g. 012-345 6789">
@@ -515,13 +515,13 @@ function addParticipant() {
     <h3>Participant ${participantCount}</h3>
 
     <label>Full Name (as printed on certificate)</label>
-    <input id="pName${participantCount}">
+    <input id="pName${participantCount}" data-case="upper" autocapitalize="characters">
 
     <label>IC No</label>
-    <input id="pIC${participantCount}">
+    <input id="pIC${participantCount}" data-case="upper" autocapitalize="characters">
 
     <label>Email (e-certificate will be sent here)</label>
-    <input id="pEmail${participantCount}" type="email" inputmode="email" placeholder="participant@example.com">
+    <input id="pEmail${participantCount}" type="email" data-case="lower" autocapitalize="off" inputmode="email" placeholder="participant@example.com">
 
     <label>Phone</label>
     <input id="pPhone${participantCount}">
@@ -529,6 +529,20 @@ function addParticipant() {
 
   box.appendChild(div);
 }
+
+// Names, company, address and IC are saved in CAPITAL LETTERS (as on the certificate);
+// emails in lowercase. Applies while typing or pasting, keeping the cursor in place.
+document.getElementById("registrationForm").addEventListener("input", function (event) {
+  const el = event.target;
+  const mode = el && el.dataset ? el.dataset.case : "";
+  if (mode !== "upper" && mode !== "lower") return;
+  const next = mode === "upper" ? el.value.toUpperCase() : el.value.toLowerCase();
+  if (next === el.value) return;
+  let start = null, end = null;
+  try { start = el.selectionStart; end = el.selectionEnd; } catch (_) {}
+  el.value = next;
+  try { if (start !== null) el.setSelectionRange(start, end); } catch (_) {}
+});
 
 // One submission per form: the button locks while sending, and the server
 // ignores repeats that carry the same submission ID.
