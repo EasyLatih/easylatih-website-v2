@@ -450,9 +450,10 @@
         <p class="sop-muted">
           Ejen log masuk dengan emel dan kata laluan sendiri. Hantar jemputan supaya mereka tetapkan kata laluan.
           Emel diambil dari Sheet Agents. Untuk tambah ejen baharu, tambah baris dalam Sheet (status ACTIVE dan emel), kemudian hantar jemputan.
+          Tersalah emel? Betulkan emel dalam Sheet Agents, muat semula halaman ini, kemudian tekan <strong>Hantar semula</strong> pada ejen tersebut.
         </p>
         <div id="adminAgentsNotice"></div>
-        <button id="invitePendingBtn" onclick="sendInvites('PENDING', this)">✉️ Hantar jemputan kepada semua yang belum</button>
+        <button id="invitePendingBtn" onclick="sendInvites('PENDING', this)">✉️ Hantar jemputan kepada yang belum / emel berubah</button>
         <div id="adminAgentsList" style="margin-top:1rem;overflow-x:auto">Loading...</div>
       </div>
 
@@ -1451,20 +1452,21 @@ async function loadAdminAgents(){
       ${agents.map(a => `
         <tr>
           <td>${esc(a.name)}<br><small>${esc(a.agentId)}</small></td>
-          <td>${a.email ? esc(a.email) : "-"}${a.problem ? `<br><span class="warn-badge">${esc(a.problem)}</span>` : ""}</td>
+          <td>${a.email ? esc(a.email) : "-"}${a.problem ? `<br><span class="warn-badge">${esc(a.problem)}</span>` : ""}${a.emailChanged
+            ? `<br><span class="warn-badge">Emel berubah sejak jemputan (dulu: ${esc(a.inviteEmail)}). Hantar semula.</span>` : ""}</td>
           <td>${esc(a.status)}</td>
-          <td>${a.invited || "Belum"}</td>
+          <td>${a.invited ? esc(a.invited) + (a.inviteEmail && !a.emailChanged ? `<br><small>${esc(a.inviteEmail)}</small>` : "") : "Belum"}</td>
           <td>${a.lastLogin || "-"}</td>
           <td>${a.status === "ACTIVE" && !a.problem
-            ? `<button class="secondary-btn" onclick="sendInvites('${esc(a.agentId)}', this)">${a.invited ? "Hantar semula" : "Hantar"}</button>` : ""}</td>
+            ? `<button class="secondary-btn" onclick="sendInvites('${esc(a.agentId)}', this, '${esc(a.email)}')">${a.invited ? "Hantar semula" : "Hantar"}</button>` : ""}</td>
         </tr>`).join("")}
     </table>` : "Tiada ejen dalam Sheet Agents.";
 }
 
-async function sendInvites(ids, btn){
+async function sendInvites(ids, btn, email){
   const msg = ids === "PENDING"
-    ? "Hantar emel jemputan kepada semua ejen aktif yang belum dijemput?"
-    : "Hantar emel jemputan kepada ejen ini?";
+    ? "Hantar emel jemputan kepada semua ejen aktif yang belum dijemput atau emelnya telah berubah?"
+    : `Hantar emel jemputan ke ${email}?\n\nPastikan emel ini betul. Jika salah, betulkan dalam Sheet Agents dan muat semula halaman dahulu.`;
   if(!confirm(msg)) return;
   btn.disabled = true;
   const label = btn.textContent;

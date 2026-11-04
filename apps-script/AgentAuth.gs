@@ -48,10 +48,13 @@ function agentDirectory_() {
       status: String(r[AGENT_STATUS_COL] || "").trim().toUpperCase(),
       lastLogin: dayKey_(r[cols.lastLogin]),
       invited: dayKey_(r[cols.invited]),
+      inviteEmail: String(r[cols.inviteEmail] || "").trim().toLowerCase(),
       agreed: agreementAccepted_(r[cols.agreement]),
       problem: problem
     };
   }).filter(a => a.agentId);
+  // The email was changed in the sheet after the invite went out: it needs a new invite.
+  list.forEach(a => { a.emailChanged = !!(a.invited && a.inviteEmail && a.email && a.inviteEmail !== a.email); });
   return { sheet: sheet, cols: cols, list: list };
 }
 
@@ -133,7 +136,8 @@ function adminAgents_(e, session) {
   });
 }
 
-// agentIds: comma-separated IDs, or "PENDING" for every active agent not yet invited.
+// agentIds: comma-separated IDs, or "PENDING" for every active agent not yet invited
+// or whose email changed since their invite.
 function sendAgentInvites_(e, session) {
   if (!isAdmin_(session)) return forbidden_();
   const wanted = String(e.parameter.agentIds || "").trim();
@@ -143,7 +147,7 @@ function sendAgentInvites_(e, session) {
   const ids = wanted === "PENDING" ? null : wanted.split(",").map(s => s.trim()).filter(Boolean);
   const targets = dir.list.filter(a =>
     a.status === "ACTIVE" && !isAdminRole_(a.role) &&
-    (ids ? ids.indexOf(a.agentId) !== -1 : !a.invited));
+    (ids ? ids.indexOf(a.agentId) !== -1 : (!a.invited || a.emailChanged)));
 
   const results = [];
   targets.forEach(a => {
@@ -152,6 +156,7 @@ function sendAgentInvites_(e, session) {
       const link = agentAuthLink_(a);
       sendAgentAccessEmail_(a, link.link, "invite", link.shared);
       dir.sheet.getRange(a.rowNumber, dir.cols.invited + 1).setValue(new Date());
+      dir.sheet.getRange(a.rowNumber, dir.cols.inviteEmail + 1).setValue(a.email);
       results.push({ agentId: a.agentId, ok: true, message: "Dihantar ke " + a.email });
     } catch (error) {
       results.push({ agentId: a.agentId, ok: false, message: String(error.message || error) });

@@ -29,6 +29,7 @@ const AGENT_COL_LAST_LOGIN = "Last Login";
 const AGENT_COL_AGREEMENT = "Data Agreement";
 const AGENT_COL_DEACTIVATED = "Deactivated At";
 const AGENT_COL_INVITED = "Login Invite Sent";
+const AGENT_COL_INVITE_EMAIL = "Login Invite Email";
 const AGENT_STATUS_COL = 7; // 0-based, "ACTIVE" / "INACTIVE"
 const AGENT_ROLE_COL = 6;
 const HOUSE_DEFAULT = { id: "EASYLATIH", name: "Easy Latih" };
@@ -57,7 +58,8 @@ function agentColumns_(sheet) {
     lastLogin: ensure(AGENT_COL_LAST_LOGIN),
     agreement: ensure(AGENT_COL_AGREEMENT),
     deactivated: ensure(AGENT_COL_DEACTIVATED),
-    invited: ensure(AGENT_COL_INVITED)
+    invited: ensure(AGENT_COL_INVITED),
+    inviteEmail: ensure(AGENT_COL_INVITE_EMAIL)
   };
   cols.email = header.findIndex(h => /e-?mail/i.test(h));
   cols.width = header.length;
