@@ -158,8 +158,9 @@ button{
     <label>PIC Email</label>
     <input id="picEmail">
 
-    <label>PIC Phone</label>
-    <input id="picPhone">
+    <label>PIC Phone (WhatsApp)</label>
+    <input id="picPhone" type="tel" inputmode="tel" placeholder="e.g. 012-345 6789">
+    <p class="muted" style="margin:.25rem 0 0;font-size:.85rem">Sila isi nombor telefon yang mempunyai WhatsApp. Pengesahan pendaftaran akan dihantar melalui e-mel dan WhatsApp.<br>Please enter a number that has WhatsApp. Registration confirmation is sent by email and WhatsApp.</p>
 
     <h2>Participant Details</h2>
     <div id="participants"></div>
@@ -571,6 +572,15 @@ function submitRegistration() {
 
   if (participants.length === 0) {
     alert("Please add at least one participant.");
+    return;
+  }
+
+  // PIC WhatsApp number: Malaysian mobile (01x…) or international with country code.
+  const picPhoneDigits = document.getElementById("picPhone").value.replace(/\D/g, "");
+  const validWhatsApp = /^(?:01\d{8,9}|601\d{8,9}|(?!60)[1-9]\d{7,14})$/.test(picPhoneDigits);
+  if (!validWhatsApp) {
+    alert("Sila isi nombor telefon WhatsApp PIC yang sah (contoh: 012-345 6789).\nPlease enter a valid WhatsApp number for the PIC (e.g. 012-345 6789).");
+    document.getElementById("picPhone").focus();
     return;
   }
 
