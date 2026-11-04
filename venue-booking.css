@@ -106,3 +106,20 @@
 #venueBookingApp .vr-session-card[data-state=past] {border-left:4px solid #9aabb6;background:#f4f6f8;}
 #venueBookingApp .vr-session-status[data-state=past] {background:#e5eaee;color:#54697a;}
 #venueBookingApp .vr-day[data-state=past] {background:#f0f3f6;color:#758796;}
+
+/* Calendar-first package selection */
+#venueBookingApp .vr-chipset {grid-template-columns:repeat(2,minmax(0,1fr));}
+#venueBookingApp .vr-package-option {min-width:0;border:1px solid var(--vr-line);border-radius:11px;background:#fff;overflow:hidden;}
+#venueBookingApp .vr-package-option.is-selected {border-color:#14724f;box-shadow:0 0 0 2px rgba(20,114,79,.12);}
+#venueBookingApp .vr-package-choice {display:flex;width:100%;height:100%;min-height:125px;flex-direction:column;align-items:flex-start;gap:8px;padding:15px;text-align:left;border:0;background:transparent;color:var(--vr-ink);cursor:pointer;}
+#venueBookingApp .vr-package-choice:hover:not(:disabled) {background:#f3f8fb;}
+#venueBookingApp .vr-package-choice:focus-visible {outline:3px solid #2b84bd;outline-offset:-3px;}
+#venueBookingApp .vr-package-choice:disabled {color:#9aabb6;background:#f5f7f8;cursor:not-allowed;}
+#venueBookingApp .vr-package-choice strong {font-size:.98rem;color:var(--vr-navy);}
+#venueBookingApp .vr-package-hours {font-size:.78rem;line-height:1.5;color:#60758a;}
+#venueBookingApp .vr-package-status {font-size:.72rem;font-weight:800;color:#0f6b46;}
+#venueBookingApp .vr-package-choice:disabled .vr-package-status {color:#7d8d98;}
+#venueBookingApp .vr-booking-note {grid-column:1/-1;margin:2px 0 0;}
+#venueBookingApp .vr-package-field {display:none;}
+#venueBookingApp .vr-rate-panel {margin:24px 0 0;}
+@media(max-width:540px){#venueBookingApp .vr-chipset{grid-template-columns:1fr;}#venueBookingApp .vr-package-choice{min-height:0}}
