@@ -150,7 +150,7 @@ function adminParticipantDetails_(courseId) {
     out.push({
       rowNumber: i + 2,
       participantName: adminCell_(r, map, 'ParticipantName'),
-      icNo: adminCell_(r, map, 'ICNo'),
+      icNo: typeof normalizeManualCertificateIc_ === 'function' ? normalizeManualCertificateIc_(adminCell_(r, map, 'ICNo')) : adminCell_(r, map, 'ICNo'),
       email: adminCell_(r, map, 'Email'),
       phone: adminCell_(r, map, 'Phone'),
       attendanceStatus: adminCell_(r, map, 'AttendanceStatus').toUpperCase(),
@@ -167,7 +167,8 @@ function adminAmendParticipant_(d) {
   const courseId = String(d.courseId || '').trim();
   const rowNumber = Number(d.rowNumber);
   const name = String(d.participantName || '').replace(/\s+/g, ' ').trim();
-  const ic = String(d.icNo || '').replace(/[\s-]/g, '').toUpperCase();
+  const icRaw = String(d.icNo || '').replace(/[\s-]/g, '').toUpperCase();
+  const ic = typeof normalizeManualCertificateIc_ === 'function' ? normalizeManualCertificateIc_(icRaw) : icRaw;
   const email = String(d.email || '').trim().toLowerCase();
   const phone = String(d.phone || '').replace(/[^\d+]/g, '');
   if (!courseId || !(rowNumber >= 2)) throw new Error('Load the participants again, then try once more.');
@@ -199,7 +200,9 @@ function adminAmendParticipant_(d) {
     if (expected && currentName.replace(/\s+/g, ' ').toLowerCase() !== expected) throw new Error('The participant list has changed. Load the participants again.');
 
     const set = function (key, value) { if (key in map) row[map[key]] = value; };
-    const nameChanged = currentName !== name || adminCell_(row, map, 'ICNo').toUpperCase() !== ic;
+    const currentIc = adminCell_(row, map, 'ICNo').replace(/[\s-]/g, '').toUpperCase();
+    const sameIc = (typeof normalizeManualCertificateIc_ === 'function' ? normalizeManualCertificateIc_(currentIc) : currentIc) === ic;
+    const nameChanged = currentName !== name || !sameIc;
 
     // Keep the first registered person on record; later edits don't overwrite it.
     if (nameChanged && !adminCell_(row, map, 'OriginalParticipantName')) {
