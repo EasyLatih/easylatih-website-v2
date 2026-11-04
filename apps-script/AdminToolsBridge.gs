@@ -81,7 +81,10 @@ function adminToolsActions_() {
     // JD14 Generator
     jd14Companies: function (d) { return adminJd14Companies_(String(d.startDate || '').trim()); },
     jd14Details: function (d) { return adminJd14Details_(String(d.requestId || '').trim()); },
-    jd14Generate: function (d) { return generateJD14(d); },
+    jd14Generate: function (d) { return adminJd14CreateDraft_(d || {}); },
+    jd14Finalise: function (d) { return adminJd14Finalise_(String(d.jd14Id || '')); },
+    jd14Email: function (d) { return adminJd14Email_(d || {}); },
+    jd14List: function () { return adminJd14List_(); },
 
     // Certificates: template
     certSettings: function () { return getCertificateTemplateSettings(); },
@@ -348,4 +351,212 @@ function adminJd14Details_(id) {
     totalFee: total === '' ? '' : total.toFixed(2),
     dateSubmission: Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd')
   };
+}
+
+// ---------------------------------------------------------------------------
+// JD14 draft -> finalise -> email PIC.
+// Generate makes an editable Google Slides draft in the JD14 folder and logs it
+// in the JD14Documents sheet. Finalise exports the current draft to PDF.
+// Email sends the PDF to the PIC (bilingual) asking them to sign and reply.
+// ---------------------------------------------------------------------------
+const ADMIN_JD14_SHEET_ = 'JD14Documents';
+const ADMIN_JD14_HEADERS_ = ['JD14ID', 'SourceRef', 'CompanyName', 'CourseTitle', 'TrainingStartDate', 'TrainingEndDate', 'TotalPax', 'PICName', 'PICEmail', 'SlidesId', 'SlidesUrl', 'PdfId', 'PdfUrl', 'Status', 'CreatedDate', 'FinalisedDate', 'SentDate', 'SentTo', 'UpdatedDate'];
+
+function adminJd14Sheet_() {
+  const book = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = book.getSheetByName(ADMIN_JD14_SHEET_);
+  if (!sheet) {
+    sheet = book.insertSheet(ADMIN_JD14_SHEET_);
+    sheet.getRange(1, 1, 1, ADMIN_JD14_HEADERS_.length).setValues([ADMIN_JD14_HEADERS_]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function adminJd14Find_(jd14Id) {
+  const sheet = adminJd14Sheet_();
+  const map = adminHeaderMap_(sheet);
+  if (sheet.getLastRow() < 2) return null;
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  for (let i = 0; i < values.length; i++) {
+    if (adminCell_(values[i], map, 'JD14ID') === jd14Id) {
+      const rec = { _row: i + 2 };
+      Object.keys(map).forEach(function (k) { rec[k] = values[i][map[k]]; });
+      return rec;
+    }
+  }
+  return null;
+}
+
+function adminJd14Set_(row, fields) {
+  const sheet = adminJd14Sheet_();
+  const map = adminHeaderMap_(sheet);
+  Object.keys(fields).forEach(function (k) { if (k in map) sheet.getRange(row, map[k] + 1).setValue(fields[k]); });
+}
+
+// PIC name and email for the company the JD14 is for.
+function adminJd14Pic_(ref) {
+  ref = String(ref || '');
+  if (ref.indexOf('REG:') === 0) {
+    const reg = adminJd14Rows_('Registrations').filter(function (r) { return String(r.RegistrationID || '') === ref.slice(4); })[0];
+    return reg ? { name: String(reg.PICName || ''), email: String(reg.PICEmail || ''), courseId: String(reg.CourseID || '') } : {};
+  }
+  const q = adminJd14Rows_('QuotationRequests').filter(function (r) { return String(r.RequestID || '') === ref; })[0];
+  return q ? { name: String(q.PICName || ''), email: String(q.PICEmail || ''), courseId: String(q.CourseID || '') } : {};
+}
+
+function adminJd14Public_(rec) {
+  const iso = function (v) { return v instanceof Date ? Utilities.formatDate(v, 'Asia/Kuala_Lumpur', 'yyyy-MM-dd') : String(v || ''); };
+  return {
+    jd14Id: String(rec.JD14ID || ''),
+    companyName: String(rec.CompanyName || ''),
+    courseTitle: String(rec.CourseTitle || ''),
+    trainingStartDate: iso(rec.TrainingStartDate),
+    picName: String(rec.PICName || ''),
+    picEmail: String(rec.PICEmail || ''),
+    slidesUrl: String(rec.SlidesUrl || ''),
+    pdfUrl: String(rec.PdfUrl || ''),
+    status: String(rec.Status || ''),
+    createdDate: iso(rec.CreatedDate),
+    sentDate: iso(rec.SentDate),
+    sentTo: String(rec.SentTo || '')
+  };
+}
+
+function adminJd14CreateDraft_(d) {
+  const company = String(d.companyName || '').trim();
+  const course = String(d.courseTitle || '').trim();
+  if (!company || !course) throw new Error('Company name and course title are required.');
+
+  const folder = DriveApp.getFolderById(JD14_FOLDER_ID);
+  const name = 'JD14 DRAFT - ' + company + ' - ' + course;
+  const copy = DriveApp.getFileById(JD14_SLIDES_TEMPLATE_ID).makeCopy(name, folder);
+  const deck = SlidesApp.openById(copy.getId());
+  const fill = {
+    '{{COMPANY_NAME}}': company,
+    '{{COMPANY_ADDRESS}}': d.companyAddress,
+    '{{NO_OF_PARTICIPANTS}}': d.noOfParticipants || d.totalPax,
+    '{{EMPLOYER_CODE}}': d.employerCode,
+    '{{APPROVAL_NO}}': d.approvalNo,
+    '{{TRAINING_START_DATE}}': d.trainingStartDate,
+    '{{TRAINING_END_DATE}}': d.trainingEndDate,
+    '{{VENUE}}': d.venue,
+    '{{COURSE_TITLE}}': course,
+    '{{TOTAL_PAX}}': d.totalPax,
+    '{{TOTAL_FEE}}': d.totalFee,
+    '{{DATE_SUBMISSION}}': d.dateSubmission
+  };
+  Object.keys(fill).forEach(function (k) { deck.replaceAllText(k, String(fill[k] == null ? '' : fill[k])); });
+  deck.saveAndClose();
+
+  const ref = String(d.sourceRef || '');
+  const pic = adminJd14Pic_(ref);
+  const id = 'JD14-' + Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyMMddHHmmss') + '-' + Math.floor(Math.random() * 900 + 100);
+  const now = new Date();
+  const rec = {
+    JD14ID: id, SourceRef: ref, CompanyName: company, CourseTitle: course,
+    TrainingStartDate: String(d.trainingStartDate || ''), TrainingEndDate: String(d.trainingEndDate || ''), TotalPax: String(d.totalPax || ''),
+    PICName: pic.name || '', PICEmail: pic.email || '',
+    SlidesId: copy.getId(), SlidesUrl: copy.getUrl(), PdfId: '', PdfUrl: '',
+    Status: 'DRAFT', CreatedDate: now, FinalisedDate: '', SentDate: '', SentTo: '', UpdatedDate: now
+  };
+  const sheet = adminJd14Sheet_();
+  const map = adminHeaderMap_(sheet);
+  const row = new Array(sheet.getLastColumn()).fill('');
+  Object.keys(rec).forEach(function (k) { if (k in map) row[map[k]] = rec[k]; });
+  sheet.appendRow(row);
+  return adminJd14Public_(rec);
+}
+
+function adminJd14Finalise_(jd14Id) {
+  const rec = adminJd14Find_(jd14Id);
+  if (!rec) throw new Error('JD14 draft not found. Refresh the list.');
+  const slides = DriveApp.getFileById(String(rec.SlidesId));
+  const folder = DriveApp.getFolderById(JD14_FOLDER_ID);
+
+  // Re-finalising replaces the earlier PDF so only one final copy exists.
+  if (rec.PdfId) { try { DriveApp.getFileById(String(rec.PdfId)).setTrashed(true); } catch (e) { console.warn('Old JD14 PDF not trashed: ' + e.message); } }
+
+  const name = 'JD14 - ' + rec.CompanyName + ' - ' + rec.CourseTitle;
+  const pdf = folder.createFile(slides.getAs(MimeType.PDF)).setName(name + '.pdf');
+  slides.setName(name + ' (editable)');
+  const now = new Date();
+  const status = String(rec.Status) === 'SENT' ? 'SENT' : 'FINAL';
+  adminJd14Set_(rec._row, { PdfId: pdf.getId(), PdfUrl: pdf.getUrl(), Status: status, FinalisedDate: now, UpdatedDate: now });
+  rec.PdfId = pdf.getId(); rec.PdfUrl = pdf.getUrl(); rec.Status = status;
+  return adminJd14Public_(rec);
+}
+
+function adminJd14Email_(d) {
+  const rec = adminJd14Find_(String(d.jd14Id || ''));
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  if (!rec.PdfId) throw new Error('Finalise the JD14 before emailing it.');
+  const to = String(d.to || rec.PICEmail || '').trim();
+  if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(to)) throw new Error('Enter the PIC email address.');
+  const cc = String(d.cc || '').split(/[,;\s]+/).filter(function (x) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); }).join(',');
+  const pic = String(d.picName || rec.PICName || '').trim();
+  const iso = function (v) { return v instanceof Date ? Utilities.formatDate(v, 'Asia/Kuala_Lumpur', 'dd/MM/yyyy') : String(v || '').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1'); };
+  const dates = iso(rec.TrainingStartDate) + (rec.TrainingEndDate && iso(rec.TrainingEndDate) !== iso(rec.TrainingStartDate) ? ' – ' + iso(rec.TrainingEndDate) : '');
+  const course = String(rec.CourseTitle), company = String(rec.CompanyName);
+  const esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  const fieldsMs = ['Tandatangan', 'Nama', 'No. MyKad', 'Jawatan', 'Cop syarikat', 'Tarikh'];
+  const fieldsEn = ['Signature', 'Name', 'MyKad no.', 'Designation', 'Company stamp', 'Date'];
+  const table = function (rows) { return '<table cellpadding="4" style="border-collapse:collapse;font-size:14px">' + rows.map(function (r) { return '<tr><td><b>' + esc(r[0]) + '</b></td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>'; };
+
+  const ms = '<p>Tuan/Puan' + (pic ? ' ' + esc(pic) : '') + ',</p>' +
+    '<p>Terima kasih kerana menyertai program bersama Easy Latih Consultancy. Bersama-sama ini dilampirkan <b>Borang JD14</b> untuk tujuan tuntutan HRD Corp.</p>' +
+    table([['Program', course], ['Tarikh', dates], ['Syarikat', company], ['Bilangan peserta', String(rec.TotalPax || '')]]) +
+    '<p>Mohon pihak tuan/puan:</p><ol><li>Cetak borang yang dilampirkan.</li><li>Lengkapkan ruangan berikut: <b>' + fieldsMs.join(', ') + '</b>.</li><li>Imbas (scan) borang yang lengkap dan hantar semula dengan <b>membalas (reply) emel ini</b>.</li></ol>' +
+    '<p>Terima kasih.</p><p>Easy Latih Consultancy</p>';
+  const en = '<p>Dear ' + (pic ? esc(pic) : 'Sir/Madam') + ',</p>' +
+    '<p>Thank you for joining our programme. Attached is the <b>JD14 form</b> for the HRD Corp claim.</p>' +
+    table([['Programme', course], ['Date', dates], ['Company', company], ['Participants', String(rec.TotalPax || '')]]) +
+    '<p>Please:</p><ol><li>Print the attached form.</li><li>Complete these fields: <b>' + fieldsEn.join(', ') + '</b>.</li><li>Scan the completed form and send it back by <b>replying to this email</b>.</li></ol>' +
+    '<p>Thank you.</p><p>Easy Latih Consultancy<br>Easy Learning, Real Results!</p>';
+  const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222">' + ms +
+    '<hr style="border:none;border-top:1px solid #ccc;margin:24px 0"><p style="color:#777;font-size:12px;margin:0 0 8px"><i>English version</i></p>' + en + '</div>';
+  const text = [
+    'Tuan/Puan' + (pic ? ' ' + pic : '') + ',', '',
+    'Bersama-sama ini dilampirkan Borang JD14 untuk tujuan tuntutan HRD Corp.',
+    'Program: ' + course, 'Tarikh: ' + dates, 'Syarikat: ' + company, '',
+    'Mohon cetak borang, lengkapkan ' + fieldsMs.join(', ') + ', kemudian imbas dan hantar semula dengan membalas emel ini.', '',
+    'Terima kasih.', 'Easy Latih Consultancy', '',
+    '--------------------', 'English version', '--------------------', '',
+    'Dear ' + (pic || 'Sir/Madam') + ',', '',
+    'Attached is the JD14 form for the HRD Corp claim.',
+    'Programme: ' + course, 'Date: ' + dates, 'Company: ' + company, '',
+    'Please print the form, complete the ' + fieldsEn.join(', ') + ', then scan it and send it back by replying to this email.', '',
+    'Thank you.', 'Easy Latih Consultancy'
+  ].join('\n');
+
+  const subject = 'Borang JD14 untuk ditandatangani / JD14 Form for Signature – ' + course;
+  const options = { htmlBody: html, name: 'Easy Latih Consultancy', attachments: [DriveApp.getFileById(String(rec.PdfId)).getBlob()] };
+  if (cc) options.cc = typeof getSafeCc === 'function' ? getSafeCc(cc) : cc;
+  GmailApp.sendEmail(typeof getSafeEmail === 'function' ? getSafeEmail(to) : to, typeof getEmailSubject === 'function' ? getEmailSubject(subject) : subject, text, options);
+
+  const now = new Date();
+  adminJd14Set_(rec._row, { Status: 'SENT', SentDate: now, SentTo: to + (cc ? ' (cc ' + cc + ')' : ''), PICEmail: to, PICName: pic, UpdatedDate: now });
+
+  // Public programme: tick "JD14 sent" on the registration's progress.
+  const ref = String(rec.SourceRef || '');
+  if (ref.indexOf('REG:') === 0 && typeof praUpsert_ === 'function' && typeof praProgressSheet_ === 'function') {
+    try {
+      const p = adminJd14Pic_(ref);
+      praUpsert_(praProgressSheet_(), 'RegistrationID', ref.slice(4), { CourseID: p.courseId || '', JD14SentDate: now, UpdatedDate: now });
+    } catch (e) { console.warn('JD14 sent date not recorded: ' + e.message); }
+  }
+  rec.Status = 'SENT'; rec.SentDate = now; rec.SentTo = to; rec.PICEmail = to; rec.PICName = pic;
+  return adminJd14Public_(rec);
+}
+
+function adminJd14List_() {
+  const sheet = adminJd14Sheet_();
+  if (sheet.getLastRow() < 2) return [];
+  const map = adminHeaderMap_(sheet);
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  return values.map(function (r) { const rec = {}; Object.keys(map).forEach(function (k) { rec[k] = r[map[k]]; }); return adminJd14Public_(rec); })
+    .filter(function (x) { return x.jd14Id; })
+    .reverse()
+    .slice(0, 40);
 }

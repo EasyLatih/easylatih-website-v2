@@ -35,6 +35,16 @@ label.stack{gap:5px;font-size:.76rem;font-weight:600;color:var(--navy)}
 .tag{font-size:.64rem;font-weight:600;padding:2px 7px;border-radius:99px;background:#fff4e8;color:#a5520f}
 .tag.ok{background:#e9f6ef;color:#1d7a46}
 .hint.warn{color:#a5520f}
+.jdlist{display:flex;flex-direction:column;gap:8px}
+.jd{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.jd-head{display:flex;gap:8px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.jd-title{font-size:.82rem;font-weight:600;color:var(--navy);overflow-wrap:anywhere}
+.jd-meta{font-size:.72rem;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.jd .actions{margin-top:8px}
+.jd .actions a{font-size:.76rem;align-self:center}
+.chip{font-size:.62rem;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:99px;background:#eef2f6;color:#4b5d6b}
+.chip.FINAL{background:#e8f0fb;color:#24508f}.chip.SENT{background:#e9f6ef;color:#1d7a46}.chip.DRAFT{background:#fff4e8;color:#a5520f}
+.jd form{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .people input[type=checkbox]{flex:none;width:16px;height:16px;accent-color:var(--green)}
 .people small{color:var(--muted)}
 .counts{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;margin-top:8px}
@@ -129,7 +139,7 @@ th{background:var(--soft);color:var(--muted);font-weight:600;text-transform:uppe
   <!-- JD14 -->
   <section id="view-jd14" role="tabpanel" aria-labelledby="tab-jd14" hidden>
     <section class="panel">
-      <div class="panel-head"><div><h2>JD14 generator</h2><p>Pick the training start date, choose the company, check the details, then generate the PDF.</p></div></div>
+      <div class="panel-head"><div><h2>JD14 generator</h2><p>Pick the training start date, choose the company and check the details. Generate makes an editable draft; finalise it as a PDF, then email it to the PIC to sign and reply.</p></div></div>
       <div class="row">
         <label class="stack" style="flex:0 1 220px">Training start date<input id="j-searchDate" type="date"></label>
         <button type="button" id="j-loadCompanies">Find companies</button>
@@ -148,9 +158,13 @@ th{background:var(--soft);color:var(--muted);font-weight:600;text-transform:uppe
         <label>Total pax<input id="j-totalPax" type="number" min="0"></label>
         <label>Total fee (RM)<input id="j-totalFee"></label>
         <label>Date of submission<input id="j-dateSubmission" type="date"></label>
-        <div class="actions wide"><button type="submit" class="primary">Generate JD14 PDF</button></div>
+        <div class="actions wide"><button type="submit" class="primary">Generate JD14 draft</button></div>
       </form>
       <div class="result" id="jd14Result"></div>
+      <div class="sub">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0">JD14 documents</h3><button type="button" class="small" id="j-refreshList">↻ Refresh</button></div>
+        <div id="j-list" class="jdlist"><p class="hint">Loading…</p></div>
+      </div>
     </section>
   </section>
 

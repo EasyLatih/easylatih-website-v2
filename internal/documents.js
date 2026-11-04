@@ -36,6 +36,7 @@
     tabs.forEach(x => { $('tab-'+x).setAttribute('aria-selected', String(x === t)); $('view-'+x).hidden = x !== t; });
     if (location.hash !== '#'+t) history.replaceState(null, '', '#'+t);
     if (t === 'certs') loadCertsOnce();
+    if (t === 'jd14') loadJd();
   }
 
   // ---------- quotation and invoice ----------
@@ -115,13 +116,58 @@
   async function jd14Generate(ev) {
     ev.preventDefault();
     if (!val('j-companyName') || !val('j-courseTitle')) return note('jd14Result', 'Company name and course title are required.', 'danger');
-    const data = {}; J.concat(['employerCode','approvalNo']).forEach(k => { data[k] = val('j-'+k); }); data.noOfParticipants = data.totalPax;
-    note('jd14Result', 'Generating JD14…');
+    const data = {}; J.concat(['employerCode','approvalNo']).forEach(k => { data[k] = val('j-'+k); }); data.noOfParticipants = data.totalPax; data.sourceRef = val('j-company');
+    note('jd14Result', 'Making the JD14 draft…');
     try {
-      const res = await busy(ev.submitter || $('jd14Form').querySelector('button'), 'Working…', () => call('jd14Generate', data));
-      const url = safeUrl(res && res.pdfUrl);
-      note('jd14Result', 'JD14 is ready. '+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">Open JD14 PDF ↗</a>':''), 'success');
-      addSessionDoc('JD14 · '+data.companyName, url);
+      const r = await busy(ev.submitter || $('jd14Form').querySelector('button'), 'Working…', () => call('jd14Generate', data));
+      openJd = r.jd14Id; jdDocs = [r].concat(jdDocs.filter(x => x.jd14Id !== r.jd14Id)); renderJd();
+      note('jd14Result', 'Draft ready for '+esc(r.companyName)+'. Open it to check or edit, then press <b>Finalise PDF</b> below.', 'success');
+      $('j-list').scrollIntoView({behavior:'smooth', block:'start'});
+    } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
+  }
+
+  // JD14 documents: draft -> final PDF -> emailed to PIC
+  let jdDocs = [], jdLoaded = false, openJd = '', emailJd = '';
+  const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4) : (d || '');
+  function jdLink(url, label) { const u = safeUrl(url); return u ? '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+label+' ↗</a>' : ''; }
+  function jdItem(x) {
+    const st = x.status || 'DRAFT';
+    const meta = [fmtDate(x.trainingStartDate), x.picName || x.picEmail ? 'PIC: '+(x.picName || '')+(x.picEmail ? ' · '+x.picEmail : '') : 'No PIC on record', st === 'SENT' ? 'Sent '+fmtDate(x.sentDate)+(x.sentTo ? ' to '+x.sentTo : '') : ''].filter(Boolean).map(esc).join(' · ');
+    const acts = [jdLink(x.slidesUrl, 'Edit draft')];
+    acts.push('<button type="button" class="small'+(st === 'DRAFT' ? ' primary' : '')+'" data-jfin="'+esc(x.jd14Id)+'">'+(st === 'DRAFT' ? 'Finalise PDF' : 'Re-finalise')+'</button>');
+    if (x.pdfUrl) acts.push(jdLink(x.pdfUrl, 'Open PDF'));
+    if (x.pdfUrl) acts.push('<button type="button" class="small'+(st === 'FINAL' ? ' primary' : '')+'" data-jmail="'+esc(x.jd14Id)+'">'+(st === 'SENT' ? 'Resend to PIC' : 'Email PIC')+'</button>');
+    const form = emailJd === x.jd14Id ? '<form class="form-grid" data-jsend="'+esc(x.jd14Id)+'">'+
+      '<label>PIC name<input name="picName" value="'+esc(x.picName || '')+'"></label>'+
+      '<label>PIC email<input name="to" type="email" required value="'+esc(x.picEmail || '')+'"></label>'+
+      '<label class="wide">CC (optional)<input name="cc" placeholder="Separate several with commas"></label>'+
+      '<p class="hint wide">The email is in Bahasa Malaysia then English, with the JD14 PDF attached. It asks the PIC to fill in signature, name, MyKad no., designation, company stamp and date, then reply to the email with the signed form.</p>'+
+      '<div class="actions wide"><button type="submit" class="primary">Send email</button><button type="button" data-jcancel="1">Cancel</button></div></form>' : '';
+    return '<div class="jd'+(openJd === x.jd14Id ? ' focus' : '')+'"><div class="jd-head"><div><div class="jd-title">'+esc(x.companyName)+'</div><div class="jd-meta">'+esc(x.courseTitle)+'</div><div class="jd-meta">'+meta+'</div></div><span class="chip '+esc(st)+'">'+esc(st)+'</span></div>'+
+      '<div class="actions">'+acts.filter(Boolean).join('')+'</div>'+form+'</div>';
+  }
+  function renderJd() { $('j-list').innerHTML = jdDocs.length ? jdDocs.map(jdItem).join('') : '<p class="hint">No JD14 documents yet. Generate one above.</p>'; }
+  async function loadJd(force) {
+    if (jdLoaded && !force) return; jdLoaded = true;
+    try { jdDocs = await call('jd14List') || []; renderJd(); }
+    catch (e) { $('j-list').innerHTML = '<p class="hint">JD14 list could not be loaded: '+esc(e.message)+'</p>'; }
+  }
+  async function jdFinalise(id, btn) {
+    try {
+      const r = await busy(btn, 'Finalising…', () => call('jd14Finalise', {jd14Id:id}));
+      jdDocs = jdDocs.map(x => x.jd14Id === id ? r : x); emailJd = id; renderJd();
+      note('jd14Result', 'PDF ready for '+esc(r.companyName)+'. '+jdLink(r.pdfUrl, 'Open PDF')+' Check it, then send it to the PIC.', 'success');
+      addSessionDoc('JD14 · '+r.companyName, safeUrl(r.pdfUrl));
+    } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
+  }
+  async function jdSend(form) {
+    const id = form.dataset.jsend, fd = new FormData(form), x = jdDocs.find(d => d.jd14Id === id);
+    const to = String(fd.get('to') || '').trim();
+    if (!confirm('Email the JD14 for '+(x ? x.companyName : '')+' to '+to+'?')) return;
+    try {
+      const r = await busy(form.querySelector('button[type=submit]'), 'Sending…', () => call('jd14Email', {jd14Id:id, to, cc:String(fd.get('cc') || ''), picName:String(fd.get('picName') || '')}));
+      jdDocs = jdDocs.map(d => d.jd14Id === id ? r : d); emailJd = ''; renderJd();
+      note('jd14Result', 'JD14 emailed to '+esc(r.sentTo || to)+'. When the signed form comes back, record it in Registrations.', 'success');
     } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
   }
 
@@ -296,6 +342,14 @@
     $('j-loadCompanies').onclick = e => jd14Companies(e.currentTarget);
     $('j-loadDetails').onclick = e => jd14Details(e.currentTarget);
     $('jd14Form').addEventListener('submit', jd14Generate);
+    $('j-refreshList').onclick = () => loadJd(true);
+    $('j-list').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.jfin) jdFinalise(b.dataset.jfin, b);
+      else if (b.dataset.jmail) { emailJd = emailJd === b.dataset.jmail ? '' : b.dataset.jmail; renderJd(); }
+      else if (b.dataset.jcancel) { emailJd = ''; renderJd(); }
+    });
+    $('j-list').addEventListener('submit', e => { e.preventDefault(); jdSend(e.target); });
     $('c-reloadPrograms').onclick = () => loadPrograms();
     $('c-loadPeople').onclick = e => loadPeople(e.currentTarget);
     $('c-peopleList').addEventListener('change', e => { const i = e.target.dataset.i; if (i != null) { people[i].on = e.target.checked; const n = people.filter(p => p.on).length; $('c-peopleCount').textContent = $('c-peopleCount').textContent.replace(/\d+ marked attended/, n + ' marked attended'); } });
