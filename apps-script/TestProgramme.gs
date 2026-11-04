@@ -142,3 +142,41 @@ function deleteTestProgramme() {
   console.log(JSON.stringify(report));
   return report;
 }
+
+// ---------------------------------------------------------------------------
+// Free programme test (FreeRegistration.gs)
+// createFreeTestProgramme()  adds TEST-FREE-001: free (RM0), active, hidden from the website.
+// deleteFreeTestProgramme()  removes its rows from every tab.
+// ---------------------------------------------------------------------------
+const TEST_FREE_PROGRAMME_ID_ = 'TEST-FREE-001';
+
+function createFreeTestProgramme() {
+  const book = SpreadsheetApp.openById(SHEET_ID);
+  const programs = book.getSheetByName('Programs');
+  if (findRowByValue(programs, 'CourseID', TEST_FREE_PROGRAMME_ID_)) return TEST_FREE_PROGRAMME_ID_ + ' already exists.';
+  testAppendByHeaders_(programs, {
+    CourseID: TEST_FREE_PROGRAMME_ID_, ProgramName: '[TEST] Free Programme – approval check',
+    StartDate: testDate_(14), EndDate: testDate_(14),
+    ProgramType: 'PUBLIC', Category: 'TEST', FeeType: 'PAX', HRDClaimable: 'FALSE', HRDFee: 0, SelfFee: 0,
+    MaxPax: 20, MinPax: 1, Duration: '1 Day', TotalTime: '4 Hours', Venue: 'EasyLatih Training Room, Kuantan', State: 'Pahang',
+    Status: 'TENTATIVE', IsActive: 'TRUE', IsPublished: 'FALSE', DeliveryMode: 'PHYSICAL',
+    RegistrationCloseDate: testDate_(7), CreatedDate: new Date(), UpdatedDate: new Date()
+  });
+  praUpsert_(praSettingsSheet_(), 'CourseID', TEST_FREE_PROGRAMME_ID_, {
+    JoiningInstructions: '[TEST] Arrive 8:30am. Bring your laptop.',
+    UpdatedDate: new Date()
+  });
+  return TEST_FREE_PROGRAMME_ID_ + ' created.';
+}
+
+function deleteFreeTestProgramme() {
+  const book = SpreadsheetApp.openById(SHEET_ID);
+  const isTest = function (r) { return String(r.CourseID || '').trim() === TEST_FREE_PROGRAMME_ID_; };
+  const report = {};
+  ['Programs', 'Registrations', 'Participants', 'RegistrationProgress', 'ProgrammeSettings',
+   'Registrations_Archive', 'Participants_Archive', 'RegistrationProgress_Archive'].forEach(function (name) {
+    report[name] = testDeleteRows_(book.getSheetByName(name), isTest);
+  });
+  console.log(JSON.stringify(report));
+  return report;
+}
