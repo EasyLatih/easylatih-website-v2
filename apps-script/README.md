@@ -105,3 +105,11 @@ sessions from it stop working.
 
 The email column in Agents is the login. To add an agent: add a row with status ACTIVE
 and their email, then send the invite.
+
+## Programmes offered
+
+Agents tick which public programmes they offered a prospect (Prospects column
+**Programmes Offered**, course IDs such as `CS002, HR007`). The list of active
+programmes comes from the public calendar (`public_training_calendar_mirror`):
+not started and registration not closed. The Prospects tab filters by programme,
+including "not offered any programme yet".

@@ -50,13 +50,15 @@ const P = { // Prospect Pool column indexes (0-based)
 // Extra columns appended to the existing Prospects sheet (after column X).
 const PROSPECT_EXTRA_HEADERS = [
   "Source", "Prospect Key", "Claimed At", "Company Address",
-  "Company Phone", "Company Email", "Last Activity", "Industry"
+  "Company Phone", "Company Email", "Last Activity", "Industry",
+  "Programmes Offered"
 ];
 const X = { // Prospects column indexes (0-based) for the extra columns
   source: 24, key: 25, claimedAt: 26, address: 27,
-  companyPhone: 28, companyEmail: 29, lastActivity: 30, industry: 31
+  companyPhone: 28, companyEmail: 29, lastActivity: 30, industry: 31,
+  offers: 32 // public programme course IDs offered to this prospect, e.g. "CS002, HR007"
 };
-const PROSPECT_WIDTH = 32;
+const PROSPECT_WIDTH = 33;
 const CLOSED_STATUSES = ["QUOTATION SENT", "HRD APPLICATION", "REGISTERED", "NOT INTERESTED", "DO NOT CONTACT"];
 // Prospects that must never be called again or sent back to the pool.
 const DEAD_STATUSES = ["NOT INTERESTED", "DO NOT CONTACT", "INVALID INFO"];
@@ -72,6 +74,7 @@ function routeProspectPool_(action, e, session) {
   if (action === "claimProspect") return claimProspect_(e, session);
   if (action === "updatePic") return updatePic_(e, session);
   if (action === "recordContact") return recordContact_(e, session);
+  if (action === "updateOffers") return updateOffers_(e, session);
   if (action === "adminPool") return adminPool_(e, session);
   return null;
 }
@@ -91,11 +94,12 @@ function poolSheet_() {
 
 function prospectSheet_() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PROSPECT_SHEET);
+  const needed = X.source + PROSPECT_EXTRA_HEADERS.length;
+  if (sheet.getMaxColumns() < needed) sheet.insertColumnsAfter(sheet.getMaxColumns(), needed - sheet.getMaxColumns());
   const header = sheet.getRange(1, X.source + 1, 1, PROSPECT_EXTRA_HEADERS.length).getValues()[0];
-  if (!header[0]) {
-    sheet.getRange(1, X.source + 1, 1, PROSPECT_EXTRA_HEADERS.length)
-      .setValues([PROSPECT_EXTRA_HEADERS]).setFontWeight("bold");
-  }
+  PROSPECT_EXTRA_HEADERS.forEach((name, i) => {
+    if (!header[i]) sheet.getRange(1, X.source + 1 + i).setValue(name).setFontWeight("bold");
+  });
   return sheet;
 }
 
@@ -171,6 +175,7 @@ function prospectExtras_(row) {
     companyPhone: row[X.companyPhone] || "",
     companyEmail: row[X.companyEmail] || "",
     industry: row[X.industry] || "",
+    offers: parseOffers_(row[X.offers]),
     claimedAt: dayKey_(row[X.claimedAt]),
     lastActivity: dayKey_(lastActivityTime_(row)),
     picMissing: !String(row[4] || "").trim(),
@@ -374,6 +379,31 @@ function writePic_(sheet, rowNumber, pic) {
   if (pic.levy === "YA" || pic.levy === "TIDAK") sheet.getRange(rowNumber, 12).setValue(pic.levy);
 }
 
+/* ---------- programmes offered ---------- */
+
+const OFFER_ID_RE = /^[A-Za-z0-9_-]{2,20}$/;
+
+function parseOffers_(value) {
+  return String(value || "").split(",").map(s => s.trim().toUpperCase()).filter(s => OFFER_ID_RE.test(s));
+}
+
+// Course IDs from the portal (comma-separated). Unknown shapes are dropped.
+function cleanOffers_(value) {
+  const seen = {};
+  return parseOffers_(value).filter(id => !seen[id] && (seen[id] = true)).slice(0, 15).join(", ");
+}
+
+function updateOffers_(e, session) {
+  const rowNumber = Number(e.parameter.rowNumber);
+  const sheet = prospectSheet_();
+  if (!validRowNumber_(rowNumber, sheet)) return jsonOutput({ success: false, message: "Rekod tidak sah." });
+  if (!canEditRow_(sheet, rowNumber, session)) return forbidden_();
+  const offers = cleanOffers_(e.parameter.offers);
+  sheet.getRange(rowNumber, X.offers + 1).setValue(offers);
+  sheet.getRange(rowNumber, X.lastActivity + 1).setValue(new Date());
+  return jsonOutput({ success: true, message: offers ? "Program ditawarkan disimpan." : "Senarai program dikosongkan.", offers: parseOffers_(offers) });
+}
+
 // Outcome of contacting a prospect, from the "Hubungi Sekarang" card.
 const CONTACT_OUTCOMES = {
   NO_ANSWER:      { status: "CONTACTED",      label: "Tiada jawapan",          needsDate: true },
@@ -424,6 +454,10 @@ function recordContact_(e, session) {
   sheet.getRange(rowNumber, 21, 1, 4).setValues([[now, note, nextDate, "FOLLOW UP"]]);
   sheet.getRange(rowNumber, 14).setValue(outcome.status);
   if (hasPic) writePic_(sheet, rowNumber, pic);
+  if (e.parameter.offers !== undefined && e.parameter.offers !== "") {
+    const merged = cleanOffers_(parseOffers_(row[X.offers]).concat(parseOffers_(e.parameter.offers)).join(","));
+    sheet.getRange(rowNumber, X.offers + 1).setValue(merged);
+  }
   sheet.getRange(rowNumber, X.lastActivity + 1).setValue(now);
 
   return jsonOutput({ success: true, message: "Hasil panggilan disimpan." });

@@ -298,6 +298,12 @@
     .modal .agree{display:flex;gap:.6rem;align-items:flex-start;margin:1rem 0}
     .modal .agree input{width:auto;margin:.3rem 0 0}
     .modal-actions{display:flex;gap:.6rem;flex-wrap:wrap}
+    .offer-chips{display:flex;flex-wrap:wrap;gap:6px;margin:.4rem 0}
+    .offer-chip{font-size:.75rem;padding:3px 9px;border-radius:999px;background:#dcfce7;color:#166534;border:1px solid #86efac}
+    .offer-chip.past{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+    .offer-list label{display:flex;gap:.55rem;align-items:flex-start;font-size:.9rem;line-height:1.4;margin:.45rem 0;cursor:pointer}
+    .offer-list input{width:auto;margin:.2rem 0 0;flex:none}
+    .offer-list small{color:#64748b}
   </style>
 </head>
 
@@ -519,6 +525,11 @@
           placeholder="Search company, contact, phone or email..."
           onkeyup="searchProspects()"
         >
+
+        <select id="programFilter" onchange="renderProspects()">
+          <option value="">Semua program</option>
+        </select>
+        <p id="programFilterCount" class="sop-muted" style="margin-top:-.25rem"></p>
 
         <div id="prospectTable" class="prospect-grid"></div>
       </div>
@@ -969,7 +980,10 @@ async function loadDashboard(){
   document.getElementById("dashboard").classList.remove("hidden");
   document.getElementById("headerLogoutBtn").classList.remove("hidden");
 
-  const data = await apiRequest(new URLSearchParams({ action: "getDashboard" }));
+  const [data] = await Promise.all([
+    apiRequest(new URLSearchParams({ action: "getDashboard" })),
+    loadProgrammes()
+  ]);
 
   setText("totalProspects", data.totalProspects || 0);
   setText("levy", data.levy || 0);
@@ -1116,15 +1130,30 @@ function renderQuotation(data){
     html || "Tiada quotation perlu follow up.";
 }
 
+let allProspects = [];
+
 function renderProspects(list){
+  if(Array.isArray(list)) allProspects = list;
+  fillProgramFilter();
+  const filter = document.getElementById("programFilter").value;
+  const shown = allProspects.filter(p => {
+    const offers = p.offers || [];
+    if(!filter) return true;
+    if(filter === "__NONE__") return offers.length === 0;
+    return offers.includes(filter);
+  });
+  setText("programFilterCount", filter
+    ? `${shown.length} daripada ${allProspects.length} prospek`
+    : "");
   let html = "";
 
-  list.forEach(p => {
+  shown.forEach(p => {
     html += `
       <div class="prospect-card">
         ${releaseBadge(p)}
         <div class="status-badge">${p.status || "NEW LEAD"}</div>
         <div class="prospect-company">${esc(p.company) || "-"}</div>
+        ${offerChips(p.offers)}
         ${companyBox(p)}
         <div class="prospect-info">👤 ${esc(p.contact) || "-"}${p.position ? " · " + esc(p.position) : ""}</div>
         <div class="prospect-info">📞 ${p.phone || "-"}</div>
@@ -1153,11 +1182,113 @@ function renderProspects(list){
           </select>
         </div>
         ${picForm(p)}
+        ${offersForm(p)}
       </div>
     `;
   });
 
-  document.getElementById("prospectTable").innerHTML = html;
+  document.getElementById("prospectTable").innerHTML = html ||
+    (filter ? "Tiada prospek untuk pilihan ini." : "");
+  searchProspects();
+}
+
+/* ---------- Programmes offered (public schedule) ---------- */
+
+let programmes = [];          // every programme in the public calendar
+let programmesLoaded = null;
+
+function loadProgrammes(){
+  if(programmesLoaded) return programmesLoaded;
+  const cfg = window.EASYLATIH_TRAINER_PORTAL || {};
+  const url = cfg.supabaseUrl + "/rest/v1/public_training_calendar_mirror" +
+    "?select=course_id,program_name,start_date_raw,state,programme_started,registration_closed&order=start_date_raw.asc";
+  programmesLoaded = fetch(url, { headers: { apikey: cfg.supabasePublishableKey, Authorization: "Bearer " + cfg.supabasePublishableKey } })
+    .then(r => r.ok ? r.json() : [])
+    .then(rows => {
+      programmes = (Array.isArray(rows) ? rows : []).map(r => ({
+        id: String(r.course_id || "").toUpperCase(),
+        name: r.program_name || "",
+        date: r.start_date_raw || "",
+        state: r.state || "",
+        active: !r.programme_started && !r.registration_closed
+      })).filter(p => p.id);
+    })
+    .catch(() => { programmes = []; });
+  return programmesLoaded;
+}
+
+function activeProgrammes(){ return programmes.filter(p => p.active); }
+
+function programmeLabel(id){
+  const p = programmes.find(x => x.id === id);
+  if(!p) return id;
+  const d = p.date ? new Date(p.date + "T00:00:00").toLocaleDateString("ms-MY", { day: "numeric", month: "short" }) : "";
+  return `${p.name}${d ? " · " + d : ""}${p.state ? " · " + p.state : ""}`;
+}
+
+function offerChips(offers){
+  if(!offers || !offers.length) return "";
+  return `<div class="offer-chips">${offers.map(id => {
+    const p = programmes.find(x => x.id === id);
+    const d = p && p.date ? new Date(p.date + "T00:00:00").toLocaleDateString("ms-MY", { day: "numeric", month: "short" }) : "";
+    return `<span class="offer-chip ${p && p.active ? "" : "past"}" title="${esc(programmeLabel(id))}">🎓 ${esc(p ? p.name : id)}${d ? " · " + esc(d) : ""}</span>`;
+  }).join("")}</div>`;
+}
+
+// Checkboxes for the active programmes. prefix keeps ids unique per card.
+function offerCheckboxes(prefix, rowNumber, offers){
+  const list = activeProgrammes();
+  if(!list.length) return `<p class="sop-muted">Tiada program aktif dalam jadual awam buat masa ini.</p>`;
+  return `<div class="offer-list">${list.map(p => `
+    <label>
+      <input type="checkbox" name="${prefix}${rowNumber}" value="${esc(p.id)}" ${(offers || []).includes(p.id) ? "checked" : ""}>
+      <span>${esc(p.name)}<br><small>${esc(p.id)} · ${esc(programmeLabel(p.id).split(" · ").slice(1).join(" · "))}</small></span>
+    </label>`).join("")}</div>`;
+}
+
+function checkedOffers(prefix, rowNumber){
+  return [...document.querySelectorAll(`input[name="${prefix}${rowNumber}"]:checked`)].map(i => i.value);
+}
+
+function offersForm(p){
+  const r = p.rowNumber;
+  const offers = p.offers || [];
+  const pastOffers = offers.filter(id => !activeProgrammes().some(a => a.id === id));
+  return `
+    <details class="pic-box">
+      <summary><strong>🎓 Program ditawarkan${offers.length ? " (" + offers.length + ")" : ""}</strong></summary>
+      <p class="sop-muted" style="margin:.4rem 0">Tanda program awam yang anda tawarkan kepada syarikat ini.</p>
+      ${offerCheckboxes("offer_", r, offers)}
+      ${pastOffers.length ? `<p class="sop-muted" style="margin:.4rem 0">Program lepas yang pernah ditawarkan (disimpan):</p>${offerChips(pastOffers)}` : ""}
+      <button onclick="saveOffers(${r}, this)">Simpan Program</button>
+    </details>`;
+}
+
+async function saveOffers(rowNumber, btn){
+  const p = allProspects.find(x => x.rowNumber === rowNumber) || {};
+  const keepPast = (p.offers || []).filter(id => !activeProgrammes().some(a => a.id === id));
+  const offers = keepPast.concat(checkedOffers("offer_", rowNumber));
+  btn.disabled = true;
+  const data = await apiRequest(new URLSearchParams({ action: "updateOffers", rowNumber, offers: offers.join(",") }));
+  btn.disabled = false;
+  if(!data.success){ alert(data.message || "Gagal simpan."); return; }
+  p.offers = data.offers || offers;
+  renderProspects();
+}
+
+function fillProgramFilter(){
+  const select = document.getElementById("programFilter");
+  if(!select) return;
+  const current = select.value;
+  const used = [...new Set(allProspects.flatMap(p => p.offers || []))];
+  const ids = [...new Set(activeProgrammes().map(p => p.id).concat(used))];
+  select.innerHTML = `<option value="">Semua program</option>` +
+    ids.map(id => {
+      const count = allProspects.filter(p => (p.offers || []).includes(id)).length;
+      return `<option value="${esc(id)}">${esc(programmeLabel(id))} (${count})</option>`;
+    }).join("") +
+    `<option value="__NONE__">Belum ditawarkan program (${allProspects.filter(p => !(p.offers || []).length).length})</option>`;
+  select.value = [...select.options].some(o => o.value === current) ? current : "";
 }
 
 function setupResourceFilters(){
@@ -1314,6 +1445,10 @@ function renderContactNow(list){
         </div>
         <label for="cremark_${r}">Catatan</label>
         <textarea id="cremark_${r}" placeholder="Apa yang dibincangkan / kenapa"></textarea>
+        <details class="pic-box" id="offerWrap_${r}">
+          <summary><strong>🎓 Program yang ditawarkan</strong></summary>
+          ${offerCheckboxes("coffer_", r, p.offers)}
+        </details>
         <details class="pic-box" id="picWrap_${r}">
           <summary><strong>👤 Maklumat PIC (jika dapat)</strong></summary>
           <input id="cpicName_${r}" placeholder="Nama PIC">
@@ -1337,6 +1472,8 @@ function outcomeChanged(r){
   const noDate = ["NOT_INTERESTED", "DO_NOT_CONTACT", "WRONG_INFO"].includes(outcome);
   document.getElementById("dateWrap_" + r).classList.toggle("hidden", noDate);
   document.getElementById("picWrap_" + r).classList.toggle("hidden", outcome === "WRONG_INFO" || outcome === "DO_NOT_CONTACT");
+  document.getElementById("offerWrap_" + r).classList.toggle("hidden", outcome === "WRONG_INFO" || outcome === "DO_NOT_CONTACT");
+  if(outcome === "INTERESTED") document.getElementById("offerWrap_" + r).open = true;
   if(outcome === "INTERESTED" || outcome === "CALLBACK") document.getElementById("picWrap_" + r).open = true;
   const remark = document.getElementById("cremark_" + r);
   remark.placeholder = outcome === "WRONG_INFO"
@@ -1364,7 +1501,8 @@ async function saveContact(r, btn){
     picPosition: skipPic ? "" : val("cpicPosition"),
     picPhone: skipPic ? "" : val("cpicPhone"),
     picEmail: skipPic ? "" : val("cpicEmail"),
-    levy: skipPic ? "" : val("cpicLevy")
+    levy: skipPic ? "" : val("cpicLevy"),
+    offers: skipPic ? "" : checkedOffers("coffer_", r).join(",")
   });
   btn.disabled = true;
   btn.textContent = "Menyimpan...";
