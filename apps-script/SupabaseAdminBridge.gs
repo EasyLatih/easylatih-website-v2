@@ -4,8 +4,9 @@
 // jsonOutput, unauthorized_ and forbidden_ from AgentPortalSecure.gs.
 //
 // A signed-in Admin Centre (Supabase) admin posts their Supabase access token here.
-// The token is checked with Supabase; only accounts whose app_metadata.role is
-// "admin" get an Agent Portal session. Agents keep their normal Agent ID login.
+// The token is checked with Supabase; accounts whose app_metadata.role is "admin"
+// get an admin Agent Portal session. Any other account is matched by email to an
+// ACTIVE row in the Agents sheet (agentSupabaseSession_ in AgentAuth.gs).
 
 const SUPABASE_URL = 'https://uxplxejkegommcandldj.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1AW0hE-8BHIHnzmo2sGDNg_n2kvWkvP';
@@ -30,7 +31,9 @@ function supabaseAdminSession_(accessToken) {
 
   let user = null;
   try { user = JSON.parse(response.getContentText()); } catch (error) { return unauthorized_(); }
-  if (!user || !user.app_metadata || user.app_metadata.role !== 'admin') return forbidden_();
+  if (!user) return unauthorized_();
+  // Sales agents sign in with their own Supabase account (AgentAuth.gs).
+  if (!user.app_metadata || user.app_metadata.role !== 'admin') return agentSupabaseSession_(user);
 
   // Use the admin's own row in the Agents sheet when one matches their email,
   // otherwise the first active admin row, so the Agent Portal shows their prospects.

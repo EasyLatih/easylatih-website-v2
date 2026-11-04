@@ -4,9 +4,11 @@ const PROSPECT_SHEET = "Prospects";
 function doGet(e) {
   const action = String(e.parameter.action || "").trim();
 
-  // Login is the only public action. Every other action needs an active session.
+  // Public actions. Agents sign in with Supabase (doPost in SupabaseAdminBridge.gs);
+  // every other action needs an active session.
   if (action === "login") return loginAgent(e);
   if (action === "logout") return logoutAgent(e);
+  if (action === "agentPasswordLink") return agentPasswordLink_(e);
 
   const session = getSession_(e);
   if (!session) return unauthorized_();
@@ -21,6 +23,8 @@ function doGet(e) {
   if (action === "updateStatus") return updateStatus(e, session);
   if (action === "updateCallLog") return updateCallLog(e, session);
   if (action === "checkProspect") return checkProspect(e, session);
+  if (action === "adminAgents") return adminAgents_(e, session);
+  if (action === "sendAgentInvites") return sendAgentInvites_(e, session);
 
   // Prospect Pool actions live in ProspectPool.gs.
   const poolResult = routeProspectPool_(action, e, session);
@@ -31,7 +35,7 @@ function doGet(e) {
 
 const SESSION_PREFIX = "agent-session:";
 const SESSION_TTL_SECONDS = 6 * 60 * 60;
-const LOGIN_LIMIT_PREFIX = "agent-login-limit:";
+const SESSION_VERSION = 2;
 const ALLOWED_STATUSES = [
   "NEW LEAD", "CONTACTED", "INTERESTED", "QUOTATION SENT",
   "HRD APPLICATION", "REGISTERED", "NOT INTERESTED", "DO NOT CONTACT"
@@ -52,8 +56,9 @@ function getSession_(e) {
   } catch (error) {
     return null;
   }
-  // An agent deactivated by the daily check loses access at once.
-  if (!isAdmin_(session) && isRevokedAgent_(session.agentId)) {
+  // An agent deactivated by the daily check loses access at once, and sessions
+  // from the old Agent ID login (before v2) no longer work.
+  if (!isAdmin_(session) && (session.v !== SESSION_VERSION || isRevokedAgent_(session.agentId))) {
     sessionCache_().remove(SESSION_PREFIX + token);
     return null;
   }
@@ -66,7 +71,8 @@ function createSession_(agentId, name, role, agreed) {
     agentId: String(agentId),
     name: String(name),
     role: String(role || "").trim().toUpperCase(),
-    agreed: !!agreed
+    agreed: !!agreed,
+    v: SESSION_VERSION
   };
   sessionCache_().put(SESSION_PREFIX + token, JSON.stringify(session), SESSION_TTL_SECONDS);
   return token;
@@ -99,40 +105,14 @@ function canEditRow_(sheet, rowNumber, session) {
   return String(sheet.getRange(rowNumber, 2).getValue()) === String(session.agentId);
 }
 
+// Agent ID + password login is closed. Agents sign in with their email and a
+// Supabase password (AgentAuth.gs); the old passwords in the Agents sheet are not used.
 function loginAgent(e) {
-  const agentId = String(e.parameter.agentId || "").trim();
-  const password = String(e.parameter.password || "");
-  const cache = sessionCache_();
-  const rateKey = LOGIN_LIMIT_PREFIX + agentId;
-  const attempts = Number(cache.get(rateKey) || 0);
-
-  if (!agentId || !password || attempts >= 5) {
-    return jsonOutput({ success: false, message: "Login tidak berjaya. Cuba semula dalam 15 minit." });
-  }
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-  const data = sheet.getDataRange().getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    if (String(row[0]) === agentId && String(row[5]) === password && String(row[7]).toUpperCase() === "ACTIVE") {
-      cache.remove(rateKey);
-      const role = String(row[6] || "").trim().toUpperCase();
-      const agreed = recordAgentLogin_(sheet, i + 1, row);
-      return jsonOutput({
-        success: true,
-        agentId: String(row[0]),
-        name: String(row[1]),
-        role: role,
-        needsAgreement: !agreed && !isAdminRole_(role),
-        sessionToken: createSession_(row[0], row[1], role, agreed),
-        expiresInSeconds: SESSION_TTL_SECONDS
-      });
-    }
-  }
-
-  cache.put(rateKey, String(attempts + 1), 15 * 60);
-  return jsonOutput({ success: false, message: "Login tidak berjaya." });
+  return jsonOutput({
+    success: false,
+    code: "AGENT_ID_LOGIN_CLOSED",
+    message: "Login Agent ID telah ditutup. Log masuk dengan emel dan kata laluan baharu anda. Semak emel jemputan daripada Easy Latih, atau tekan Lupa / tetapkan kata laluan."
+  });
 }
 
 function getDashboard(e, session) {

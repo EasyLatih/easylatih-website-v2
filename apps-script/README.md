@@ -84,3 +84,24 @@ What the daily check does:
 - Every prospect owned by an agent who is not ACTIVE, including ones they keyed in, goes back to the Prospect Pool. Prospects at Quotation Sent / HRD Application / Registered or Not Interested / Do Not Contact go to the house account instead (Script properties `HOUSE_AGENT_ID` / `HOUSE_AGENT_NAME`, or the first active admin row).
 
 Agents accept the notice once in the portal; the time and version are stored in **Data Agreement**.
+
+## Agent sign-in with Supabase (AgentAuth.gs)
+
+Agents sign in with email + password (Supabase). The Agent ID login is closed and
+sessions from it stop working.
+
+1. Supabase: run `supabase/agent-accounts.sql` (invited agents do not get a trainer profile),
+   deploy `supabase/functions/agent-auth-link` with JWT verification off, and add the
+   secret `AGENT_AUTH_SECRET` (a random string of 40+ characters).
+2. Supabase → Authentication → URL Configuration → Redirect URLs must include
+   `https://www.easylatih.my/internal/agent-dashboard.html`. Run `probeAgentRedirect`
+   from the editor to check where links land.
+3. Apps Script: add `AgentAuth.gs`, update the other files, and add the Script property
+   `AGENT_AUTH_SECRET` with the same value. Run `auditAgentEmails` to list agents
+   whose email is missing or used twice. Deploy a new version.
+4. In the Agent Portal (admin), open **Prospek Baharu → Akaun Ejen** and press
+   **Hantar jemputan**. Each agent gets a BM + English email with a one-time link to set
+   a password. "Lupa / tetapkan kata laluan" on the login page sends a new link.
+
+The email column in Agents is the login. To add an agent: add a row with status ACTIVE
+and their email, then send the invite.

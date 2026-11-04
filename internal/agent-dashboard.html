@@ -317,12 +317,36 @@
 
   <div id="loginBox" class="sop-card">
     <h2>EasyLatih Agent Login</h2>
-    <p class="sop-muted">Login untuk akses dashboard ejen.</p>
-
-    <input id="agentId" placeholder="Agent ID">
-    <input id="password" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
+    <p class="sop-muted">Log masuk dengan emel dan kata laluan anda.</p>
+    <div class="warning-box">
+      <strong>Login Agent ID telah ditutup.</strong> Semak emel jemputan daripada Easy Latih dan tetapkan kata laluan baharu dahulu.
+      Tiada emel? Tekan <em>Lupa / tetapkan kata laluan</em> di bawah.
+    </div>
+    <form id="loginForm" onsubmit="event.preventDefault(); login();">
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="Emel" required>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Kata laluan" required>
+      <button id="loginBtn" type="submit">Log Masuk</button>
+    </form>
+    <p id="loginMessage" class="sop-muted" style="margin-top:10px"></p>
+    <p class="sop-muted"><a href="#" onclick="event.preventDefault(); showForgot(true);">Lupa / tetapkan kata laluan</a></p>
+    <div id="forgotBox" class="pic-box hidden">
+      <p class="sop-muted" style="margin-top:0">Masukkan emel yang didaftarkan oleh Easy Latih. Kami akan hantar pautan untuk tetapkan kata laluan.</p>
+      <input id="forgotEmail" type="email" placeholder="Emel">
+      <button id="forgotBtn" onclick="requestPasswordLink()">Hantar Pautan</button>
+      <p id="forgotMessage" class="sop-muted"></p>
+    </div>
     <p class="sop-muted" style="margin-top:10px">Admin? <a href="login.html?next=agent-dashboard.html">Sign in once with your EasyLatih admin account</a> and this portal opens on its own.</p>
+  </div>
+
+  <div id="setPasswordBox" class="sop-card hidden">
+    <h2>Tetapkan Kata Laluan</h2>
+    <p class="sop-muted" id="setPasswordFor">Pilih kata laluan baharu untuk Agent Portal (sekurang-kurangnya 8 aksara).</p>
+    <form onsubmit="event.preventDefault(); saveNewPassword();">
+      <input id="newPassword" type="password" autocomplete="new-password" placeholder="Kata laluan baharu" minlength="8" required>
+      <input id="newPassword2" type="password" autocomplete="new-password" placeholder="Taip semula kata laluan" minlength="8" required>
+      <button id="setPasswordBtn" type="submit">Simpan &amp; Log Masuk</button>
+    </form>
+    <p id="setPasswordMessage" class="sop-muted"></p>
   </div>
 
   <div id="dashboard" class="hidden">
@@ -419,6 +443,17 @@
       <div id="adminPoolCard" class="sop-card hidden">
         <h3>🛠️ Ringkasan Pool (Admin)</h3>
         <div id="adminPoolSummary">Loading...</div>
+      </div>
+
+      <div id="adminAgentsCard" class="sop-card hidden">
+        <h3>👥 Akaun Ejen (Admin)</h3>
+        <p class="sop-muted">
+          Ejen log masuk dengan emel dan kata laluan sendiri. Hantar jemputan supaya mereka tetapkan kata laluan.
+          Emel diambil dari Sheet Agents. Untuk tambah ejen baharu, tambah baris dalam Sheet (status ACTIVE dan emel), kemudian hantar jemputan.
+        </p>
+        <div id="adminAgentsNotice"></div>
+        <button id="invitePendingBtn" onclick="sendInvites('PENDING', this)">✉️ Hantar jemputan kepada semua yang belum</button>
+        <div id="adminAgentsList" style="margin-top:1rem;overflow-x:auto">Loading...</div>
       </div>
 
       <div class="sop-card">
@@ -607,7 +642,8 @@ async function apiRequest(params){
   const response = await fetch(`${API_URL}?${params.toString()}`);
   const data = await response.json();
   if (data.code === "SESSION_REQUIRED") {
-    if (!params.has("_retried") && localStorage.getItem("role") === "ADMIN") {
+    // Renew the portal session from the Supabase login (admins and agents alike).
+    if (!params.has("_retried")) {
       localStorage.removeItem("agentSessionToken");
       const fresh = await adminSalesSession(true);
       if (fresh) { params.delete("sessionToken"); params.set("_retried", "1"); return apiRequest(params); }
@@ -781,24 +817,145 @@ async function checkProspect(){
   }
 }
 
+/* ---------- Sign-in (Supabase email + password) ---------- */
+
+// Read before the Supabase client strips it from the address bar.
+const AUTH_HASH = new URLSearchParams(location.hash.replace(/^#/, ""));
+
+function portalDb(){
+  const cfg = window.EASYLATIH_TRAINER_PORTAL || {};
+  if(!window.supabase || !cfg.supabaseUrl) return null;
+  portalAdminDb = portalAdminDb || window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey);
+  return portalAdminDb;
+}
+
+function loginMessage(text, kind){
+  const el = document.getElementById("loginMessage");
+  el.textContent = text || "";
+  el.style.color = kind === "error" ? "#b91c1c" : (kind === "ok" ? "#166534" : "");
+}
+
+// Turns the Supabase login into an Agent Portal session.
+async function exchangeSupabase(db){
+  const { data } = await db.auth.getSession();
+  const accessToken = data && data.session && data.session.access_token;
+  if(!accessToken) return { ok: false, message: "" };
+  try {
+    const response = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "supabaseSession", accessToken }) });
+    const result = await response.json();
+    if(!result.success || !result.sessionToken){
+      return { ok: false, message: result.message || "Log masuk tidak berjaya." };
+    }
+    localStorage.setItem("agentId", result.agentId);
+    localStorage.setItem("agentName", result.name);
+    localStorage.setItem("role", result.role);
+    localStorage.setItem("agentSessionToken", result.sessionToken);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: "Tidak dapat menghubungi pelayan. Cuba lagi." };
+  }
+}
+
 async function login(){
-  const agentId = document.getElementById("agentId").value;
-  const password = document.getElementById("password").value;
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const btn = document.getElementById("loginBtn");
+  const db = portalDb();
+  if(!db){ loginMessage("Sistem log masuk tidak dapat dimuatkan. Muat semula halaman.", "error"); return; }
 
-  const response = await fetch(`${API_URL}?action=login&agentId=${encodeURIComponent(agentId)}&password=${encodeURIComponent(password)}`);
-  const data = await response.json();
-
-  if(!data.success){
-    alert((data.message || "Login tidak berjaya.") + "\n\nJika akaun anda telah dinyahaktifkan, sila hubungi admin Easy Latih.");
+  btn.disabled = true;
+  loginMessage("Sedang log masuk...");
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  if(error){
+    btn.disabled = false;
+    loginMessage(/invalid login/i.test(error.message)
+      ? "Emel atau kata laluan salah. Belum tetapkan kata laluan? Tekan Lupa / tetapkan kata laluan."
+      : (error.message || "Log masuk tidak berjaya."), "error");
     return;
   }
-
-  localStorage.setItem("agentId", data.agentId);
-  localStorage.setItem("agentName", data.name);
-  localStorage.setItem("role", data.role);
-  localStorage.setItem("agentSessionToken", data.sessionToken);
+  const result = await exchangeSupabase(db);
+  btn.disabled = false;
+  if(!result.ok){
+    await db.auth.signOut({ scope: "local" }).catch(() => {});
+    loginMessage(result.message, "error");
+    return;
+  }
+  loginMessage("");
   showAdminButton();
+  loadDashboard();
+}
 
+function showForgot(show){
+  document.getElementById("forgotBox").classList.toggle("hidden", !show);
+  const email = document.getElementById("loginEmail").value.trim();
+  if(show && email) document.getElementById("forgotEmail").value = email;
+}
+
+async function requestPasswordLink(){
+  const email = document.getElementById("forgotEmail").value.trim();
+  const out = document.getElementById("forgotMessage");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ out.textContent = "Masukkan emel yang sah."; return; }
+  const btn = document.getElementById("forgotBtn");
+  btn.disabled = true;
+  out.textContent = "Menghantar...";
+  try {
+    const response = await fetch(`${API_URL}?${new URLSearchParams({ action: "agentPasswordLink", email }).toString()}`);
+    const data = await response.json();
+    out.textContent = data.message || "Jika emel ini berdaftar, pautan telah dihantar.";
+  } catch (error) {
+    out.textContent = "Tidak dapat menghantar. Cuba lagi sebentar.";
+  }
+  btn.disabled = false;
+}
+
+// Opened from the link in the invite or password email.
+async function startSetPassword(){
+  const db = portalDb();
+  const box = document.getElementById("setPasswordBox");
+  document.getElementById("loginBox").classList.add("hidden");
+  box.classList.remove("hidden");
+  const { data } = db ? await db.auth.getSession() : { data: null };
+  history.replaceState(null, "", location.pathname);
+  const email = data && data.session && data.session.user && data.session.user.email;
+  if(!email){
+    box.classList.add("hidden");
+    document.getElementById("loginBox").classList.remove("hidden");
+    loginMessage("Pautan tidak sah atau sudah digunakan. Minta pautan baharu di bawah.", "error");
+    showForgot(true);
+    return;
+  }
+  document.getElementById("setPasswordFor").innerHTML =
+    `Kata laluan baharu untuk <strong>${esc(email)}</strong> (sekurang-kurangnya 8 aksara). Selepas ini, log masuk dengan emel dan kata laluan ini.`;
+}
+
+async function saveNewPassword(){
+  const p1 = document.getElementById("newPassword").value;
+  const p2 = document.getElementById("newPassword2").value;
+  const out = document.getElementById("setPasswordMessage");
+  if(p1.length < 8){ out.textContent = "Kata laluan perlu sekurang-kurangnya 8 aksara."; return; }
+  if(p1 !== p2){ out.textContent = "Kedua-dua kata laluan tidak sama."; return; }
+  const db = portalDb();
+  const btn = document.getElementById("setPasswordBtn");
+  btn.disabled = true;
+  out.textContent = "Menyimpan...";
+  const { error } = await db.auth.updateUser({ password: p1 });
+  if(error){
+    btn.disabled = false;
+    out.textContent = /expired|invalid|session/i.test(error.message)
+      ? "Pautan sudah tamat. Tutup halaman ini dan minta pautan baharu."
+      : (error.message || "Gagal menyimpan kata laluan.");
+    return;
+  }
+  const result = await exchangeSupabase(db);
+  btn.disabled = false;
+  document.getElementById("setPasswordBox").classList.add("hidden");
+  if(!result.ok){
+    await db.auth.signOut({ scope: "local" }).catch(() => {});
+    document.getElementById("loginBox").classList.remove("hidden");
+    loginMessage("Kata laluan disimpan. " + result.message, "error");
+    return;
+  }
+  showAdminButton();
   loadDashboard();
 }
 
@@ -1275,7 +1432,49 @@ async function loadPool(){
   select.value = districts.includes(current) ? current : "";
 
   renderPool();
-  if(localStorage.getItem("role") === "ADMIN") loadAdminPool();
+  if(localStorage.getItem("role") === "ADMIN"){ loadAdminPool(); loadAdminAgents(); }
+}
+
+async function loadAdminAgents(){
+  const card = document.getElementById("adminAgentsCard");
+  const data = await apiRequest(new URLSearchParams({ action: "adminAgents" }));
+  if(!data.success) return;
+  card.classList.remove("hidden");
+  const agents = (data.agents || []).filter(a => !["ADMIN","SUPER ADMIN","SUPERADMIN","ADMINISTRATOR","OWNER"].includes(a.role));
+  const problems = agents.filter(a => a.status === "ACTIVE" && a.problem).length;
+  document.getElementById("adminAgentsNotice").innerHTML =
+    (!data.secretSet ? `<div class="danger-box">Sambungan jemputan belum disediakan (AGENT_AUTH_SECRET). Jemputan belum boleh dihantar.</div>` : "") +
+    (problems ? `<div class="warning-box">${problems} ejen aktif ada masalah emel. Betulkan dalam Sheet Agents sebelum hantar jemputan.</div>` : "");
+  document.getElementById("adminAgentsList").innerHTML = agents.length ? `
+    <table>
+      <tr><th>Ejen</th><th>Emel</th><th>Status</th><th>Jemputan</th><th>Login terakhir</th><th></th></tr>
+      ${agents.map(a => `
+        <tr>
+          <td>${esc(a.name)}<br><small>${esc(a.agentId)}</small></td>
+          <td>${a.email ? esc(a.email) : "-"}${a.problem ? `<br><span class="warn-badge">${esc(a.problem)}</span>` : ""}</td>
+          <td>${esc(a.status)}</td>
+          <td>${a.invited || "Belum"}</td>
+          <td>${a.lastLogin || "-"}</td>
+          <td>${a.status === "ACTIVE" && !a.problem
+            ? `<button class="secondary-btn" onclick="sendInvites('${esc(a.agentId)}', this)">${a.invited ? "Hantar semula" : "Hantar"}</button>` : ""}</td>
+        </tr>`).join("")}
+    </table>` : "Tiada ejen dalam Sheet Agents.";
+}
+
+async function sendInvites(ids, btn){
+  const msg = ids === "PENDING"
+    ? "Hantar emel jemputan kepada semua ejen aktif yang belum dijemput?"
+    : "Hantar emel jemputan kepada ejen ini?";
+  if(!confirm(msg)) return;
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "Menghantar...";
+  const data = await apiRequest(new URLSearchParams({ action: "sendAgentInvites", agentIds: ids }));
+  btn.disabled = false;
+  btn.textContent = label;
+  const failed = (data.results || []).filter(r => !r.ok).map(r => `${r.agentId}: ${r.message}`);
+  alert((data.message || "Selesai.") + (failed.length ? "\n\nGagal:\n" + failed.join("\n") : ""));
+  loadAdminAgents();
 }
 
 function renderPool(){
@@ -1360,12 +1559,14 @@ async function loadAdminPool(){
     ${agents ? `<table><tr><th>Ejen</th><th>Ambil hari ini</th><th>Lapor salah</th></tr>${agents}</table>` : ""}`;
 }
 
-function logout(){
+async function logout(){
   const token = getSessionToken();
   if (token) {
     fetch(`${API_URL}?${new URLSearchParams({ action: "logout", sessionToken: token }).toString()}`)
       .catch(() => {});
   }
+  const db = portalDb();
+  if (db) await db.auth.signOut({ scope: "local" }).catch(() => {});
   localStorage.clear();
   location.reload();
 }
@@ -1505,7 +1706,16 @@ async function adminSalesSession(force){
 }
 
 window.onload = async () => {
-  if(localStorage.getItem("agentId") && getSessionToken()){
+  const linkType = AUTH_HASH.get("type");
+  if(AUTH_HASH.get("error") || AUTH_HASH.get("error_code")){
+    history.replaceState(null, "", location.pathname);
+    loginMessage(/expired/i.test(AUTH_HASH.get("error_code") + AUTH_HASH.get("error_description"))
+      ? "Pautan dalam emel sudah tamat tempoh. Minta pautan baharu di bawah."
+      : "Pautan tidak sah. Minta pautan baharu di bawah.", "error");
+    showForgot(true);
+  } else if((linkType === "invite" || linkType === "recovery") && AUTH_HASH.get("access_token")){
+    await startSetPassword();
+  } else if(localStorage.getItem("agentId") && getSessionToken()){
     loadDashboard();
     showAdminButton();
   } else if (await adminSalesSession(false)) {
