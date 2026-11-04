@@ -8,7 +8,7 @@
 // (also stored as a Script property in Apps Script). Deployed with verify_jwt off.
 //
 // POST { action: "link", email, name, agent_id }
-//   -> { ok, link, existing }   invite link for a new account, or a password
+//   -> { ok, link, existing, shared }  invite link for a new account, or a password
 //                               link when the email already has an account
 // POST { action: "probe", email }
 //   -> { ok, redirect }        where a link for this (existing) account lands,
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     options: { redirectTo: REDIRECT_TO, data: { account_type: 'agent', full_name: name, agent_id: agentId } }
   });
   if (!invite.error && invite.data?.properties?.action_link) {
-    return json({ ok: true, link: invite.data.properties.action_link, existing: false });
+    return json({ ok: true, link: invite.data.properties.action_link, existing: false, shared: false });
   }
   if (!alreadyExists(invite.error)) {
     return json({ ok: false, error: invite.error?.message || 'Could not create the invite.' }, 400);
@@ -85,5 +85,8 @@ Deno.serve(async (req) => {
   if (recovery.data.user?.app_metadata?.role === 'admin') {
     return json({ ok: false, error: 'Admin accounts cannot be reset from the Agent Portal.' }, 403);
   }
-  return json({ ok: true, link: recovery.data.properties.action_link, existing: true });
+  // shared: the account was not created as an agent (e.g. a trainer), so the new
+  // password also applies to their other Easy Latih portals.
+  const shared = recovery.data.user?.user_metadata?.account_type !== 'agent';
+  return json({ ok: true, link: recovery.data.properties.action_link, existing: true, shared });
 });

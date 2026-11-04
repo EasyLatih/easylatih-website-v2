@@ -75,16 +75,16 @@ function agentAuthLink_(agent) {
   return result;
 }
 
-function sendAgentAccessEmail_(agent, link, kind, existing) {
+function sendAgentAccessEmail_(agent, link, kind, shared) {
   const invite = kind === "invite";
   const subject = invite
     ? "Log masuk baharu Agent Portal Easy Latih | New Agent Portal login"
     : "Tetapkan kata laluan Agent Portal Easy Latih | Set your Agent Portal password";
   const button = label => '<p><a href="' + link + '" style="display:inline-block;background:#0d3b66;color:#fff;' +
     'padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">' + label + '</a></p>';
-  const sharedBm = existing
+  const sharedBm = shared
     ? "<p>Emel ini sudah ada akaun Easy Latih (contohnya Trainer Portal). Kata laluan baharu akan digunakan untuk semua portal Easy Latih anda.</p>" : "";
-  const sharedEn = existing
+  const sharedEn = shared
     ? "<p>This email already has an Easy Latih account (for example the Trainer Portal). The new password will apply to all your Easy Latih portals.</p>" : "";
 
   const bm =
@@ -150,7 +150,7 @@ function sendAgentInvites_(e, session) {
     if (a.problem) { results.push({ agentId: a.agentId, ok: false, message: a.problem }); return; }
     try {
       const link = agentAuthLink_(a);
-      sendAgentAccessEmail_(a, link.link, "invite", link.existing);
+      sendAgentAccessEmail_(a, link.link, "invite", link.shared);
       dir.sheet.getRange(a.rowNumber, dir.cols.invited + 1).setValue(new Date());
       results.push({ agentId: a.agentId, ok: true, message: "Dihantar ke " + a.email });
     } catch (error) {
@@ -191,7 +191,7 @@ function agentPasswordLink_(e) {
   if (!agent) return reply;
   try {
     const link = agentAuthLink_(agent);
-    sendAgentAccessEmail_(agent, link.link, link.existing ? "reset" : "invite", link.existing);
+    sendAgentAccessEmail_(agent, link.link, link.existing ? "reset" : "invite", link.shared);
   } catch (error) {
     console.warn("Password link for " + agent.agentId + " failed: " + error);
   }
