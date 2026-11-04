@@ -141,6 +141,7 @@ function freeRegistrationSubmit_(data) {
 
 // Same running number as the website registration (RunningNumbers row "REGISTRATION").
 function freeNextRegistrationId_(book) {
+  if (typeof getRunningNumber === 'function') return getRunningNumber('REGISTRATION');
   if (typeof nextRegistrationIdV2_ === 'function') return nextRegistrationIdV2_(book);
   const sheet = book.getSheetByName('RunningNumbers');
   if (!sheet) throw new Error('RunningNumbers sheet is missing.');
