@@ -108,7 +108,8 @@
     try {
       const d = await busy(btn, 'Loading…', () => call('jd14Details', {requestId:id}));
       J.forEach(k => { $('j-'+k).value = d && d[k] != null ? d[k] : ''; });
-      note('jd14Result', 'Details loaded. Add the employer code and approval number, then generate.');
+      if (d && d.approvalNo) $('j-approvalNo').value = d.approvalNo;
+      note('jd14Result', 'Details loaded. Add the employer code' + (d && d.approvalNo ? '' : ' and approval number') + ', check the number of participants, then generate.');
     } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
   }
   async function jd14Generate(ev) {

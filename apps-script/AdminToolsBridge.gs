@@ -79,8 +79,8 @@ function adminToolsActions_() {
     },
 
     // JD14 Generator
-    jd14Companies: function (d) { return getCompaniesByTrainingDate(String(d.startDate || '')); },
-    jd14Details: function (d) { return getJD14DataByRequestId(String(d.requestId || '')); },
+    jd14Companies: function (d) { return adminJd14Companies_(String(d.startDate || '').trim()); },
+    jd14Details: function (d) { return adminJd14Details_(String(d.requestId || '').trim()); },
     jd14Generate: function (d) { return generateJD14(d); },
 
     // Certificates: template
@@ -241,4 +241,111 @@ function adminAmendParticipant_(d) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ---------------------------------------------------------------------------
+// JD14: companies by training start date, for in-house AND public programmes.
+// In-house dates live in QuotationRequests; public programme registrations live
+// in Registrations, with the dates on the programme row in Programs.
+// ---------------------------------------------------------------------------
+function adminJd14Iso_(v) {
+  if (v instanceof Date) return isNaN(v.getTime()) ? '' : Utilities.formatDate(v, 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
+  const t = String(v == null ? '' : v).trim();
+  if (!t) return '';
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, 'Asia/Kuala_Lumpur', 'yyyy-MM-dd');
+}
+
+function adminJd14Rows_(sheetName) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(function (h) { return String(h || '').trim(); });
+  return values.slice(1).map(function (r) {
+    const o = {};
+    headers.forEach(function (h, i) { if (h) o[h] = r[i]; });
+    return o;
+  });
+}
+
+function adminJd14Programs_() {
+  const map = {};
+  adminJd14Rows_('Programs').forEach(function (p) { const id = String(p.CourseID || '').trim(); if (id) map[id] = p; });
+  return map;
+}
+
+function adminJd14Companies_(startDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error('Choose the training start date first.');
+  const out = [];
+
+  // In-house (and any request that carries its own dates).
+  adminJd14Rows_('QuotationRequests').forEach(function (r) {
+    if (String(r.ProgramType || '').toUpperCase() === 'PUBLIC') return;
+    if (adminJd14Iso_(r.StartDate) !== startDate) return;
+    out.push({
+      requestId: String(r.RequestID || ''),
+      companyName: String(r.CompanyName || ''),
+      programName: String(r.CustomProgramName || r.CourseID || ''),
+      source: 'INHOUSE'
+    });
+  });
+
+  // Public programmes starting on that date.
+  const programs = adminJd14Programs_();
+  adminJd14Rows_('Registrations').forEach(function (r) {
+    const p = programs[String(r.CourseID || '').trim()];
+    if (!p || adminJd14Iso_(p.StartDate) !== startDate) return;
+    if (String(r.RegistrationStatus || '').toUpperCase() === 'CANCELLED') return;
+    if (String(r.Status || 'ACTIVE').toUpperCase() !== 'ACTIVE') return;
+    out.push({
+      requestId: 'REG:' + String(r.RegistrationID || ''),
+      companyName: String(r.CompanyName || ''),
+      programName: String(p.ProgramName || r.CourseID || '') + ' · ' + String(r.RegistrationID || ''),
+      source: 'PUBLIC'
+    });
+  });
+
+  out.sort(function (a, b) { return a.companyName.localeCompare(b.companyName); });
+  return out;
+}
+
+function adminJd14Details_(id) {
+  if (!id) throw new Error('Choose a company first.');
+  if (id.indexOf('REG:') !== 0) {
+    const d = getJD14DataByRequestId(id);
+    if (d && !d.trainingStartDate) d.trainingStartDate = '';
+    return d;
+  }
+
+  const regId = id.slice(4);
+  const reg = adminJd14Rows_('Registrations').filter(function (r) { return String(r.RegistrationID || '') === regId; })[0];
+  if (!reg) throw new Error('Registration ' + regId + ' was not found.');
+  const p = adminJd14Programs_()[String(reg.CourseID || '').trim()];
+  if (!p) throw new Error('Programme ' + reg.CourseID + ' was not found.');
+
+  const pax = Number(reg.RequestedPax || 0);
+  const isHrd = String(reg.PaymentMethod || '').toUpperCase() === 'HRD';
+  const fee = Number((isHrd ? p.HRDFee : p.SelfFee) || 0);
+  const discount = Number(reg.DiscountAmount || 0);
+  const total = fee ? Math.max(0, fee * pax - discount) : '';
+
+  return {
+    requestId: id,
+    companyName: String(reg.CompanyName || ''),
+    companyAddress: String(reg.CompanyAddress || ''),
+    noOfParticipants: pax,
+    employerCode: '',
+    approvalNo: String(reg.GrantRefNo || ''),
+    trainingStartDate: adminJd14Iso_(p.StartDate),
+    trainingEndDate: adminJd14Iso_(p.EndDate),
+    venue: String(p.Venue || ''),
+    courseTitle: String(p.ProgramName || ''),
+    totalPax: pax,
+    totalFee: total === '' ? '' : total.toFixed(2),
+    dateSubmission: Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd')
+  };
 }
