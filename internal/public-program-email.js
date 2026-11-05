@@ -33,11 +33,12 @@
     if (!db || !courseId) return {};
     try {
       const { data } = await db.from('public_training_calendar_mirror')
-        .select('start_date,end_date,course_content_url,trainer_profile_url')
+        .select('start_date,end_date,course_content_url,trainer_profile_url,registration_link')
         .eq('course_id', courseId).limit(1);
       const row = (data && data[0]) || {};
       return { startDate: row.start_date || '', endDate: row.end_date || '',
-        outlineUrl: row.course_content_url || '', trainerUrl: row.trainer_profile_url || '' };
+        outlineUrl: row.course_content_url || '', trainerUrl: row.trainer_profile_url || '',
+        registrationUrl: row.registration_link || '' };
     } catch (error) { return {}; }
   }
   function tarikhMelayu(program) {
@@ -95,7 +96,8 @@
       '🎁 **Khas untuk anda:** gunakan kod diskaun **{{kod_diskaun}}** semasa pendaftaran.',
       'Tempat adalah **TERHAD** bagi memastikan sesi praktikal dan kajian kes berjalan secara optimal.',
       '[[/KOTAK]]', '',
-      '[[BUTANG: LIHAT HARGA & DAFTAR | https://www.easylatih.my/registration/?course=' + encodeURIComponent(program.courseId || '') + ']]', '',
+      '[[BUTANG: LIHAT HARGA & DAFTAR | ' + (/^https:\/\/\S+$/.test(String(info.registrationUrl || '')) ? info.registrationUrl
+        : 'https://www.easylatih.my/registration/?course=' + encodeURIComponent(program.courseId || '')) + ']]', '',
       'Perlukan bantuan permohonan geran HRD Corp? Hubungi saya di {{telefon_ejen}} atau admin kami di **010-920 2811 / 09-560 4273**.', '',
       '*Nota: Majikan yang mempunyai 10 atau lebih pekerja warganegara Malaysia dan tertakluk di bawah Akta PSMB 2001 diwajibkan berdaftar serta membayar levi HRD Corp. Levi tersebut boleh digunakan untuk membiayai latihan kakitangan. Rujukan: https://hrdcorp.gov.my/ms/employer-bm*', '',
       'Terima kasih dan kami berharap dapat menerima penyertaan daripada organisasi tuan/puan.', '',
