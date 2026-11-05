@@ -30,6 +30,10 @@ function doGet(e) {
   const poolResult = routeProspectPool_(action, e, session);
   if (poolResult) return poolResult;
 
+  // Template emails sent from sales@easylatih.my live in AgentEmail.gs.
+  const emailResult = typeof routeAgentEmail_ === "function" ? routeAgentEmail_(action, e, session) : null;
+  if (emailResult) return emailResult;
+
   return jsonOutput({ success: false, message: "Invalid action" });
 }
 

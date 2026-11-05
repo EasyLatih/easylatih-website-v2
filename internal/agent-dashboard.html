@@ -57,6 +57,11 @@
     }
 
     .hidden{display:none !important;}
+    .email-preview{border:1px solid #e2e8f0;border-radius:10px;padding:1rem 1.2rem;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1e293b;overflow-wrap:anywhere}
+    .email-preview .subj{font-weight:bold;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #e2e8f0}
+    .email-note{padding:.7rem 1rem;border-radius:8px;margin:.5rem 0 1rem;font-size:.95rem}
+    .email-note.ok{background:#dcfce7;color:#166534}
+    .email-note.err{background:#fee2e2;color:#991b1b}
 
     input,select,textarea{
       width:100%;
@@ -205,6 +210,7 @@
       display:inline-block;
     }
 
+    button.action-btn{padding:8px 12px;font-weight:400;font-size:14px;line-height:inherit;}
     .whatsapp-btn{background:#25D366;}
     .call-btn{background:#0d3b66;}
     .email-btn{background:#f59e0b;}
@@ -372,6 +378,7 @@
         <button class="tab-btn" onclick="showTab('poolTab', this); loadPool();">🆕 Prospek Baharu</button>
         <button class="tab-btn" onclick="showTab('prospectsTab', this)">👥 Prospects</button>
         <button class="tab-btn" onclick="showTab('followupTab', this)">📞 Follow Up</button>
+        <button class="tab-btn" id="emailTabBtn" onclick="showTab('emailTab', this); loadEmailTemplates();">✉️ Emel</button>
         <button class="tab-btn" onclick="showTab('resourcesTab', this)">📚 Resources</button>
       </div>
     </div>
@@ -573,6 +580,30 @@
       </div>
     </div>
 
+    <!-- TAB: EMEL -->
+    <div id="emailTab" class="tab-content">
+      <div class="sop-card">
+        <h3>✉️ Hantar Emel</h3>
+        <p class="sop-muted" id="emailIntro">Pilih templat, masukkan emel penerima dan tekan Hantar. Emel keluar dari <strong>sales@easylatih.my</strong> dengan nama dan nombor telefon anda di bahagian tandatangan.</p>
+        <div id="emailNotice"></div>
+        <div class="form-grid">
+          <select id="emailTemplate" onchange="renderEmailPreview()"><option value="">Memuatkan templat...</option></select>
+          <input id="emailTo" type="email" placeholder="Emel penerima" oninput="renderEmailPreview()">
+          <input id="emailPic" placeholder="Nama PIC (pilihan)" oninput="renderEmailPreview()">
+          <input id="emailCompany" placeholder="Nama syarikat" oninput="renderEmailPreview()">
+          <input id="emailCode" placeholder="Kod diskaun (pilihan)" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,30); renderEmailPreview()">
+        </div>
+        <p class="sop-muted" id="emailProspectNote"></p>
+        <h4 style="margin:1rem 0 .5rem">Pratonton</h4>
+        <div id="emailPreview" class="email-preview">Pilih templat untuk lihat pratonton.</div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:1rem">
+          <button id="emailSendBtn" onclick="sendTemplateEmail()">📨 Hantar Emel</button>
+          <button type="button" onclick="resetEmailForm()" style="background:#64748b">Kosongkan</button>
+          <span class="sop-muted" id="emailQuota"></span>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 4: RESOURCES -->
     <div id="resourcesTab" class="tab-content">
       <div class="sop-card">
@@ -764,7 +795,7 @@ function actionButtons(p){
     <div class="prospect-actions">
       <a href="https://wa.me/${waPhone(phone)}?text=${message}" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>
       <a href="tel:${phone}" class="action-btn call-btn">📞 Call</a>
-      <a href="mailto:${email}" class="action-btn email-btn">✉️ Email</a>
+      ${emailBtn(p, email)}
     </div>
   `;
 }
@@ -1388,6 +1419,143 @@ function renderReleaseWarnings(list){
     </div>`).join("");
 }
 
+/* ---------- Emel templat (dihantar dari sales@easylatih.my) ---------- */
+
+let emailData = null;
+let emailRowNumber = 0;
+const emailTargets = {};
+let emailTargetSeq = 0;
+
+function emailBtn(p, email){
+  const key = "e" + (++emailTargetSeq);
+  emailTargets[key] = { to: email || "", picName: p.contact || p.picName || "", company: p.company || "", rowNumber: p.rowNumber || 0 };
+  return `<button type="button" class="action-btn email-btn" onclick="openEmail('${key}')">✉️ Email</button>`;
+}
+
+function openEmail(key){
+  const t = emailTargets[key] || {};
+  resetEmailForm();
+  document.getElementById("emailTo").value = t.to || "";
+  document.getElementById("emailPic").value = t.picName || "";
+  document.getElementById("emailCompany").value = t.company || "";
+  emailRowNumber = Number(t.rowNumber) || 0;
+  document.getElementById("emailProspectNote").textContent = emailRowNumber && t.company
+    ? `Emel ini akan direkod pada prospek ${t.company}.` : "";
+  showTab("emailTab", document.getElementById("emailTabBtn"));
+  loadEmailTemplates();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function emailNotice(msg, ok){
+  document.getElementById("emailNotice").innerHTML = msg ? `<div class="email-note ${ok ? "ok" : "err"}">${esc(msg)}</div>` : "";
+}
+
+async function loadEmailTemplates(force){
+  if(emailData && !force){ renderEmailPreview(); return; }
+  const sel = document.getElementById("emailTemplate");
+  try{
+    const data = await apiRequest(new URLSearchParams({ action: "getEmailTemplates" }));
+    if(!data.success){ emailNotice(data.message || "Gagal memuatkan templat.", false); return; }
+    emailData = data;
+    const keep = sel.value;
+    sel.innerHTML = data.templates.length
+      ? `<option value="">— Pilih templat —</option>` + data.templates.map(t => `<option value="${esc(t.id)}">${esc(t.name || t.id)}</option>`).join("")
+      : `<option value="">Tiada templat lagi. Hubungi admin.</option>`;
+    if(keep && data.templates.some(t => t.id === keep)) sel.value = keep;
+    if(!data.agent.phone) emailNotice("Nombor telefon anda belum ada dalam sistem, jadi emel belum boleh dihantar. Sila hubungi admin Easy Latih.", false);
+    updateEmailQuota();
+    renderEmailPreview();
+  }catch(err){ /* apiRequest already handled session errors */ }
+}
+
+function updateEmailQuota(){
+  if(!emailData) return;
+  setText("emailQuota", `Hari ini: ${emailData.sentToday} / ${emailData.dailyLimit} emel`);
+}
+
+function fillEmailTemplate(text, data){
+  let out = String(text || "");
+  if(!data.kod_diskaun) out = out.split("\n").filter(l => !l.includes("{{kod_diskaun}}")).join("\n");
+  return out.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in data) ? data[k] : m);
+}
+
+function emailTextToHtml(text){
+  return String(text || "").trim().split(/\n\s*\n/).map(para =>
+    "<p style='margin:0 0 12px'>" + esc(para)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+      .replace(/\n/g, "<br>") + "</p>").join("");
+}
+
+function currentEmailTemplate(){
+  if(!emailData) return null;
+  const id = document.getElementById("emailTemplate").value;
+  return emailData.templates.find(t => t.id === id) || null;
+}
+
+function renderEmailPreview(){
+  const box = document.getElementById("emailPreview");
+  const t = currentEmailTemplate();
+  const codeInput = document.getElementById("emailCode");
+  if(!t){ box.innerHTML = "Pilih templat untuk lihat pratonton."; return; }
+  const usesCode = (t.subject + t.body).includes("{{kod_diskaun}}");
+  codeInput.style.display = usesCode ? "" : "none";
+  if(!usesCode) codeInput.value = "";
+  const agent = emailData.agent || {};
+  const data = {
+    nama_pic: document.getElementById("emailPic").value.trim() || "Tuan/Puan",
+    syarikat: document.getElementById("emailCompany").value.trim(),
+    kod_diskaun: codeInput.value.trim(),
+    nama_ejen: agent.name || "",
+    telefon_ejen: agent.phone || ""
+  };
+  const to = document.getElementById("emailTo").value.trim();
+  box.innerHTML =
+    `<div class="sop-muted" style="font-size:.85rem">Daripada: Easy Latih Consultancy &lt;${esc(emailData.sender)}&gt;<br>Kepada: ${esc(to) || "—"}</div>` +
+    `<div class="subj">${esc(fillEmailTemplate(t.subject, data))}</div>` +
+    emailTextToHtml(fillEmailTemplate(t.body, data)) +
+    `<p style="margin:18px 0 0;padding-top:10px;border-top:1px solid #e2e8f0"><strong>${esc(data.nama_ejen)}</strong><br>Easy Latih Consultancy<br>HRD Corp Registered Training Provider<br>Tel / WhatsApp: ${esc(data.telefon_ejen) || "—"}<br>${esc(emailData.sender)} · www.easylatih.my</p>`;
+}
+
+function resetEmailForm(){
+  ["emailTo","emailPic","emailCompany","emailCode"].forEach(id => document.getElementById(id).value = "");
+  emailRowNumber = 0;
+  document.getElementById("emailProspectNote").textContent = "";
+  emailNotice("");
+  renderEmailPreview();
+}
+
+async function sendTemplateEmail(){
+  const t = currentEmailTemplate();
+  const to = document.getElementById("emailTo").value.trim();
+  if(!t){ emailNotice("Sila pilih templat dahulu.", false); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)){ emailNotice("Alamat emel penerima tidak sah.", false); return; }
+  if(!confirm(`Hantar emel "${t.name || t.id}" kepada ${to}?`)) return;
+  const btn = document.getElementById("emailSendBtn");
+  btn.disabled = true; btn.textContent = "Menghantar...";
+  try{
+    const params = new URLSearchParams({
+      action: "sendTemplateEmail", templateId: t.id, to,
+      picName: document.getElementById("emailPic").value.trim(),
+      company: document.getElementById("emailCompany").value.trim(),
+      discountCode: document.getElementById("emailCode").value.trim()
+    });
+    if(emailRowNumber) params.set("rowNumber", String(emailRowNumber));
+    const data = await apiRequest(params);
+    if(!data.success){ emailNotice(data.message || "Emel gagal dihantar.", false); return; }
+    emailData.sentToday = data.sentToday;
+    updateEmailQuota();
+    const hadProspect = !!emailRowNumber;
+    resetEmailForm();
+    emailNotice(data.message || "Emel dihantar.", true);
+    if(hadProspect && typeof loadDashboard === "function") loadDashboard();
+  }catch(err){
+    emailNotice("Emel gagal dihantar. Cuba lagi.", false);
+  }finally{
+    btn.disabled = false; btn.textContent = "📨 Hantar Emel";
+  }
+}
+
 /* ---------- Hubungi Sekarang ---------- */
 
 function contactButtons(p){
@@ -1402,7 +1570,7 @@ function contactButtons(p){
     <div class="prospect-actions">
       ${phone ? `<a href="tel:${phone}" class="action-btn call-btn">📞 Call</a>` : ""}
       ${phone ? `<a href="https://wa.me/${waPhone(phone)}?text=${message}" target="_blank" rel="noopener" class="action-btn whatsapp-btn">💬 WhatsApp</a>` : ""}
-      ${email ? `<a href="mailto:${esc(email)}" class="action-btn email-btn">✉️ Email</a>` : ""}
+      ${email ? emailBtn(p, email) : ""}
     </div>`;
 }
 

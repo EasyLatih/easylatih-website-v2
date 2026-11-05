@@ -123,3 +123,15 @@ A public programme with Self Payment fee **RM0** and no HRD fee (or non-HRD clai
 3. **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**, so the Web App URL stays the same.
 
 To make a programme free, set its Self Payment fee to 0 and its HRD fee to 0 (or mark it non-HRD claimable).
+
+## Template emails from sales@easylatih.my (AgentEmail.gs)
+
+Agents pick a template in the **✉️ Emel** tab (or press **✉️ Email** on a prospect card), enter the recipient and an optional discount code, and press **Hantar Emel**. Every email goes out from `sales@easylatih.my`; the signature uses the agent's name (column B) and phone (the `Phone` column) from the **Agents** tab. Each agent can send 30 a day. Every email is logged in **Email Log**, and a prospect at NEW LEAD moves to CONTACTED.
+
+1. In the Gmail of the account that owns this Apps Script project, add `sales@easylatih.my` under **Settings → Accounts → Send mail as** (skip if the project is owned by sales@easylatih.my itself).
+2. In the same Apps Script project as `AgentPortalSecure.gs`, click **+ → Script**, name it `AgentEmail`, and paste in `AgentEmail.gs`. Replace `AgentPortalSecure.gs` with the updated version.
+3. Pick **setupAgentEmail** and click **Run**. It creates the **Email Templates** and **Email Log** tabs with one sample template, and the log says whether sales@easylatih.my is ready.
+4. Fill in each agent's phone number in the **Phone** column of **Agents** (added on first use if missing).
+5. **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**.
+
+Templates: one row each in **Email Templates** (`Template ID`, `Nama Templat`, `Subjek`, `Isi Emel`, `Aktif` = YA/TIDAK). Placeholders: `{{nama_pic}}`, `{{syarikat}}`, `{{kod_diskaun}}`, `{{nama_ejen}}`, `{{telefon_ejen}}`. A line containing `{{kod_diskaun}}` is left out when the agent gives no code. A blank line starts a new paragraph, `**text**` is bold, and links become clickable. The signature is added automatically.
