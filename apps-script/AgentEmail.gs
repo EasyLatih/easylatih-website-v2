@@ -6,6 +6,8 @@
  *   memerlukannya), kemudian tekan Hantar dalam portal.
  * - Semua emel keluar dari sales@easylatih.my. Tandatangan di bawah emel
  *   menggunakan nama dan nombor telefon ejen dari tab "Agents".
+ * - Ejen dapat salinan (BCC) di emel mereka dalam tab "Agents". Prospek tidak
+ *   nampak emel ejen, dan balasan prospek masuk ke sales@easylatih.my.
  * - Setiap emel direkod dalam tab "Email Log".
  *
  * Placeholder yang boleh digunakan dalam Subjek dan Isi Emel:
@@ -71,7 +73,7 @@ function emailTemplates_() {
     .filter(t => t.id && t.subject && t.body.trim() && t.active);
 }
 
-// Name and phone of the signed-in agent, from the Agents sheet.
+// Name, phone and email of the signed-in agent, from the Agents sheet.
 function emailAgentProfile_(session) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   const width = Math.max(sheet.getLastColumn(), 2);
@@ -83,9 +85,12 @@ function emailAgentProfile_(session) {
   }
   const rows = sheet.getLastRow() < 2 ? [] : sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(width, phoneCol + 1)).getValues();
   const row = rows.find(r => String(r[0]).trim() === String(session.agentId));
+  const emailCol = header.findIndex(h => /e-?mail/i.test(h) && !/invite/i.test(h));
+  const email = String((row && emailCol !== -1 && row[emailCol]) || "").trim().toLowerCase();
   return {
     name: String((row && row[1]) || session.name || "").trim(),
-    phone: String((row && row[phoneCol]) || "").trim()
+    phone: String((row && row[phoneCol]) || "").trim(),
+    email: EMAIL_RE.test(email) ? email : ""
   };
 }
 
@@ -222,6 +227,8 @@ function sendTemplateEmail_(e, session) {
 
     const options = { htmlBody: mail.html, name: EMAIL_SENDER_NAME, replyTo: EMAIL_SENDER };
     if (mode === "alias") options.from = EMAIL_SENDER;
+    // The agent gets a hidden copy in their own Gmail; the prospect never sees it.
+    if (profile.email && profile.email !== to) options.bcc = profile.email;
     GmailApp.sendEmail(to, mail.subject, mail.plain, options);
 
     // Emailing a prospect counts as contacting them.
