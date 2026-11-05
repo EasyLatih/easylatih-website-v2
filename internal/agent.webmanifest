@@ -1,0 +1,27 @@
+{
+  "name": "EasyLatih Agent Portal",
+  "short_name": "EL Agent",
+  "start_url": "/internal/agent-dashboard.html",
+  "scope": "/internal/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d3b66",
+  "icons": [
+    {
+      "src": "/assets/app-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/app-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/app-icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
