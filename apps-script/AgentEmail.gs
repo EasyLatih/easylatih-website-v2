@@ -24,7 +24,8 @@
  *   [teks](https://...) pautan dengan teks; pautan https://... biasa juga boleh diklik
  *   [[BUTANG: Teks | https://...]]  butang oren
  *   [[POSTER]]          kedudukan poster (jika tiada, poster diletak selepas perenggan pertama)
- * Poster: letak pautan Google Drive gambar poster dalam lajur "Poster (pautan Drive)".
+ * Poster: letak pautan Google Drive gambar poster (atau pautan https gambar biasa)
+ * dalam lajur "Poster (pautan Drive)".
  * Poster dan logo dimasukkan terus ke dalam emel (bukan lampiran).
  * Tandatangan (logo, nama ejen, telefon, alamat pejabat) ditambah automatik.
  *
@@ -85,7 +86,7 @@ function emailTemplates_() {
       subject: String(r[2] || "").trim(),
       body: String(r[3] || ""),
       active: ["", "YA", "YES", "Y", "TRUE", "AKTIF"].indexOf(String(r[4]).trim().toUpperCase()) !== -1,
-      posterId: driveFileId_(r[5])
+      poster: String(r[5] || "").trim()
     }))
     .filter(t => t.id && t.subject && t.body.trim() && t.active);
 }
@@ -238,8 +239,20 @@ function emailLogoBlob_() {
   }
 }
 
-function emailPosterBlob_(posterId) {
-  if (!posterId) return null;
+// Poster: a Google Drive link (file the script's account can open) or a
+// public https image link, e.g. https://www.easylatih.my/assets/posters/x.jpg
+function emailPosterBlob_(poster) {
+  if (!poster) return null;
+  if (/^https?:\/\//i.test(poster) && !/(drive|docs)\.google\.com/i.test(poster)) {
+    const res = UrlFetchApp.fetch(poster, { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) throw new Error("Poster tidak dapat dimuat turun (" + res.getResponseCode() + ").");
+    const blob = res.getBlob();
+    if (!/^image\//.test(blob.getContentType())) throw new Error("Pautan poster bukan fail gambar.");
+    if (blob.getBytes().length > EMAIL_POSTER_MAX_BYTES) throw new Error("Poster terlalu besar (maksimum 5MB).");
+    return blob.setName("poster");
+  }
+  const posterId = driveFileId_(poster);
+  if (!posterId) throw new Error("Pautan poster tidak sah.");
   const file = DriveApp.getFileById(posterId);
   if (!/^image\//.test(file.getMimeType())) throw new Error("Poster mesti fail gambar (PNG/JPG).");
   if (file.getSize() > EMAIL_POSTER_MAX_BYTES) throw new Error("Poster terlalu besar (maksimum 5MB).");
@@ -276,7 +289,7 @@ function buildEmail_(template, data) {
   const subject = fillTemplate_(template.subject, data).replace(/\s+/g, " ").trim().slice(0, 200);
   const bodyText = fillTemplate_(template.body, data);
   const images = {};
-  const poster = emailPosterBlob_(template.posterId);
+  const poster = emailPosterBlob_(template.poster);
   if (poster) images.poster = poster;
   const logo = emailLogoBlob_();
   if (logo) images.logo = logo;
@@ -303,7 +316,7 @@ function getEmailTemplates_(e, session) {
     dailyLimit: EMAIL_DAILY_LIMIT_PER_AGENT,
     sentToday: emailsSentToday_(session.agentId),
     signature: { title: EMAIL_AGENT_TITLE, officePhone: EMAIL_OFFICE_PHONE, address: EMAIL_OFFICE_ADDRESS, logo: EMAIL_LOGO_URL },
-    templates: emailTemplates_().map(t => ({ id: t.id, name: t.name, subject: t.subject, body: t.body, hasPoster: !!t.posterId }))
+    templates: emailTemplates_().map(t => ({ id: t.id, name: t.name, subject: t.subject, body: t.body, hasPoster: !!t.poster }))
   });
 }
 
