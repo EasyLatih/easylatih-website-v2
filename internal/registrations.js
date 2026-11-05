@@ -234,6 +234,7 @@
       '<div class="summary"><div><b>'+pax+'</b>pax registered</div><div><b>'+confirmedPax+'</b>pax confirmed</div><div><b>'+(p.minPax||'—')+'</b>minimum pax</div><div><b>'+(p.maxPax||'—')+'</b>maximum pax</div><div><b>'+active.length+'</b>companies</div><div><b>'+(p.closeDate?nice(p.closeDate):'—')+'</b>registration closes</div></div>' +
       (p.minPax && pax < p.minPax ? '<p class="notice" data-type="danger" style="margin-top:12px">Below minimum: '+pax+' of '+p.minPax+' pax registered.</p>' : '') +
       '</section>' +
+      '<div id="programmeMarketing"></div>' +
       '<div class="layout" style="margin-top:18px"><div class="col-main"><section class="panel"><div class="panel-head"><div><h2>Registrations</h2><p>Mark attendance and send certificates in <a href="documents.html#certs" style="color:var(--orange);font-weight:600">Documents → Certificates</a>.</p></div></div><div class="list">' +
       (d.registrations.filter(r => r.stage.key === 'AWAITING_APPROVAL').length > 1 ? '<div class="act" style="margin-bottom:10px"><button type="button" class="primary small" id="approveAllBtn">Approve all '+d.registrations.filter(r => r.stage.key === 'AWAITING_APPROVAL').length+' pending</button></div>' : '') +
       (d.registrations.length ? d.registrations.map(regCard).join('') : '<p class="empty">No registrations yet.</p>') + '</div>' +
@@ -252,14 +253,20 @@
       '<button type="submit" class="primary">Save settings</button></form><p class="hint" id="settingsNote" style="margin-top:8px">The guideline goes out automatically with every new HRD registration. Joining instructions and the WhatsApp link go out with the confirmation email.</p></section>' +
       '<section class="panel"><div class="panel-head"><div><h2>Participant list</h2><p>'+(s.participantListSentDate?'Emailed to you on '+nice(s.participantListSentDate)+'.':'Emailed to you automatically when registration closes.')+'</p></div></div>' +
       '<div class="act"><button type="button" id="downloadList">Download CSV</button><button type="button" id="emailList">Email list to me</button></div><p class="hint" id="listNote" style="margin-top:8px"></p></section></aside></div>';
+    window.PublicProgramEmail?.mount($('programmeMarketing'), p, db);
   }
   async function openProgramme(courseId) {
+    if (window.PublicProgramEmail?.canLeave() === false) return;
     $('programmeList').hidden = true; $('programmeDetail').hidden = false;
     $('programmeDetail').innerHTML = '<p class="empty">Loading programme…</p>';
     try { detail = await call('regProgramDetail', {courseId}); renderDetail(); window.scrollTo({top:0}); }
     catch (e) { $('programmeDetail').innerHTML = '<div class="toolbar"><button type="button" id="backToList">← All programmes</button></div>'; banner(e.message, 'danger'); }
   }
-  function backToList() { detail = null; $('programmeDetail').hidden = true; $('programmeList').hidden = false; loadProgrammes(); }
+  function backToList() {
+    if (window.PublicProgramEmail?.canLeave() === false) return;
+    window.PublicProgramEmail?.reset();
+    detail = null; $('programmeDetail').hidden = true; $('programmeList').hidden = false; loadProgrammes();
+  }
 
   function participantCsv() {
     const rows = [['Participant','IC / Passport','Email','Phone','Company','PIC','PIC email','PIC phone','Payment','Stage','Attendance','Registration']];

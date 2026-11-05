@@ -16,6 +16,10 @@ function doPost(e) {
   let body = {};
   try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (error) { body = {}; }
   if (body.action === 'supabaseSession') return supabaseAdminSession_(String(body.accessToken || ''));
+  if (typeof routeAgentEmailAdmin_ === 'function') {
+    const emailResult = routeAgentEmailAdmin_(body);
+    if (emailResult) return emailResult;
+  }
   return jsonOutput({ success: false, message: 'Invalid action' });
 }
 

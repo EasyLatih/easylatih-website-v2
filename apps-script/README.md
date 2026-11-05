@@ -126,6 +126,8 @@ To make a programme free, set its Self Payment fee to 0 and its HRD fee to 0 (or
 
 ## Template emails from sales@easylatih.my (AgentEmail.gs)
 
+Admins can manage posters and drafts inside **Public Registrations → Open programme → Poster & Draf Email**. See [setup and deployment instructions](patches/public-program-email.md).
+
 Agents pick a template in the **✉️ Emel** tab (or press **✉️ Email** on a prospect card), enter the recipient and press **Hantar Emel**. The discount code is set by admin, not the agent: the template's **Kod Khas** (early bird etc.) if filled, otherwise the agent's own code in the **Kod Diskaun** column of **Agents**. Every email goes out from `sales@easylatih.my`; the signature uses the agent's name (column B) and phone (the `Phone` column) from the **Agents** tab. The agent gets a hidden copy (BCC) at their email in **Agents**; replies from the prospect go to sales@. Each agent can send 30 a day. Every email is logged in **Email Log**, and a prospect at NEW LEAD moves to CONTACTED.
 
 1. In the Gmail of the account that owns this Apps Script project, add `sales@easylatih.my` under **Settings → Accounts → Send mail as** (skip if the project is owned by sales@easylatih.my itself).
