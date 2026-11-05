@@ -1639,7 +1639,18 @@ function renderEmailPreview(){
   const to = document.getElementById("emailTo").value.trim();
   const sig = Object.assign({ sender: emailData.sender }, emailData.signature || {});
   const placeholder = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="536" height="200"><rect width="100%" height="100%" rx="10" fill="#e2e8f0"/><text x="50%" y="50%" text-anchor="middle" font-family="Arial" font-size="18" fill="#64748b">Poster program</text></svg>');
-  const poster = t.posterPreview || (t.hasPoster ? placeholder : "");
+  const poster = t.posterPreview || t.posterData || (t.hasPoster ? placeholder : "");
+  // Private Drive posters are fetched once through the portal session, then kept.
+  if (t.hasPoster && !t.posterPreview && !t.posterData && !t.posterLoading && !t.posterFailed) {
+    t.posterLoading = true;
+    apiRequest(new URLSearchParams({ action: "getEmailPoster", templateId: t.id }))
+      .then(res => {
+        if (res.success && res.poster) { t.posterData = res.poster; if (currentEmailTemplate() === t) renderEmailPreview(); }
+        else t.posterFailed = true;
+      })
+      .catch(() => { t.posterFailed = true; })
+      .finally(() => { t.posterLoading = false; });
+  }
   box.innerHTML =
     `<div class="sop-muted" style="font-size:.85rem;padding:.75rem 1rem 0">Daripada: Easy Latih Consultancy &lt;${esc(emailData.sender)}&gt;<br>Kepada: ${esc(to) || "—"}</div>` +
     `<div class="subj" style="padding:0 1rem .5rem">${esc(fillEmailTemplate(t.subject, data))}</div>` +

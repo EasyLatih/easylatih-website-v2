@@ -9,7 +9,7 @@ Install in **EasyLatih Agent CRM / Agent Portal** Apps Script, not Management Sy
 3. Deploy a **New version** on the existing Web App deployment, keeping its URL and access settings unchanged. If Google asks the owner to authorize Drive write access, complete authorization in the editor before uploading.
 4. Publish the frontend files `registrations.html`, `registrations.js`, `public-program-email.js`, `public-program-email.css`, and `email-renderer.js`.
 
-The editor adds **Course ID** to column H of **Email Templates**, linking one template per programme. Existing seven columns and agent sending behavior are preserved. If column H already has another header, it stops rather than overwriting it.
+The editor adds **Course ID** to column H of **Email Templates**, linking templates to a programme. A programme can have several templates (e.g. Jemputan and Early Bird); a template stays with the programme it was first linked to. Existing seven columns and agent sending behavior are preserved. If column H already has another header, it stops rather than overwriting it.
 
 First upload creates a private **EasyLatih Email Posters** Drive folder (Script Property `AGENT_EMAIL_POSTER_FOLDER_ID`). Replaced images are retained. Saved poster previews are fetched through the authenticated admin endpoint; public sharing is unnecessary. Stale edits are rejected with a reload message. Uploads are checked by size, MIME type and PNG/JPEG signature. After a timeout, reload to check saved state before retrying.
 

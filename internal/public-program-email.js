@@ -22,7 +22,8 @@
       <div class="panel-head"><div><h2>Poster &amp; Draf Email</h2><p>Urus bahan promosi program ini. Email dihantar oleh ejen melalui Agent Portal.</p></div></div>
       <p class="notice" data-message role="status" aria-live="polite">Memuatkan templat…</p>
       <div class="marketing-grid"><form><fieldset disabled>
-        <label>Templat email<select name="template"><option value="">Draf baharu untuk program ini</option></select></label>
+        <label>Templat email<select name="template"><option value="">+ Templat baharu untuk program ini</option></select></label>
+        <span class="hint">Satu program boleh ada beberapa templat, contohnya Jemputan dan Early Bird.</span>
         <label>Nama templat<input name="templateName" maxlength="150" required></label>
         <label>Subjek email<input name="subject" maxlength="200"></label>
         <label>Upload poster (JPG / PNG, maksimum 5 MB)<input name="poster" type="file" accept="image/jpeg,image/png"></label>
@@ -104,6 +105,16 @@
         }
       }
     }
+    // Templates linked to this programme first, then unlinked ones that can be reused.
+    function renderOptions(selectedId) {
+      const mine = state.templates.filter(t => t.courseId === state.courseId);
+      const free = state.templates.filter(t => !t.courseId);
+      const option = t => '<option value="' + esc(t.id) + '">' + esc(t.name || t.id) + (t.active ? '' : ' (draf)') + '</option>';
+      f.template.innerHTML = '<option value="">+ Templat baharu untuk program ini</option>' +
+        (mine.length ? '<optgroup label="Templat program ini">' + mine.map(option).join('') + '</optgroup>' : '') +
+        (free.length ? '<optgroup label="Templat lain (belum dipautkan)">' + free.map(option).join('') + '</optgroup>' : '');
+      f.template.value = selectedId || '';
+    }
     async function load() {
       fieldset.disabled = true;
       notice('Memuatkan templat…');
@@ -111,11 +122,8 @@
         const result = await request('adminEmailTemplates');
         state.templates = result.templates || []; state.signature = result.signature || {};
         const linked = state.templates.find(t => t.courseId === state.courseId);
-        f.template.innerHTML = '<option value="">Draf baharu untuk program ini</option>' + state.templates
-          .filter(t => !t.courseId || t.courseId === state.courseId)
-          .map(t => '<option value="' + esc(t.id) + '">' + esc(t.name || t.id) + (t.active ? '' : ' (draf)') + '</option>').join('');
+        renderOptions(linked?.id || '');
         await select(linked?.id || '');
-        f.template.disabled = !!linked;
         fieldset.disabled = false;
         notice('');
       } catch (error) {
@@ -162,14 +170,14 @@
       try {
         const image = state.image ? {type: state.image.type, base64: (await readFile(state.image)).split(',')[1]} : null;
         const result = await request('adminEmailSave', {courseId: state.courseId,
-          templateId: state.selected?.id || 'PUBLIC-' + state.courseId, revision: state.selected?.revision || '',
+          templateId: state.selected?.id || 'PUBLIC-' + state.courseId + '-' + Date.now().toString(36).toUpperCase(),
+          revision: state.selected?.revision || '',
           name: f.templateName.value, subject: f.subject.value, body: f.body.value, specialCode: f.specialCode.value,
           active: f.active.checked, image});
         state.selected = result.template; state.dirty = false;
         state.image = null;
         state.templates = state.templates.filter(t => t.id !== result.template.id).concat([result.template]);
-        f.template.innerHTML = '<option value="' + esc(result.template.id) + '">' + esc(result.template.name) + '</option>';
-        f.template.disabled = true;
+        renderOptions(result.template.id);
         section.querySelector('[data-poster-note]').textContent = result.template.poster ? 'Poster telah disimpan.' : 'Belum ada poster.';
         notice(result.message, 'success');
       } catch (error) {

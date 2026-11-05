@@ -73,9 +73,14 @@ test('reject stale edits and conflicting course assignments without uploading', 
   const f=fixture(), first=f.save();
   assert.match(f.save({image:png}).message,/telah berubah/);
   assert.equal(f.files.size,0);
-  assert.match(f.save({templateId:'ANOTHER',image:png}).message,/sudah dipautkan/);
   assert.match(f.save({courseId:'HR007',revision:first.template.revision,image:png}).message,/sudah dipautkan/);
   assert.equal(f.files.size,0); assert.equal(f.rows.length,2);
+});
+test('a programme can hold several templates (e.g. Jemputan and Early Bird)', () => {
+  const f=fixture(); f.save();
+  const second=f.save({templateId:'PUBLIC-HR006-EARLY',name:'Early Bird',specialCode:'EARLY50'});
+  assert.equal(second.success,true); assert.equal(second.template.courseId,'HR006');
+  assert.equal(f.call('adminEmailTemplates').templates.filter(t => t.courseId === 'HR006').length,2);
 });
 test('reject disguised files, oversized bytes, blank active emails and invalid ids', () => {
   const f=fixture();

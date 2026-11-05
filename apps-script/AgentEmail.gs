@@ -66,6 +66,7 @@ const EMAIL_RE = /^[^\s@<>"',;]+@[^\s@<>"',;]+\.[^\s@<>"',;]{2,}$/;
 function routeAgentEmail_(action, e, session) {
   if (action === "getEmailTemplates") return getEmailTemplates_(e, session);
   if (action === "sendTemplateEmail") return sendTemplateEmail_(e, session);
+  if (action === "getEmailPoster") return getEmailPoster_(e, session);
   return null;
 }
 
@@ -430,6 +431,23 @@ function emailPosterPreview_(poster) {
 }
 
 /* ---------- agent actions ---------- */
+
+// The poster of an active template, for the agent's preview. Posters uploaded
+// from Public Registrations are private Drive files, so the portal cannot load
+// them directly; this returns the image as a data URL instead.
+function getEmailPoster_(e, session) {
+  const template = emailTemplates_().find(t => t.id === String(e.parameter.templateId || "").trim());
+  if (!template || !template.poster) return jsonOutput({ success: false, message: "Poster tidak dijumpai." });
+  try {
+    const blob = emailPosterBlob_(template.poster);
+    return jsonOutput({
+      success: true,
+      poster: blob ? "data:" + blob.getContentType() + ";base64," + Utilities.base64Encode(blob.getBytes()) : ""
+    });
+  } catch (error) {
+    return jsonOutput({ success: false, message: error.message });
+  }
+}
 
 function getEmailTemplates_(e, session) {
   const profile = emailAgentProfile_(session);

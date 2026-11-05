@@ -96,9 +96,10 @@ function adminEmailSave_(d) {
     if ((existing ? existing.revision : '') !== String(d.revision || '')) {
       throw new Error('Templat telah berubah. Muat semula draf sebelum simpan.');
     }
-    if ((existing && existing.courseId && existing.courseId !== courseId) ||
-        templates.some(t => t.courseId === courseId && t.id !== id)) {
-      throw new Error('Program ini atau templat ini sudah dipautkan. Muat semula dan pilih templat program yang betul.');
+    // A programme may have several templates (e.g. Jemputan and Early Bird), but a
+    // template stays with the programme it was first linked to.
+    if (existing && existing.courseId && existing.courseId !== courseId) {
+      throw new Error('Templat ini sudah dipautkan kepada program lain. Muat semula dan pilih templat program yang betul.');
     }
     let poster = existing ? existing.poster : '';
     if (blob) {
