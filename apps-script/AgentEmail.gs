@@ -23,11 +23,14 @@
  *   **teks** / *teks*   tebal / italik
  *   [teks](https://...) pautan dengan teks; pautan https://... biasa juga boleh diklik
  *   [[BUTANG: Teks | https://...]]  butang oren
+ *   ## Tajuk            tajuk seksyen
+ *   [[KOTAK]] ... [[/KOTAK]]  kotak info berwarna (contoh: tarikh, masa, lokasi)
  *   [[POSTER]]          kedudukan poster (jika tiada, poster diletak selepas perenggan pertama)
  * Poster: letak pautan Google Drive gambar poster (atau pautan https gambar biasa)
  * dalam lajur "Poster (pautan Drive)".
  * Poster dan logo dimasukkan terus ke dalam emel (bukan lampiran).
- * Tandatangan (logo, nama ejen, telefon, alamat pejabat) ditambah automatik.
+ * Kepala emel (logo), kad ejen (nama, telefon, butang WhatsApp) dan kaki emel
+ * (alamat pejabat) ditambah automatik.
  *
  * Lives in the same Apps Script project as AgentPortalSecure.gs and uses its
  * helpers (jsonOutput, isAdmin_, validRowNumber_, canEditRow_, SHEET_NAME,
@@ -153,55 +156,132 @@ function fillTemplate_(text, data) {
     Object.prototype.hasOwnProperty.call(data, key) ? data[key] : m);
 }
 
-// Turns the template's simple markup into email HTML. The same function is
-// copied into internal/agent-dashboard.html for the preview: keep them in step.
-//   blank line = new paragraph · "- " = bullet · **bold** · *italic*
-//   [text](https://link) · bare https:// links · [[POSTER]] · [[BUTANG: Text | https://link]]
-function emailMarkup_(text, posterHtml) {
-  const inline = s => emailEsc_(s)
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" style="color:#0d3b66">$1</a>')
-    .replace(/(^|[\s(])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" style="color:#0d3b66">$2</a>')
+// ---- shared email renderer (also in internal/agent-dashboard.html; keep in step) ----
+// Markup: blank line = paragraph · "- " bullet · **bold** · *italic* · ***both***
+//   [text](https://link) · bare https:// links · ## Heading
+//   [[KOTAK]] ... [[/KOTAK]] highlighted info box · [[POSTER]] · [[BUTANG: Text | https://link]]
+const EMAIL_NAVY = "#0d3b66";
+const EMAIL_ORANGE = "#e8630a";
+const EMAIL_FONT = "Arial,Helvetica,sans-serif";
+
+function emailInline_(s) {
+  return emailEsc_(s)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" style="color:' + EMAIL_NAVY + ';font-weight:bold">$1</a>')
+    .replace(/(^|[\s(])(https?:\/\/[^\s<*]+)/g, '$1<a href="$2" style="color:' + EMAIL_NAVY + '">$2</a>')
     .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+}
+
+function emailMarkup_(text, posterHtml) {
+  const P = 'margin:0 0 16px;font-family:' + EMAIL_FONT + ';font-size:15px;line-height:1.65;color:#334155';
   const out = [];
   let para = [];
   let list = [];
   let posterUsed = false;
   const flush = () => {
-    if (para.length) out.push('<p style="margin:0 0 14px">' + para.map(inline).join("<br>") + "</p>");
-    if (list.length) out.push('<ul style="margin:0 0 14px;padding-left:22px">' + list.map(li => '<li style="margin:0 0 6px">' + inline(li) + "</li>").join("") + "</ul>");
+    if (para.length) out.push('<p style="' + P + '">' + para.map(emailInline_).join("<br>") + "</p>");
+    if (list.length) {
+      out.push('<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 16px">' +
+        list.map(li => '<tr><td width="26" valign="top" style="padding:2px 0 8px;font-family:' + EMAIL_FONT + ';font-size:15px;line-height:1.6;color:' + EMAIL_ORANGE + ';font-weight:bold">&#10004;</td>' +
+          '<td valign="top" style="padding:2px 0 8px;font-family:' + EMAIL_FONT + ';font-size:15px;line-height:1.6;color:#334155">' + emailInline_(li) + "</td></tr>").join("") +
+        "</table>");
+    }
     para = []; list = [];
   };
-  String(text || "").replace(/\r/g, "").trim().split("\n").forEach(raw => {
-    const line = raw.trim();
-    const button = line.match(/^\[\[\s*butang\s*:\s*(.+?)\s*\|\s*(https?:\/\/\S+?)\s*\]\]$/i);
-    const bullet = line.match(/^[-•]\s+(.*)$/);
-    if (!line) { flush(); return; }
+  const lines = String(text || "").replace(/\r/g, "").trim().split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) { flush(); continue; }
+    if (/^\[\[\s*kotak\s*\]\]$/i.test(line)) {
+      flush();
+      const inner = [];
+      for (i++; i < lines.length && !/^\[\[\s*\/\s*kotak\s*\]\]$/i.test(lines[i].trim()); i++) inner.push(lines[i]);
+      const body = emailMarkup_(inner.join("\n"), "").replace(/margin:0 0 16px/g, "margin:0 0 8px");
+      out.push('<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:4px 0 22px"><tr>' +
+        '<td style="background:#f1f6fb;border-left:5px solid ' + EMAIL_ORANGE + ';border-radius:10px;padding:18px 20px 10px">' + body + "</td></tr></table>");
+      continue;
+    }
     if (/^\[\[\s*poster\s*\]\]$/i.test(line)) {
       flush();
       if (posterHtml) { out.push(posterHtml); posterUsed = true; }
-      return;
+      continue;
     }
+    const button = line.match(/^\[\[\s*butang\s*:\s*(.+?)\s*\|\s*(https?:\/\/\S+?)\s*\]\]$/i);
     if (button) {
       flush();
-      out.push('<p style="margin:6px 0 18px"><a href="' + emailEsc_(button[2]) + '" style="display:inline-block;background:#e8630a;color:#ffffff;' +
-        'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">' + emailEsc_(button[1]) + "</a></p>");
-      return;
+      out.push('<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:8px 0 24px"><tr><td align="center">' +
+        '<a href="' + emailEsc_(button[2]) + '" style="display:inline-block;background:' + EMAIL_ORANGE + ';color:#ffffff;font-family:' + EMAIL_FONT + ';' +
+        'font-size:16px;font-weight:bold;letter-spacing:.3px;padding:15px 34px;border-radius:30px;text-decoration:none">' + emailEsc_(button[1]) + " &#8594;</a></td></tr></table>");
+      continue;
     }
+    const heading = line.match(/^##\s+(.+)$/);
+    if (heading) {
+      flush();
+      out.push('<h2 style="margin:26px 0 12px;font-family:' + EMAIL_FONT + ';font-size:19px;line-height:1.35;color:' + EMAIL_NAVY + '">' + emailInline_(heading[1]) +
+        '<div style="width:44px;height:3px;background:' + EMAIL_ORANGE + ';margin-top:8px;font-size:0;line-height:0">&nbsp;</div></h2>');
+      continue;
+    }
+    const bullet = line.match(/^[-•]\s+(.*)$/);
     if (bullet) {
       if (para.length) { const keep = list; list = []; flush(); list = keep; }
       list.push(bullet[1]);
-      return;
+      continue;
     }
     if (list.length) flush();
     para.push(line);
-  });
+  }
   flush();
-  // No [[POSTER]] in the template: the poster goes after the first paragraph.
   if (posterHtml && !posterUsed) out.splice(Math.min(1, out.length), 0, posterHtml);
   return out.join("");
 }
+
+// Full branded layout. src = { logo, poster } image sources (cid: in the email, URLs in the preview).
+function emailLayout_(bodyText, data, src, sig) {
+  const F = "font-family:" + EMAIL_FONT + ";";
+  const posterHtml = src.poster
+    ? '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:6px 0 24px"><tr><td align="center">' +
+      '<img src="' + src.poster + '" alt="Poster program" width="536" style="display:block;width:100%;max-width:536px;height:auto;border:0;border-radius:10px"></td></tr></table>'
+    : "";
+  const preheader = String(bodyText || "").replace(/\[\[[^\]]*\]\]|[*#]/g, "").replace(/\s+/g, " ").trim().slice(0, 140);
+  let digits = String(data.telefon_ejen || "").replace(/[^0-9]/g, "");
+  if (digits.indexOf("0") === 0) digits = "6" + digits;
+  const wa = digits ? "https://wa.me/" + digits : "";
+  return '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">' + emailEsc_(preheader) + "</div>" +
+    '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#eef2f7"><tr><td align="center" style="padding:24px 10px">' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden">' +
+    // header
+    '<tr><td style="padding:18px 28px;border-bottom:4px solid ' + EMAIL_ORANGE + '">' +
+      '<table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>' +
+      '<td valign="middle">' + (src.logo ? '<img src="' + src.logo + '" alt="Easy Latih" width="130" style="display:block;border:0;width:130px;height:auto">' : '<strong style="' + F + 'font-size:20px;color:' + EMAIL_NAVY + '">Easy Latih</strong>') + "</td>" +
+      '<td align="right" valign="middle" style="' + F + 'font-size:11px;line-height:1.4;color:' + EMAIL_NAVY + ';font-weight:bold;letter-spacing:.4px">HRD CORP<br>REGISTERED TRAINING<br>PROVIDER</td>' +
+      "</tr></table></td></tr>" +
+    // body
+    '<tr><td style="padding:30px 32px 8px">' + emailMarkup_(bodyText, posterHtml) + "</td></tr>" +
+    // agent card
+    '<tr><td style="padding:0 32px 30px">' +
+      '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px"><tr>' +
+      '<td style="padding:18px 20px;' + F + 'font-size:14px;line-height:1.55;color:#334155">' +
+        '<div style="font-size:16px;font-weight:bold;color:' + EMAIL_NAVY + '">' + emailEsc_(data.nama_ejen) + "</div>" +
+        '<div style="color:#64748b">' + emailEsc_(sig.title) + " · Easy Latih Consultancy</div>" +
+        '<div style="margin-top:6px">&#9742; ' + emailEsc_(data.telefon_ejen) + "</div>" +
+      "</td>" +
+      (wa ? '<td align="right" valign="middle" style="padding:18px 20px"><a href="' + wa + '" style="display:inline-block;background:#25d366;color:#ffffff;' + F +
+        'font-size:14px;font-weight:bold;padding:11px 18px;border-radius:24px;text-decoration:none;white-space:nowrap">WhatsApp Saya</a></td>' : "") +
+      "</tr></table></td></tr>" +
+    // footer
+    '<tr><td style="background:' + EMAIL_NAVY + ';padding:24px 32px;' + F + 'font-size:12px;line-height:1.7;color:#cbd5e1">' +
+      '<div style="font-size:14px;font-weight:bold;color:#ffffff">Easy Latih Consultancy</div>' +
+      emailEsc_(sig.address) + "<br>" +
+      "Pejabat: " + emailEsc_(sig.officePhone) + " · " +
+      '<a href="https://www.easylatih.my" style="color:#ffffff;text-decoration:underline">www.easylatih.my</a> · ' +
+      '<a href="mailto:' + emailEsc_(sig.sender) + '" style="color:#ffffff;text-decoration:underline">' + emailEsc_(sig.sender) + "</a>" +
+      '<div style="margin-top:12px;font-size:11px;color:#94a3b8">Emel ini dihantar oleh ' + emailEsc_(data.nama_ejen) +
+      " bagi pihak Easy Latih Consultancy. Balas emel ini jika ada sebarang pertanyaan atau jika tidak mahu menerima emel seterusnya.</div>" +
+    "</td></tr>" +
+    "</table></td></tr></table>";
+}
+// ---- end shared email renderer ----
 
 function driveFileId_(value) {
   const m = String(value || "").match(/[-\w]{25,}/);
@@ -259,23 +339,10 @@ function emailPosterBlob_(poster) {
   return file.getBlob().setName(file.getName());
 }
 
-function emailSignatureHtml_(data, withLogo) {
-  const wa = waLink_(data.telefon_ejen);
-  const phone = wa ? '<a href="' + wa + '" style="color:#0d3b66;text-decoration:none">' + emailEsc_(data.telefon_ejen) + "</a>" : emailEsc_(data.telefon_ejen);
-  return '<table cellpadding="0" cellspacing="0" style="margin-top:22px;border-top:1px solid #e2e8f0;padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.55;color:#1e293b"><tr>' +
-    (withLogo ? '<td style="padding:14px 16px 0 0;vertical-align:top"><img src="cid:logo" width="120" height="60" alt="Easy Latih" style="display:block"></td>' : "") +
-    '<td style="padding-top:14px;vertical-align:top">' +
-    "<strong>" + emailEsc_(data.nama_ejen) + "</strong> | " + EMAIL_AGENT_TITLE + "<br>" +
-    "<strong>Easy Latih Consultancy</strong><br>" +
-    "Tel / WhatsApp: " + phone + " · Pejabat: " + EMAIL_OFFICE_PHONE + "<br>" +
-    '<a href="https://www.easylatih.my" style="color:#0d3b66">www.easylatih.my</a> · ' +
-    '<a href="mailto:' + EMAIL_SENDER + '" style="color:#0d3b66">' + EMAIL_SENDER + "</a><br>" +
-    '<span style="color:#64748b">' + EMAIL_OFFICE_ADDRESS + "</span></td></tr></table>";
-}
-
 function emailPlainText_(text) {
   return String(text || "").trim()
-    .replace(/^\[\[\s*poster\s*\]\]$/gim, "")
+    .replace(/^\[\[\s*(poster|kotak|\/\s*kotak)\s*\]\]$/gim, "")
+    .replace(/^##\s+/gm, "")
     .replace(/^\[\[\s*butang\s*:\s*(.+?)\s*\|\s*(\S+?)\s*\]\]$/gim, "$1: $2")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$1 ($2)")
     .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
@@ -293,12 +360,9 @@ function buildEmail_(template, data) {
   if (poster) images.poster = poster;
   const logo = emailLogoBlob_();
   if (logo) images.logo = logo;
-  const posterHtml = poster
-    ? '<p style="margin:0 0 16px"><img src="cid:poster" alt="Poster" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0"></p>'
-    : "";
-  const html =
-    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1e293b;max-width:620px">' +
-    emailMarkup_(bodyText, posterHtml) + emailSignatureHtml_(data, !!logo) + "</div>";
+  const html = emailLayout_(bodyText, data,
+    { logo: logo ? "cid:logo" : "", poster: poster ? "cid:poster" : "" },
+    emailSignatureInfo_());
   const plain = emailPlainText_(bodyText) + "\n\n--\n" + data.nama_ejen + " | " + EMAIL_AGENT_TITLE +
     "\nEasy Latih Consultancy\nTel / WhatsApp: " + data.telefon_ejen + " · Pejabat: " + EMAIL_OFFICE_PHONE +
     "\nwww.easylatih.my · " + EMAIL_SENDER + "\n" + EMAIL_OFFICE_ADDRESS;
@@ -312,6 +376,15 @@ function buildEmail_(template, data) {
   };
 }
 
+function emailSignatureInfo_() {
+  return { title: EMAIL_AGENT_TITLE, officePhone: EMAIL_OFFICE_PHONE, address: EMAIL_OFFICE_ADDRESS, sender: EMAIL_SENDER, logo: EMAIL_LOGO_URL };
+}
+
+// A public image link can be shown in the portal preview; a Drive file cannot.
+function emailPosterPreview_(poster) {
+  return /^https?:\/\//i.test(poster) && !/(drive|docs)\.google\.com/i.test(poster) ? poster : "";
+}
+
 /* ---------- agent actions ---------- */
 
 function getEmailTemplates_(e, session) {
@@ -322,8 +395,11 @@ function getEmailTemplates_(e, session) {
     agent: profile,
     dailyLimit: EMAIL_DAILY_LIMIT_PER_AGENT,
     sentToday: emailsSentToday_(session.agentId),
-    signature: { title: EMAIL_AGENT_TITLE, officePhone: EMAIL_OFFICE_PHONE, address: EMAIL_OFFICE_ADDRESS, logo: EMAIL_LOGO_URL },
-    templates: emailTemplates_().map(t => ({ id: t.id, name: t.name, subject: t.subject, body: t.body, hasPoster: !!t.poster }))
+    signature: emailSignatureInfo_(),
+    templates: emailTemplates_().map(t => ({
+      id: t.id, name: t.name, subject: t.subject, body: t.body,
+      hasPoster: !!t.poster, posterPreview: emailPosterPreview_(t.poster)
+    }))
   });
 }
 
@@ -421,45 +497,47 @@ function setupAgentEmail() {
         "",
         "Bagi membantu organisasi anda mengurus pekerja secara sah, adil, dan berkesan, **EasyLatih** menganjurkan kursus interaktif selama 2 hari:",
         "",
-        "**KURSUS: Akta Kerja 1955: Perkara Yang Wajib Diketahui Oleh Setiap Majikan**",
+        "[[KOTAK]]",
+        "**AKTA KERJA 1955: Perkara Yang Wajib Diketahui Oleh Setiap Majikan**",
+        "",
         "📅 **Tarikh:** 6 & 7 Disember 2026",
         "⏰ **Masa:** 9.00 pagi – 5.00 petang",
         "📍 **Lokasi:** Raia Hotel & Convention Centre Terengganu",
         "💳 **Pembiayaan:** 100% HRD Corp Claimable (Skim SBL Khas) @ Tunai",
-        "",
-        "***Untuk syarikat yang menggunakan levi HRD Corp:***",
-        "*Yuran kursus tidak perlu dibayar terlebih dahulu. EasyLatih akan membuat tuntutan yuran kepada HRD Corp (bergantung pada baki levi syarikat), manakala syarikat hanya perlu memohon geran. Kami juga akan membimbing syarikat dalam proses permohonan geran secara percuma.*",
-        "",
-        "Syarikat yang membayar levi HRD Corp juga boleh memohon tuntutan **elaun peserta**, berdasarkan jarak sehala dari syarikat ke tempat latihan:",
-        "- **Kurang daripada 100 km:** RM250 seorang sehari",
-        "- **Lebih daripada 100 km:** RM500 seorang sehari",
-        "- **Perjalanan melebihi 100 km:** Boleh memohon tambahan elaun untuk 1 hari perjalanan (travelling day)",
-        "*Tuntutan elaun peserta tertakluk kepada baki levi syarikat dan kelulusan HRD Corp.*",
+        "[[/KOTAK]]",
         "",
         "[[POSTER]]",
         "",
-        "**Topik Utama Yang Akan Dipelajari:**",
+        "## Tanpa Bayaran Awal untuk Syarikat Pembayar Levi",
+        "Yuran kursus tidak perlu dibayar terlebih dahulu. EasyLatih akan membuat tuntutan yuran kepada HRD Corp (bergantung pada baki levi syarikat), manakala syarikat hanya perlu memohon geran. Kami juga akan membimbing syarikat dalam proses permohonan geran secara **percuma**.",
+        "",
+        "Syarikat juga boleh menuntut **elaun peserta** berdasarkan jarak sehala dari syarikat ke tempat latihan:",
+        "- **Kurang daripada 100 km:** RM250 seorang sehari",
+        "- **Lebih daripada 100 km:** RM500 seorang sehari",
+        "- **Perjalanan melebihi 100 km:** Tambahan elaun untuk 1 hari perjalanan (travelling day)",
+        "*Tuntutan elaun tertakluk kepada baki levi syarikat dan kelulusan HRD Corp.*",
+        "",
+        "## Apa Yang Akan Dipelajari",
         "- **Kontrak Pekerjaan & Status Pekerja:** Menilai terma perkhidmatan, mengenal pasti klausa berisiko, dan membezakan status pekerja.",
         "- **Formula Gaji & Kerja Lebih Masa (OT):** Latihan pengiraan tepat bagi OT, kerja pada hari rehat, cuti umum, serta potongan gaji statutori.",
         "- **Pengurusan Cuti & Perlindungan Keluarga:** Hak cuti sakit/hospitalisasi, penyalahgunaan MC, serta elaun bersalin dan paterniti.",
         "- **Disiplin, Siasatan Dalaman & Penamatan:** Prosedur salah laku, kes tidak hadir bertugas, Siasatan Dalaman (DI), dan pemecatan berisiko.",
         "- **Simulasi Audit & Pemeriksaan JTK:** Persediaan dokumen dan langkah pembetulan apabila berdepan aduan atau lawatan JTK.",
         "",
-        "**Kumpulan Sasaran:** Pengurus & Pegawai Sumber Manusia (HR), Pegawai Penggajian, Pegawai Pentadbiran, Penyelia, serta Pemilik Perniagaan.",
+        "**Sesuai untuk:** Pengurus & Pegawai HR, Pegawai Penggajian, Pegawai Pentadbiran, Penyelia, serta Pemilik Perniagaan.",
         "",
+        "Lihat [rangka kursus](https://drive.google.com/file/d/1HGK6G6bcAPYBK1eRFd1qtg7rq1mZn1jg/view?usp=drive_link) dan [profil pengajar](https://drive.google.com/file/d/1J8pbkXnO0PuKInnvX3lHppIeM5MuHhmx/view?usp=drive_link).",
+        "",
+        "[[KOTAK]]",
+        "🎁 **Khas untuk anda:** gunakan kod diskaun **{{kod_diskaun}}** semasa pendaftaran.",
         "Tempat adalah **TERHAD** bagi memastikan sesi praktikal dan kajian kes berjalan secara optimal.",
+        "[[/KOTAK]]",
         "",
-        "Maklumat lengkap program, kandungan kursus dan profil tenaga pengajar:",
-        "- [Rangka kursus](https://drive.google.com/file/d/1HGK6G6bcAPYBK1eRFd1qtg7rq1mZn1jg/view?usp=drive_link)",
-        "- [Profil pengajar](https://drive.google.com/file/d/1J8pbkXnO0PuKInnvX3lHppIeM5MuHhmx/view?usp=drive_link)",
+        "[[BUTANG: LIHAT HARGA & DAFTAR | https://www.easylatih.my/registration/?course=HR006]]",
         "",
-        "**Khas untuk anda, sila gunakan kod diskaun {{kod_diskaun}} semasa pendaftaran.**",
+        "Perlukan bantuan permohonan geran HRD Corp? Hubungi saya di {{telefon_ejen}} atau admin kami di **010-920 2811 / 09-560 4273**.",
         "",
-        "[[BUTANG: LIHAT HARGA & DAFTAR DI SINI | https://www.easylatih.my/registration/?course=HR006]]",
-        "",
-        "Pihak tuan/puan digalakkan membuat pendaftaran serta permohonan geran HRD Corp lebih awal. Sekiranya memerlukan bantuan untuk permohonan geran HRD Corp, sila hubungi saya di {{telefon_ejen}} atau admin kami di **010-920 2811 / 09-560 4273**.",
-        "",
-        "***Nota HRD Corp:*** *Majikan yang mempunyai 10 atau lebih pekerja warganegara Malaysia dan tertakluk di bawah Akta PSMB 2001 diwajibkan berdaftar serta membayar levi HRD Corp. Levi tersebut boleh digunakan untuk membiayai latihan kakitangan.* Rujukan: https://hrdcorp.gov.my/ms/employer-bm",
+        "*Nota: Majikan yang mempunyai 10 atau lebih pekerja warganegara Malaysia dan tertakluk di bawah Akta PSMB 2001 diwajibkan berdaftar serta membayar levi HRD Corp. Levi tersebut boleh digunakan untuk membiayai latihan kakitangan. Rujukan: https://hrdcorp.gov.my/ms/employer-bm*",
         "",
         "Terima kasih dan kami berharap dapat menerima penyertaan daripada organisasi tuan/puan.",
         "",
