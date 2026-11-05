@@ -302,7 +302,14 @@ function buildEmail_(template, data) {
   const plain = emailPlainText_(bodyText) + "\n\n--\n" + data.nama_ejen + " | " + EMAIL_AGENT_TITLE +
     "\nEasy Latih Consultancy\nTel / WhatsApp: " + data.telefon_ejen + " · Pejabat: " + EMAIL_OFFICE_PHONE +
     "\nwww.easylatih.my · " + EMAIL_SENDER + "\n" + EMAIL_OFFICE_ADDRESS;
-  return { subject: subject, html: html, plain: plain, inlineImages: images };
+  // GmailApp garbles characters outside the Basic Multilingual Plane (most
+  // emoji such as 📅 📍 💳), so the HTML carries them as numeric entities.
+  return {
+    subject: subject.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "").replace(/\s+/g, " ").trim(),
+    html: html.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, c => "&#" + c.codePointAt(0) + ";"),
+    plain: plain.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]\uFE0F?\s?/g, ""),
+    inlineImages: images
+  };
 }
 
 /* ---------- agent actions ---------- */
