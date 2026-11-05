@@ -44,6 +44,11 @@ const EMAIL_LOG_SHEET = "Email Log";
 const EMAIL_DAILY_LIMIT_PER_AGENT = 30;
 const EMAIL_TEMPLATE_HEADERS = ["Template ID", "Nama Templat", "Subjek", "Isi Emel", "Aktif", "Poster (pautan Drive)"];
 const EMAIL_LOGO_URL = "https://www.easylatih.my/assets/email-logo.jpg";
+// HRD Corp badges shown beside the logo in the email header.
+const EMAIL_BADGES = [
+  { id: "hrdprovider", url: "https://www.easylatih.my/assets/email-hrd-provider.png", alt: "HRD Corp Registered Training Provider" },
+  { id: "hrdclaimable", url: "https://www.easylatih.my/assets/email-hrd-claimable.png", alt: "HRD Corp Claimable" }
+];
 const EMAIL_AGENT_TITLE = "Training Advisor";
 const EMAIL_OFFICE_ADDRESS = "B-62, Tkt 1, Jln IM 7/1, Bdr Indera Mahkota 6, 25200 Kuantan, Pahang";
 const EMAIL_OFFICE_PHONE = "09-560 4273";
@@ -236,7 +241,7 @@ function emailMarkup_(text, posterHtml) {
   return out.join("");
 }
 
-// Full branded layout. src = { logo, poster } image sources (cid: in the email, URLs in the preview).
+// Full branded layout. src = { logo, poster, badges: [{src, alt}] } image sources (cid: in the email, URLs in the preview).
 function emailLayout_(bodyText, data, src, sig) {
   const F = "font-family:" + EMAIL_FONT + ";";
   const posterHtml = src.poster
@@ -254,7 +259,9 @@ function emailLayout_(bodyText, data, src, sig) {
     '<tr><td style="padding:18px 28px;border-bottom:4px solid ' + EMAIL_ORANGE + '">' +
       '<table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>' +
       '<td valign="middle">' + (src.logo ? '<img src="' + src.logo + '" alt="Easy Latih" width="130" style="display:block;border:0;width:130px;height:auto">' : '<strong style="' + F + 'font-size:20px;color:' + EMAIL_NAVY + '">Easy Latih</strong>') + "</td>" +
-      '<td align="right" valign="middle" style="' + F + 'font-size:11px;line-height:1.4;color:' + EMAIL_NAVY + ';font-weight:bold;letter-spacing:.4px">HRD CORP<br>REGISTERED TRAINING<br>PROVIDER</td>' +
+      '<td align="right" valign="middle">' + ((src.badges || []).length
+        ? src.badges.map(b => '<img src="' + b.src + '" alt="' + emailEsc_(b.alt) + '" width="62" height="62" style="display:inline-block;width:62px;height:62px;border:0;margin-left:8px;vertical-align:middle">').join("")
+        : '<span style="' + F + 'font-size:11px;line-height:1.4;color:' + EMAIL_NAVY + ';font-weight:bold;letter-spacing:.4px">HRD CORP<br>REGISTERED TRAINING<br>PROVIDER</span>') + "</td>" +
       "</tr></table></td></tr>" +
     // body
     '<tr><td style="padding:30px 32px 8px">' + emailMarkup_(bodyText, posterHtml) + "</td></tr>" +
@@ -304,19 +311,29 @@ function waLink_(phone) {
   return digits ? "https://wa.me/" + digits : "";
 }
 
-function emailLogoBlob_() {
+// Fetches a small image from the website once and keeps it cached for 6 hours.
+function emailAssetBlob_(key, url) {
   const cache = CacheService.getScriptCache();
-  const cached = cache.get("email-logo");
+  const name = url.split("/").pop();
   try {
-    if (cached) return Utilities.newBlob(Utilities.base64Decode(cached), "image/jpeg", "easylatih-logo.jpg");
-    const res = UrlFetchApp.fetch(EMAIL_LOGO_URL, { muteHttpExceptions: true });
+    const cached = cache.get("email-asset:" + key);
+    if (cached) {
+      const c = JSON.parse(cached);
+      return Utilities.newBlob(Utilities.base64Decode(c.data), c.type, name);
+    }
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     if (res.getResponseCode() !== 200) return null;
-    const blob = res.getBlob().setName("easylatih-logo.jpg");
-    cache.put("email-logo", Utilities.base64Encode(blob.getBytes()), 21600);
+    const blob = res.getBlob().setName(name);
+    const data = Utilities.base64Encode(blob.getBytes());
+    if (data.length < 90000) cache.put("email-asset:" + key, JSON.stringify({ data: data, type: blob.getContentType() }), 21600);
     return blob;
   } catch (error) {
-    return null; // The email still goes out, just without the logo.
+    return null; // The email still goes out, just without that image.
   }
+}
+
+function emailLogoBlob_() {
+  return emailAssetBlob_("logo", EMAIL_LOGO_URL);
 }
 
 // Poster: a Google Drive link (file the script's account can open) or a
@@ -360,8 +377,13 @@ function buildEmail_(template, data) {
   if (poster) images.poster = poster;
   const logo = emailLogoBlob_();
   if (logo) images.logo = logo;
+  const badges = [];
+  EMAIL_BADGES.forEach(b => {
+    const blob = emailAssetBlob_(b.id, b.url);
+    if (blob) { images[b.id] = blob; badges.push({ src: "cid:" + b.id, alt: b.alt }); }
+  });
   const html = emailLayout_(bodyText, data,
-    { logo: logo ? "cid:logo" : "", poster: poster ? "cid:poster" : "" },
+    { logo: logo ? "cid:logo" : "", poster: poster ? "cid:poster" : "", badges: badges },
     emailSignatureInfo_());
   const plain = emailPlainText_(bodyText) + "\n\n--\n" + data.nama_ejen + " | " + EMAIL_AGENT_TITLE +
     "\nEasy Latih Consultancy\nTel / WhatsApp: " + data.telefon_ejen + " · Pejabat: " + EMAIL_OFFICE_PHONE +
@@ -377,7 +399,10 @@ function buildEmail_(template, data) {
 }
 
 function emailSignatureInfo_() {
-  return { title: EMAIL_AGENT_TITLE, officePhone: EMAIL_OFFICE_PHONE, address: EMAIL_OFFICE_ADDRESS, sender: EMAIL_SENDER, logo: EMAIL_LOGO_URL };
+  return {
+    title: EMAIL_AGENT_TITLE, officePhone: EMAIL_OFFICE_PHONE, address: EMAIL_OFFICE_ADDRESS, sender: EMAIL_SENDER,
+    logo: EMAIL_LOGO_URL, badges: EMAIL_BADGES.map(b => ({ src: b.url, alt: b.alt }))
+  };
 }
 
 // A public image link can be shown in the portal preview; a Drive file cannot.

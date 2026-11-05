@@ -1563,7 +1563,7 @@ function emailMarkup_(text, posterHtml) {
   return out.join("");
 }
 
-// Full branded layout. src = { logo, poster } image sources (cid: in the email, URLs in the preview).
+// Full branded layout. src = { logo, poster, badges: [{src, alt}] } image sources (cid: in the email, URLs in the preview).
 function emailLayout_(bodyText, data, src, sig) {
   const F = "font-family:" + EMAIL_FONT + ";";
   const posterHtml = src.poster
@@ -1581,7 +1581,9 @@ function emailLayout_(bodyText, data, src, sig) {
     '<tr><td style="padding:18px 28px;border-bottom:4px solid ' + EMAIL_ORANGE + '">' +
       '<table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>' +
       '<td valign="middle">' + (src.logo ? '<img src="' + src.logo + '" alt="Easy Latih" width="130" style="display:block;border:0;width:130px;height:auto">' : '<strong style="' + F + 'font-size:20px;color:' + EMAIL_NAVY + '">Easy Latih</strong>') + "</td>" +
-      '<td align="right" valign="middle" style="' + F + 'font-size:11px;line-height:1.4;color:' + EMAIL_NAVY + ';font-weight:bold;letter-spacing:.4px">HRD CORP<br>REGISTERED TRAINING<br>PROVIDER</td>' +
+      '<td align="right" valign="middle">' + ((src.badges || []).length
+        ? src.badges.map(b => '<img src="' + b.src + '" alt="' + emailEsc_(b.alt) + '" width="62" height="62" style="display:inline-block;width:62px;height:62px;border:0;margin-left:8px;vertical-align:middle">').join("")
+        : '<span style="' + F + 'font-size:11px;line-height:1.4;color:' + EMAIL_NAVY + ';font-weight:bold;letter-spacing:.4px">HRD CORP<br>REGISTERED TRAINING<br>PROVIDER</span>') + "</td>" +
       "</tr></table></td></tr>" +
     // body
     '<tr><td style="padding:30px 32px 8px">' + emailMarkup_(bodyText, posterHtml) + "</td></tr>" +
@@ -1639,7 +1641,7 @@ function renderEmailPreview(){
   box.innerHTML =
     `<div class="sop-muted" style="font-size:.85rem;padding:.75rem 1rem 0">Daripada: Easy Latih Consultancy &lt;${esc(emailData.sender)}&gt;<br>Kepada: ${esc(to) || "—"}</div>` +
     `<div class="subj" style="padding:0 1rem .5rem">${esc(fillEmailTemplate(t.subject, data))}</div>` +
-    emailLayout_(fillEmailTemplate(t.body, data), data, { logo: sig.logo || "", poster }, sig);
+    emailLayout_(fillEmailTemplate(t.body, data), data, { logo: sig.logo || "", poster, badges: sig.badges || [] }, sig);
 }
 
 function resetEmailForm(){
