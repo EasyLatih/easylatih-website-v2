@@ -2,8 +2,7 @@
  * Emel templat untuk Agent Portal EasyLatih.
  *
  * - Admin sediakan templat dalam tab "Email Templates" (Google Sheet yang sama).
- * - Ejen pilih templat, masukkan emel penerima (dan kod diskaun jika templat
- *   memerlukannya), kemudian tekan Hantar dalam portal.
+ * - Ejen pilih templat, masukkan emel penerima, kemudian tekan Hantar dalam portal.
  * - Semua emel keluar dari sales@easylatih.my. Tandatangan di bawah emel
  *   menggunakan nama dan nombor telefon ejen dari tab "Agents".
  * - Ejen dapat salinan (BCC) di emel mereka dalam tab "Agents". Prospek tidak
@@ -13,8 +12,10 @@
  * Placeholder yang boleh digunakan dalam Subjek dan Isi Emel:
  *   {{nama_pic}}   nama penerima (jika kosong: "Tuan/Puan")
  *   {{syarikat}}   nama syarikat penerima
- *   {{kod_diskaun}} kod diskaun yang ejen masukkan. Baris yang mengandungi
- *                  {{kod_diskaun}} dibuang jika ejen tidak masukkan kod.
+ *   {{kod_diskaun}} kod diskaun: "Kod Khas" templat (contoh early bird) jika ada,
+ *                  jika tiada, kod ejen dari lajur "Kod Diskaun" tab Agents.
+ *                  Ejen tidak boleh ubah kod. Baris yang mengandungi
+ *                  {{kod_diskaun}} dibuang jika tiada kod langsung.
  *   {{nama_ejen}}  nama ejen
  *   {{telefon_ejen}} nombor telefon ejen
  * Format Isi Emel (emel dihantar dalam bentuk HTML):
@@ -42,7 +43,8 @@ const EMAIL_SENDER_NAME = "Easy Latih Consultancy";
 const EMAIL_TEMPLATE_SHEET = "Email Templates";
 const EMAIL_LOG_SHEET = "Email Log";
 const EMAIL_DAILY_LIMIT_PER_AGENT = 30;
-const EMAIL_TEMPLATE_HEADERS = ["Template ID", "Nama Templat", "Subjek", "Isi Emel", "Aktif", "Poster (pautan Drive)"];
+const EMAIL_TEMPLATE_HEADERS = ["Template ID", "Nama Templat", "Subjek", "Isi Emel", "Aktif", "Poster (pautan Drive)", "Kod Khas"];
+const AGENT_COL_DISCOUNT = "Kod Diskaun";
 const EMAIL_LOGO_URL = "https://www.easylatih.my/assets/email-logo.jpg";
 // HRD Corp badges shown beside the logo in the email header.
 const EMAIL_BADGES = [
@@ -80,26 +82,36 @@ function emailSheet_(name, headers) {
   return sheet;
 }
 
+// Adds columns introduced after the tab was created (Poster, Kod Khas).
+function ensureTemplateHeaders_(sheet) {
+  if (sheet.getMaxColumns() < EMAIL_TEMPLATE_HEADERS.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), EMAIL_TEMPLATE_HEADERS.length - sheet.getMaxColumns());
+  }
+  const header = sheet.getRange(1, 1, 1, EMAIL_TEMPLATE_HEADERS.length).getValues()[0];
+  EMAIL_TEMPLATE_HEADERS.forEach((name, i) => {
+    if (!String(header[i]).trim()) sheet.getRange(1, i + 1).setValue(name).setFontWeight("bold");
+  });
+}
+
 function emailTemplates_() {
   const sheet = emailSheet_(EMAIL_TEMPLATE_SHEET, EMAIL_TEMPLATE_HEADERS);
   const last = sheet.getLastRow();
   if (last < 2) return [];
-  if (!String(sheet.getRange(1, 6).getValue()).trim()) {
-    sheet.getRange(1, 6).setValue(EMAIL_TEMPLATE_HEADERS[5]).setFontWeight("bold");
-  }
-  return sheet.getRange(2, 1, last - 1, 6).getValues()
+  ensureTemplateHeaders_(sheet);
+  return sheet.getRange(2, 1, last - 1, EMAIL_TEMPLATE_HEADERS.length).getValues()
     .map(r => ({
       id: String(r[0] || "").trim(),
       name: String(r[1] || "").trim(),
       subject: String(r[2] || "").trim(),
       body: String(r[3] || ""),
       active: ["", "YA", "YES", "Y", "TRUE", "AKTIF"].indexOf(String(r[4]).trim().toUpperCase()) !== -1,
-      poster: String(r[5] || "").trim()
+      poster: String(r[5] || "").trim(),
+      specialCode: cleanDiscountCode_(r[6])
     }))
     .filter(t => t.id && t.subject && t.body.trim() && t.active);
 }
 
-// Name, phone and email of the signed-in agent, from the Agents sheet.
+// Name, phone, email and own discount code of the signed-in agent, from the Agents sheet.
 function emailAgentProfile_(session) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   const width = Math.max(sheet.getLastColumn(), 2);
@@ -109,14 +121,21 @@ function emailAgentProfile_(session) {
     phoneCol = header.length;
     sheet.getRange(1, phoneCol + 1).setValue("Phone").setFontWeight("bold");
   }
-  const rows = sheet.getLastRow() < 2 ? [] : sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(width, phoneCol + 1)).getValues();
+  let codeCol = header.findIndex(h => h.toLowerCase() === AGENT_COL_DISCOUNT.toLowerCase());
+  if (codeCol === -1) {
+    codeCol = Math.max(header.length, phoneCol + 1);
+    sheet.getRange(1, codeCol + 1).setValue(AGENT_COL_DISCOUNT).setFontWeight("bold");
+  }
+  const cols = Math.max(width, phoneCol + 1, codeCol + 1);
+  const rows = sheet.getLastRow() < 2 ? [] : sheet.getRange(2, 1, sheet.getLastRow() - 1, cols).getValues();
   const row = rows.find(r => String(r[0]).trim() === String(session.agentId));
   const emailCol = header.findIndex(h => /e-?mail/i.test(h) && !/invite/i.test(h));
   const email = String((row && emailCol !== -1 && row[emailCol]) || "").trim().toLowerCase();
   return {
     name: String((row && row[1]) || session.name || "").trim(),
     phone: formatMyPhone_((row && row[phoneCol]) || ""),
-    email: EMAIL_RE.test(email) ? email : ""
+    email: EMAIL_RE.test(email) ? email : "",
+    code: cleanDiscountCode_(row && row[codeCol])
   };
 }
 
@@ -423,7 +442,7 @@ function getEmailTemplates_(e, session) {
     signature: emailSignatureInfo_(),
     templates: emailTemplates_().map(t => ({
       id: t.id, name: t.name, subject: t.subject, body: t.body,
-      hasPoster: !!t.poster, posterPreview: emailPosterPreview_(t.poster)
+      hasPoster: !!t.poster, posterPreview: emailPosterPreview_(t.poster), specialCode: t.specialCode
     }))
   });
 }
@@ -433,7 +452,6 @@ function sendTemplateEmail_(e, session) {
   const to = String(p.to || "").trim().toLowerCase();
   const picName = String(p.picName || "").trim().slice(0, 100);
   const company = String(p.company || "").trim().slice(0, 150);
-  const code = cleanDiscountCode_(p.discountCode);
   const rowNumber = Number(p.rowNumber || 0);
 
   if (!EMAIL_RE.test(to)) return jsonOutput({ success: false, message: "Alamat emel penerima tidak sah." });
@@ -442,6 +460,8 @@ function sendTemplateEmail_(e, session) {
   if (!template) return jsonOutput({ success: false, message: "Templat tidak dijumpai atau tidak aktif." });
 
   const profile = emailAgentProfile_(session);
+  // The template's special code (early bird etc.) wins over the agent's own code.
+  const code = template.specialCode || profile.code;
   if (!profile.name || !profile.phone) {
     return jsonOutput({ success: false, message: "Nama atau nombor telefon anda belum ada dalam sistem. Sila hubungi admin Easy Latih." });
   }
@@ -505,9 +525,7 @@ function sendTemplateEmail_(e, session) {
 
 function setupAgentEmail() {
   const sheet = emailSheet_(EMAIL_TEMPLATE_SHEET, EMAIL_TEMPLATE_HEADERS);
-  if (!String(sheet.getRange(1, 6).getValue()).trim()) {
-    sheet.getRange(1, 6).setValue(EMAIL_TEMPLATE_HEADERS[5]).setFontWeight("bold");
-  }
+  ensureTemplateHeaders_(sheet);
   if (sheet.getLastRow() < 2) {
     sheet.appendRow([
       "AKTA-KERJA-KT",
@@ -569,6 +587,7 @@ function setupAgentEmail() {
         "Salam hormat,"
       ].join("\n"),
       "YA",
+      "",
       ""
     ]);
     sheet.setColumnWidth(4, 520);

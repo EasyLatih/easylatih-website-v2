@@ -594,8 +594,8 @@
           <input id="emailTo" type="email" placeholder="Emel penerima" oninput="renderEmailPreview()">
           <input id="emailPic" placeholder="Nama PIC (pilihan)" oninput="renderEmailPreview()">
           <input id="emailCompany" placeholder="Nama syarikat" oninput="renderEmailPreview()">
-          <input id="emailCode" placeholder="Kod diskaun (pilihan)" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,30); renderEmailPreview()">
         </div>
+        <p class="sop-muted" id="emailCodeNote"></p>
         <p class="sop-muted" id="emailProspectNote"></p>
         <h4 style="margin:1rem 0 .5rem">Pratonton</h4>
         <div id="emailPreview" class="email-preview">Pilih templat untuk lihat pratonton.</div>
@@ -1621,16 +1621,18 @@ function currentEmailTemplate(){
 function renderEmailPreview(){
   const box = document.getElementById("emailPreview");
   const t = currentEmailTemplate();
-  const codeInput = document.getElementById("emailCode");
-  if(!t){ box.innerHTML = "Pilih templat untuk lihat pratonton."; return; }
-  const usesCode = (t.subject + t.body).includes("{{kod_diskaun}}");
-  codeInput.style.display = usesCode ? "" : "none";
-  if(!usesCode) codeInput.value = "";
+  const codeNote = document.getElementById("emailCodeNote");
+  if(!t){ box.innerHTML = "Pilih templat untuk lihat pratonton."; codeNote.textContent = ""; return; }
   const agent = emailData.agent || {};
+  const usesCode = (t.subject + t.body).includes("{{kod_diskaun}}");
+  const code = t.specialCode || agent.code || "";
+  codeNote.innerHTML = !usesCode ? "" : code
+    ? `🏷️ Kod diskaun dalam emel ini: <strong>${esc(code)}</strong> ${t.specialCode ? "(kod khas program ini)" : "(kod anda)"}`
+    : "🏷️ Tiada kod diskaun ditetapkan untuk anda, jadi ayat kod diskaun tidak dimasukkan. Hubungi admin jika anda sepatutnya ada kod.";
   const data = {
     nama_pic: document.getElementById("emailPic").value.trim() || "Tuan/Puan",
     syarikat: document.getElementById("emailCompany").value.trim(),
-    kod_diskaun: codeInput.value.trim(),
+    kod_diskaun: usesCode ? code : "",
     nama_ejen: agent.name || "",
     telefon_ejen: agent.phone || ""
   };
@@ -1645,7 +1647,7 @@ function renderEmailPreview(){
 }
 
 function resetEmailForm(){
-  ["emailTo","emailPic","emailCompany","emailCode"].forEach(id => document.getElementById(id).value = "");
+  ["emailTo","emailPic","emailCompany"].forEach(id => document.getElementById(id).value = "");
   emailRowNumber = 0;
   document.getElementById("emailProspectNote").textContent = "";
   emailNotice("");
@@ -1664,8 +1666,7 @@ async function sendTemplateEmail(){
     const params = new URLSearchParams({
       action: "sendTemplateEmail", templateId: t.id, to,
       picName: document.getElementById("emailPic").value.trim(),
-      company: document.getElementById("emailCompany").value.trim(),
-      discountCode: document.getElementById("emailCode").value.trim()
+      company: document.getElementById("emailCompany").value.trim()
     });
     if(emailRowNumber) params.set("rowNumber", String(emailRowNumber));
     const data = await apiRequest(params);
