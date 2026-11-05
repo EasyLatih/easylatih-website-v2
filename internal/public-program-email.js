@@ -14,6 +14,68 @@
     reader.readAsDataURL(file);
   });
 
+  // ---- Default draft for a new template (Easy Latih house format) ----
+  const BULAN = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+  const HARI = ['satu','dua','tiga','empat','lima'];
+  const ymd = value => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || '')); return m ? {y: +m[1], m: +m[2], d: +m[3]} : null; };
+  function tarikhMelayu(program) {
+    const a = ymd(program.startDate), b = ymd(program.endDate) || a;
+    if (!a) return program.programDate || '[Tulis tarikh]';
+    if (a.y === b.y && a.m === b.m) {
+      if (a.d === b.d) return a.d + ' ' + BULAN[a.m - 1] + ' ' + a.y;
+      return (b.d - a.d === 1 ? a.d + ' & ' + b.d : a.d + ' – ' + b.d) + ' ' + BULAN[b.m - 1] + ' ' + b.y;
+    }
+    return a.d + ' ' + BULAN[a.m - 1] + (a.y !== b.y ? ' ' + a.y : '') + ' – ' + b.d + ' ' + BULAN[b.m - 1] + ' ' + b.y;
+  }
+  function tempoh(program) {
+    const a = ymd(program.startDate), b = ymd(program.endDate) || a;
+    if (!a) return '';
+    const days = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86400000) + 1;
+    return ' selama ' + (days >= 1 && days <= HARI.length ? HARI[days - 1] : days) + ' hari';
+  }
+  const PLACEHOLDER = /\[Tulis |TAMPAL-PAUTAN/;
+  function defaultDraft(program) {
+    const link = 'https://TAMPAL-PAUTAN-DI-SINI';
+    return [
+      'Assalamualaikum dan Salam Sejahtera {{nama_pic}},', '',
+      '[Tulis 1 ayat pembuka yang menarik tentang topik kursus ini.]', '',
+      '[Tulis 1–2 ayat tentang masalah atau risiko yang dihadapi syarikat, dan kenapa kemahiran ini penting.]', '',
+      'Bagi membantu organisasi anda [Tulis matlamat, contoh: meningkatkan mutu perkhidmatan], **EasyLatih** menganjurkan kursus interaktif' + tempoh(program) + ':', '',
+      '[[KOTAK]]',
+      '**' + String(program.programName || '').toUpperCase() + '**', '',
+      '📅 **Tarikh:** ' + tarikhMelayu(program),
+      '⏰ **Masa:** 9.00 pagi – 5.00 petang',
+      '📍 **Lokasi:** ' + (program.venue || '[Tulis lokasi]'),
+      '💳 **Pembiayaan:** 100% HRD Corp Claimable (Skim SBL Khas) @ Tunai',
+      '[[/KOTAK]]', '',
+      '[[POSTER]]', '',
+      '## Tanpa Bayaran Awal untuk Syarikat Pembayar Levi HRD Corp',
+      'Yuran kursus tidak perlu dibayar terlebih dahulu. EasyLatih akan membuat tuntutan yuran kepada HRD Corp (bergantung pada baki levi syarikat), manakala syarikat hanya perlu memohon geran. Kami juga akan membimbing syarikat dalam proses permohonan geran secara **percuma**.', '',
+      'Syarikat juga boleh menuntut **elaun peserta** berdasarkan jarak sehala dari syarikat ke tempat latihan:',
+      '- **Kurang daripada 100 km:** RM250 seorang sehari',
+      '- **Lebih daripada 100 km:** RM500 seorang sehari',
+      '- **Perjalanan melebihi 100 km:** Tambahan elaun untuk 1 hari perjalanan (travelling day)',
+      '*Tuntutan elaun tertakluk kepada baki levi syarikat dan kelulusan HRD Corp.*', '',
+      '## Apa Yang Akan Dipelajari',
+      '- **[Tulis topik 1]:** [Tulis penerangan ringkas]',
+      '- **[Tulis topik 2]:** [Tulis penerangan ringkas]',
+      '- **[Tulis topik 3]:** [Tulis penerangan ringkas]',
+      '- **[Tulis topik 4]:** [Tulis penerangan ringkas]',
+      '- **[Tulis topik 5]:** [Tulis penerangan ringkas]', '',
+      '**Sesuai untuk:** [Tulis kumpulan sasaran]', '',
+      'Lihat [rangka kursus](' + link + ') dan [profil pengajar](' + link + ').', '',
+      '[[KOTAK]]',
+      '🎁 **Khas untuk anda:** gunakan kod diskaun **{{kod_diskaun}}** semasa pendaftaran.',
+      'Tempat adalah **TERHAD** bagi memastikan sesi praktikal dan kajian kes berjalan secara optimal.',
+      '[[/KOTAK]]', '',
+      '[[BUTANG: LIHAT HARGA & DAFTAR | https://www.easylatih.my/registration/?course=' + encodeURIComponent(program.courseId || '') + ']]', '',
+      'Perlukan bantuan permohonan geran HRD Corp? Hubungi saya di {{telefon_ejen}} atau admin kami di **010-920 2811 / 09-560 4273**.', '',
+      '*Nota: Majikan yang mempunyai 10 atau lebih pekerja warganegara Malaysia dan tertakluk di bawah Akta PSMB 2001 diwajibkan berdaftar serta membayar levi HRD Corp. Levi tersebut boleh digunakan untuk membiayai latihan kakitangan. Rujukan: https://hrdcorp.gov.my/ms/employer-bm*', '',
+      'Terima kasih dan kami berharap dapat menerima penyertaan daripada organisasi tuan/puan.', '',
+      'Salam hormat,'
+    ].join('\n');
+  }
+
   function mount(host, program, db) {
     if (current?.courseId === program.courseId) { host.append(current.section); return; }
     const section = document.createElement('section');
@@ -82,12 +144,7 @@
       f.template.value = t?.id || '';
       f.templateName.value = t?.name || program.programName;
       f.subject.value = t?.subject || 'Jemputan: ' + program.programName;
-      f.body.value = t ? t.body : ['Assalamualaikum dan Salam Sejahtera {{nama_pic}},', '',
-        'Kami menjemput pihak {{syarikat}} menyertai program berikut:', '', '## ' + program.programName,
-        'Tarikh: ' + (program.programDate || ''), 'Tempat: ' + (program.venue || ''), '', '[[POSTER]]', '',
-        'Gunakan kod diskaun **{{kod_diskaun}}** semasa pendaftaran.', '',
-        '[[BUTANG: Lihat Program & Daftar | https://www.easylatih.my/registration/?course=' + encodeURIComponent(program.courseId) + ']]', '',
-        'Hubungi saya di {{telefon_ejen}} untuk pertanyaan.', '', 'Terima kasih.'].join('\n');
+      f.body.value = t ? t.body : defaultDraft(program);
       f.specialCode.value = t?.specialCode || ''; f.active.checked = t?.active || false;
       state.dirty = false;
       section.querySelector('[data-poster-note]').textContent = t?.poster ? 'Memuatkan poster tersimpan…' : 'Belum ada poster.';
@@ -165,6 +222,11 @@
     form.addEventListener('submit', async event => {
       event.preventDefault();
       if (state.busy) return;
+      // A draft may keep [Tulis …] markers; an active template must not reach agents with them.
+      if (f.active.checked && PLACEHOLDER.test(f.subject.value + '\n' + f.body.value)) {
+        notice('Masih ada bahagian [Tulis …] atau TAMPAL-PAUTAN dalam draf. Lengkapkan dahulu, atau simpan sebagai draf (jangan tanda Aktifkan).', 'danger');
+        return;
+      }
       state.busy = true; fieldset.disabled = true;
       notice('Menyimpan draf dan poster…');
       try {
