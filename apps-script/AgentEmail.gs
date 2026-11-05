@@ -106,7 +106,7 @@ function emailAgentProfile_(session) {
   const email = String((row && emailCol !== -1 && row[emailCol]) || "").trim().toLowerCase();
   return {
     name: String((row && row[1]) || session.name || "").trim(),
-    phone: String((row && row[phoneCol]) || "").trim(),
+    phone: formatMyPhone_((row && row[phoneCol]) || ""),
     email: EMAIL_RE.test(email) ? email : ""
   };
 }
@@ -205,6 +205,16 @@ function emailMarkup_(text, posterHtml) {
 function driveFileId_(value) {
   const m = String(value || "").match(/[-\w]{25,}/);
   return m ? m[0] : "";
+}
+
+// 60179858651 -> 017-985 8651, 601139177388 -> 011-3917 7388
+function formatMyPhone_(value) {
+  const raw = String(value || "").trim();
+  let d = raw.replace(/[^0-9]/g, "");
+  if (d.indexOf("60") === 0) d = "0" + d.slice(2);
+  if (!/^0\d{8,10}$/.test(d)) return raw;
+  if (d.indexOf("01") !== 0) return d.slice(0, 2) + "-" + d.slice(2, d.length - 4) + " " + d.slice(-4);
+  return d.slice(0, 3) + "-" + d.slice(3, d.length - 4) + " " + d.slice(-4);
 }
 
 function waLink_(phone) {
