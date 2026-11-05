@@ -17,8 +17,16 @@
  *                  {{kod_diskaun}} dibuang jika ejen tidak masukkan kod.
  *   {{nama_ejen}}  nama ejen
  *   {{telefon_ejen}} nombor telefon ejen
- * Format Isi Emel: baris kosong = perenggan baharu, **teks** = tebal,
- * pautan https://... jadi boleh diklik. Tandatangan ditambah automatik.
+ * Format Isi Emel (emel dihantar dalam bentuk HTML):
+ *   baris kosong        perenggan baharu
+ *   - teks              bullet
+ *   **teks** / *teks*   tebal / italik
+ *   [teks](https://...) pautan dengan teks; pautan https://... biasa juga boleh diklik
+ *   [[BUTANG: Teks | https://...]]  butang oren
+ *   [[POSTER]]          kedudukan poster (jika tiada, poster diletak selepas perenggan pertama)
+ * Poster: letak pautan Google Drive gambar poster dalam lajur "Poster (pautan Drive)".
+ * Poster dan logo dimasukkan terus ke dalam emel (bukan lampiran).
+ * Tandatangan (logo, nama ejen, telefon, alamat pejabat) ditambah automatik.
  *
  * Lives in the same Apps Script project as AgentPortalSecure.gs and uses its
  * helpers (jsonOutput, isAdmin_, validRowNumber_, canEditRow_, SHEET_NAME,
@@ -30,7 +38,12 @@ const EMAIL_SENDER_NAME = "Easy Latih Consultancy";
 const EMAIL_TEMPLATE_SHEET = "Email Templates";
 const EMAIL_LOG_SHEET = "Email Log";
 const EMAIL_DAILY_LIMIT_PER_AGENT = 30;
-const EMAIL_TEMPLATE_HEADERS = ["Template ID", "Nama Templat", "Subjek", "Isi Emel", "Aktif"];
+const EMAIL_TEMPLATE_HEADERS = ["Template ID", "Nama Templat", "Subjek", "Isi Emel", "Aktif", "Poster (pautan Drive)"];
+const EMAIL_LOGO_URL = "https://www.easylatih.my/assets/email-logo.jpg";
+const EMAIL_AGENT_TITLE = "Training Advisor";
+const EMAIL_OFFICE_ADDRESS = "B-62, Tkt 1, Jln IM 7/1, Bdr Indera Mahkota 6, 25200 Kuantan, Pahang";
+const EMAIL_OFFICE_PHONE = "09-560 4273";
+const EMAIL_POSTER_MAX_BYTES = 5 * 1024 * 1024;
 const EMAIL_LOG_HEADERS = [
   "Tarikh", "Agent ID", "Nama Ejen", "Kepada", "Nama PIC", "Syarikat",
   "Template ID", "Subjek", "Kod Diskaun", "Prospect Row", "Status"
@@ -62,13 +75,17 @@ function emailTemplates_() {
   const sheet = emailSheet_(EMAIL_TEMPLATE_SHEET, EMAIL_TEMPLATE_HEADERS);
   const last = sheet.getLastRow();
   if (last < 2) return [];
-  return sheet.getRange(2, 1, last - 1, 5).getValues()
+  if (!String(sheet.getRange(1, 6).getValue()).trim()) {
+    sheet.getRange(1, 6).setValue(EMAIL_TEMPLATE_HEADERS[5]).setFontWeight("bold");
+  }
+  return sheet.getRange(2, 1, last - 1, 6).getValues()
     .map(r => ({
       id: String(r[0] || "").trim(),
       name: String(r[1] || "").trim(),
       subject: String(r[2] || "").trim(),
       body: String(r[3] || ""),
-      active: ["", "YA", "YES", "Y", "TRUE", "AKTIF"].indexOf(String(r[4]).trim().toUpperCase()) !== -1
+      active: ["", "YA", "YES", "Y", "TRUE", "AKTIF"].indexOf(String(r[4]).trim().toUpperCase()) !== -1,
+      posterId: driveFileId_(r[5])
     }))
     .filter(t => t.id && t.subject && t.body.trim() && t.active);
 }
@@ -135,14 +152,59 @@ function fillTemplate_(text, data) {
     Object.prototype.hasOwnProperty.call(data, key) ? data[key] : m);
 }
 
-function textToHtml_(text) {
-  return String(text || "").trim().split(/\n\s*\n/).map(para => {
-    let html = emailEsc_(para)
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#0d3b66">$1</a>')
-      .replace(/\n/g, "<br>");
-    return '<p style="margin:0 0 14px">' + html + "</p>";
-  }).join("");
+// Turns the template's simple markup into email HTML. The same function is
+// copied into internal/agent-dashboard.html for the preview: keep them in step.
+//   blank line = new paragraph · "- " = bullet · **bold** · *italic*
+//   [text](https://link) · bare https:// links · [[POSTER]] · [[BUTANG: Text | https://link]]
+function emailMarkup_(text, posterHtml) {
+  const inline = s => emailEsc_(s)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" style="color:#0d3b66">$1</a>')
+    .replace(/(^|[\s(])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" style="color:#0d3b66">$2</a>')
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+  const out = [];
+  let para = [];
+  let list = [];
+  let posterUsed = false;
+  const flush = () => {
+    if (para.length) out.push('<p style="margin:0 0 14px">' + para.map(inline).join("<br>") + "</p>");
+    if (list.length) out.push('<ul style="margin:0 0 14px;padding-left:22px">' + list.map(li => '<li style="margin:0 0 6px">' + inline(li) + "</li>").join("") + "</ul>");
+    para = []; list = [];
+  };
+  String(text || "").replace(/\r/g, "").trim().split("\n").forEach(raw => {
+    const line = raw.trim();
+    const button = line.match(/^\[\[\s*butang\s*:\s*(.+?)\s*\|\s*(https?:\/\/\S+?)\s*\]\]$/i);
+    const bullet = line.match(/^[-•]\s+(.*)$/);
+    if (!line) { flush(); return; }
+    if (/^\[\[\s*poster\s*\]\]$/i.test(line)) {
+      flush();
+      if (posterHtml) { out.push(posterHtml); posterUsed = true; }
+      return;
+    }
+    if (button) {
+      flush();
+      out.push('<p style="margin:6px 0 18px"><a href="' + emailEsc_(button[2]) + '" style="display:inline-block;background:#e8630a;color:#ffffff;' +
+        'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">' + emailEsc_(button[1]) + "</a></p>");
+      return;
+    }
+    if (bullet) {
+      if (para.length) { const keep = list; list = []; flush(); list = keep; }
+      list.push(bullet[1]);
+      return;
+    }
+    if (list.length) flush();
+    para.push(line);
+  });
+  flush();
+  // No [[POSTER]] in the template: the poster goes after the first paragraph.
+  if (posterHtml && !posterUsed) out.splice(Math.min(1, out.length), 0, posterHtml);
+  return out.join("");
+}
+
+function driveFileId_(value) {
+  const m = String(value || "").match(/[-\w]{25,}/);
+  return m ? m[0] : "";
 }
 
 function waLink_(phone) {
@@ -151,24 +213,73 @@ function waLink_(phone) {
   return digits ? "https://wa.me/" + digits : "";
 }
 
+function emailLogoBlob_() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get("email-logo");
+  try {
+    if (cached) return Utilities.newBlob(Utilities.base64Decode(cached), "image/jpeg", "easylatih-logo.jpg");
+    const res = UrlFetchApp.fetch(EMAIL_LOGO_URL, { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return null;
+    const blob = res.getBlob().setName("easylatih-logo.jpg");
+    cache.put("email-logo", Utilities.base64Encode(blob.getBytes()), 21600);
+    return blob;
+  } catch (error) {
+    return null; // The email still goes out, just without the logo.
+  }
+}
+
+function emailPosterBlob_(posterId) {
+  if (!posterId) return null;
+  const file = DriveApp.getFileById(posterId);
+  if (!/^image\//.test(file.getMimeType())) throw new Error("Poster mesti fail gambar (PNG/JPG).");
+  if (file.getSize() > EMAIL_POSTER_MAX_BYTES) throw new Error("Poster terlalu besar (maksimum 5MB).");
+  return file.getBlob().setName(file.getName());
+}
+
+function emailSignatureHtml_(data, withLogo) {
+  const wa = waLink_(data.telefon_ejen);
+  const phone = wa ? '<a href="' + wa + '" style="color:#0d3b66;text-decoration:none">' + emailEsc_(data.telefon_ejen) + "</a>" : emailEsc_(data.telefon_ejen);
+  return '<table cellpadding="0" cellspacing="0" style="margin-top:22px;border-top:1px solid #e2e8f0;padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.55;color:#1e293b"><tr>' +
+    (withLogo ? '<td style="padding:14px 16px 0 0;vertical-align:top"><img src="cid:logo" width="120" height="60" alt="Easy Latih" style="display:block"></td>' : "") +
+    '<td style="padding-top:14px;vertical-align:top">' +
+    "<strong>" + emailEsc_(data.nama_ejen) + "</strong> | " + EMAIL_AGENT_TITLE + "<br>" +
+    "<strong>Easy Latih Consultancy</strong><br>" +
+    "Tel / WhatsApp: " + phone + " · Pejabat: " + EMAIL_OFFICE_PHONE + "<br>" +
+    '<a href="https://www.easylatih.my" style="color:#0d3b66">www.easylatih.my</a> · ' +
+    '<a href="mailto:' + EMAIL_SENDER + '" style="color:#0d3b66">' + EMAIL_SENDER + "</a><br>" +
+    '<span style="color:#64748b">' + EMAIL_OFFICE_ADDRESS + "</span></td></tr></table>";
+}
+
+function emailPlainText_(text) {
+  return String(text || "").trim()
+    .replace(/^\[\[\s*poster\s*\]\]$/gim, "")
+    .replace(/^\[\[\s*butang\s*:\s*(.+?)\s*\|\s*(\S+?)\s*\]\]$/gim, "$1: $2")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$1 ($2)")
+    .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1$2")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+// Returns subject, html, plain text and the inline images for GmailApp.
 function buildEmail_(template, data) {
   const subject = fillTemplate_(template.subject, data).replace(/\s+/g, " ").trim().slice(0, 200);
   const bodyText = fillTemplate_(template.body, data);
-  const wa = waLink_(data.telefon_ejen);
-  const signatureHtml =
-    '<p style="margin:24px 0 0;padding-top:14px;border-top:1px solid #e2e8f0">' +
-    "<strong>" + emailEsc_(data.nama_ejen) + "</strong><br>" +
-    "Easy Latih Consultancy<br>" +
-    "HRD Corp Registered Training Provider<br>" +
-    "Tel / WhatsApp: " + (wa ? '<a href="' + wa + '" style="color:#0d3b66">' + emailEsc_(data.telefon_ejen) + "</a>" : emailEsc_(data.telefon_ejen)) + "<br>" +
-    '<a href="mailto:' + EMAIL_SENDER + '" style="color:#0d3b66">' + EMAIL_SENDER + "</a> · " +
-    '<a href="https://www.easylatih.my" style="color:#0d3b66">www.easylatih.my</a></p>';
+  const images = {};
+  const poster = emailPosterBlob_(template.posterId);
+  if (poster) images.poster = poster;
+  const logo = emailLogoBlob_();
+  if (logo) images.logo = logo;
+  const posterHtml = poster
+    ? '<p style="margin:0 0 16px"><img src="cid:poster" alt="Poster" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0"></p>'
+    : "";
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1e293b;max-width:620px">' +
-    textToHtml_(bodyText) + signatureHtml + "</div>";
-  const plain = bodyText.trim().replace(/\*\*(.+?)\*\*/g, "$1") + "\n\n--\n" + data.nama_ejen + "\nEasy Latih Consultancy\nHRD Corp Registered Training Provider\n" +
-    "Tel / WhatsApp: " + data.telefon_ejen + "\n" + EMAIL_SENDER + " · www.easylatih.my";
-  return { subject: subject, html: html, plain: plain };
+    emailMarkup_(bodyText, posterHtml) + emailSignatureHtml_(data, !!logo) + "</div>";
+  const plain = emailPlainText_(bodyText) + "\n\n--\n" + data.nama_ejen + " | " + EMAIL_AGENT_TITLE +
+    "\nEasy Latih Consultancy\nTel / WhatsApp: " + data.telefon_ejen + " · Pejabat: " + EMAIL_OFFICE_PHONE +
+    "\nwww.easylatih.my · " + EMAIL_SENDER + "\n" + EMAIL_OFFICE_ADDRESS;
+  return { subject: subject, html: html, plain: plain, inlineImages: images };
 }
 
 /* ---------- agent actions ---------- */
@@ -181,7 +292,8 @@ function getEmailTemplates_(e, session) {
     agent: profile,
     dailyLimit: EMAIL_DAILY_LIMIT_PER_AGENT,
     sentToday: emailsSentToday_(session.agentId),
-    templates: emailTemplates_().map(t => ({ id: t.id, name: t.name, subject: t.subject, body: t.body }))
+    signature: { title: EMAIL_AGENT_TITLE, officePhone: EMAIL_OFFICE_PHONE, address: EMAIL_OFFICE_ADDRESS, logo: EMAIL_LOGO_URL },
+    templates: emailTemplates_().map(t => ({ id: t.id, name: t.name, subject: t.subject, body: t.body, hasPoster: !!t.posterId }))
   });
 }
 
@@ -225,7 +337,7 @@ function sendTemplateEmail_(e, session) {
       telefon_ejen: profile.phone
     });
 
-    const options = { htmlBody: mail.html, name: EMAIL_SENDER_NAME, replyTo: EMAIL_SENDER };
+    const options = { htmlBody: mail.html, name: EMAIL_SENDER_NAME, replyTo: EMAIL_SENDER, inlineImages: mail.inlineImages };
     if (mode === "alias") options.from = EMAIL_SENDER;
     // The agent gets a hidden copy in their own Gmail; the prospect never sees it.
     if (profile.email && profile.email !== to) options.bcc = profile.email;
@@ -262,19 +374,69 @@ function sendTemplateEmail_(e, session) {
 
 function setupAgentEmail() {
   const sheet = emailSheet_(EMAIL_TEMPLATE_SHEET, EMAIL_TEMPLATE_HEADERS);
+  if (!String(sheet.getRange(1, 6).getValue()).trim()) {
+    sheet.getRange(1, 6).setValue(EMAIL_TEMPLATE_HEADERS[5]).setFontWeight("bold");
+  }
   if (sheet.getLastRow() < 2) {
     sheet.appendRow([
-      "PENGENALAN",
-      "Pengenalan Easy Latih",
-      "Latihan HRD Corp untuk {{syarikat}} bersama Easy Latih",
-      "Assalamualaikum dan salam sejahtera {{nama_pic}},\n\n" +
-      "Saya {{nama_ejen}} dari Easy Latih Consultancy, penyedia latihan berdaftar HRD Corp.\n\n" +
-      "Kami menawarkan program latihan yang boleh dituntut melalui levi HRD Corp, termasuk kursus awam dan in-house mengikut keperluan syarikat Tuan/Puan.\n\n" +
-      "Sebagai tanda penghargaan, gunakan kod diskaun **{{kod_diskaun}}** semasa pendaftaran.\n\n" +
-      "Jadual program terkini: https://www.easylatih.my/schedule.html\n\n" +
-      "Saya boleh dihubungi di {{telefon_ejen}} jika ada sebarang pertanyaan.\n\n" +
-      "Terima kasih.",
-      "YA"
+      "AKTA-KERJA-KT",
+      "Jemputan Akta Kerja 1955 (Terengganu)",
+      "[Penting untuk HR & Majikan] Adakah Pengurusan Pekerja Syarikat Anda Mematuhi Akta Kerja 1955?",
+      [
+        "Assalamualaikum dan Salam Sejahtera {{nama_pic}},",
+        "",
+        "Adakah syarikat anda pasti bahawa pengiraan gaji lebih masa (OT), pengurusan cuti, dan prosedur siasatan disiplin pekerja yang diamalkan sekarang benar-benar mematuhi undang-undang?",
+        "",
+        "Kesilapan kecil dalam mentafsir Akta Kerja 1955 bukan sahaja boleh mencetuskan pertikaian dengan pekerja, malah berisiko mengundang tindakan atau pemeriksaan daripada Jabatan Tenaga Kerja (JTK).",
+        "",
+        "Bagi membantu organisasi anda mengurus pekerja secara sah, adil, dan berkesan, **EasyLatih** menganjurkan kursus interaktif selama 2 hari:",
+        "",
+        "**KURSUS: Akta Kerja 1955: Perkara Yang Wajib Diketahui Oleh Setiap Majikan**",
+        "📅 **Tarikh:** 6 & 7 Disember 2026",
+        "⏰ **Masa:** 9.00 pagi – 5.00 petang",
+        "📍 **Lokasi:** Raia Hotel & Convention Centre Terengganu",
+        "💳 **Pembiayaan:** 100% HRD Corp Claimable (Skim SBL Khas) @ Tunai",
+        "",
+        "***Untuk syarikat yang menggunakan levi HRD Corp:***",
+        "*Yuran kursus tidak perlu dibayar terlebih dahulu. EasyLatih akan membuat tuntutan yuran kepada HRD Corp (bergantung pada baki levi syarikat), manakala syarikat hanya perlu memohon geran. Kami juga akan membimbing syarikat dalam proses permohonan geran secara percuma.*",
+        "",
+        "Syarikat yang membayar levi HRD Corp juga boleh memohon tuntutan **elaun peserta**, berdasarkan jarak sehala dari syarikat ke tempat latihan:",
+        "- **Kurang daripada 100 km:** RM250 seorang sehari",
+        "- **Lebih daripada 100 km:** RM500 seorang sehari",
+        "- **Perjalanan melebihi 100 km:** Boleh memohon tambahan elaun untuk 1 hari perjalanan (travelling day)",
+        "*Tuntutan elaun peserta tertakluk kepada baki levi syarikat dan kelulusan HRD Corp.*",
+        "",
+        "[[POSTER]]",
+        "",
+        "**Topik Utama Yang Akan Dipelajari:**",
+        "- **Kontrak Pekerjaan & Status Pekerja:** Menilai terma perkhidmatan, mengenal pasti klausa berisiko, dan membezakan status pekerja.",
+        "- **Formula Gaji & Kerja Lebih Masa (OT):** Latihan pengiraan tepat bagi OT, kerja pada hari rehat, cuti umum, serta potongan gaji statutori.",
+        "- **Pengurusan Cuti & Perlindungan Keluarga:** Hak cuti sakit/hospitalisasi, penyalahgunaan MC, serta elaun bersalin dan paterniti.",
+        "- **Disiplin, Siasatan Dalaman & Penamatan:** Prosedur salah laku, kes tidak hadir bertugas, Siasatan Dalaman (DI), dan pemecatan berisiko.",
+        "- **Simulasi Audit & Pemeriksaan JTK:** Persediaan dokumen dan langkah pembetulan apabila berdepan aduan atau lawatan JTK.",
+        "",
+        "**Kumpulan Sasaran:** Pengurus & Pegawai Sumber Manusia (HR), Pegawai Penggajian, Pegawai Pentadbiran, Penyelia, serta Pemilik Perniagaan.",
+        "",
+        "Tempat adalah **TERHAD** bagi memastikan sesi praktikal dan kajian kes berjalan secara optimal.",
+        "",
+        "Maklumat lengkap program, kandungan kursus dan profil tenaga pengajar:",
+        "- [Rangka kursus](https://drive.google.com/file/d/1HGK6G6bcAPYBK1eRFd1qtg7rq1mZn1jg/view?usp=drive_link)",
+        "- [Profil pengajar](https://drive.google.com/file/d/1J8pbkXnO0PuKInnvX3lHppIeM5MuHhmx/view?usp=drive_link)",
+        "",
+        "**Khas untuk anda, sila gunakan kod diskaun {{kod_diskaun}} semasa pendaftaran.**",
+        "",
+        "[[BUTANG: LIHAT HARGA & DAFTAR DI SINI | https://www.easylatih.my/registration/?course=HR006]]",
+        "",
+        "Pihak tuan/puan digalakkan membuat pendaftaran serta permohonan geran HRD Corp lebih awal. Sekiranya memerlukan bantuan untuk permohonan geran HRD Corp, sila hubungi saya di {{telefon_ejen}} atau admin kami di **010-920 2811 / 09-560 4273**.",
+        "",
+        "***Nota HRD Corp:*** *Majikan yang mempunyai 10 atau lebih pekerja warganegara Malaysia dan tertakluk di bawah Akta PSMB 2001 diwajibkan berdaftar serta membayar levi HRD Corp. Levi tersebut boleh digunakan untuk membiayai latihan kakitangan.* Rujukan: https://hrdcorp.gov.my/ms/employer-bm",
+        "",
+        "Terima kasih dan kami berharap dapat menerima penyertaan daripada organisasi tuan/puan.",
+        "",
+        "Salam hormat,"
+      ].join("\n"),
+      "YA",
+      ""
     ]);
     sheet.setColumnWidth(4, 520);
     sheet.getRange("D:D").setWrap(true);

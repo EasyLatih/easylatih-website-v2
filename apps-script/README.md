@@ -134,4 +134,9 @@ Agents pick a template in the **✉️ Emel** tab (or press **✉️ Email** on 
 4. Fill in each agent's phone number in the **Phone** column of **Agents** (added on first use if missing).
 5. **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**.
 
-Templates: one row each in **Email Templates** (`Template ID`, `Nama Templat`, `Subjek`, `Isi Emel`, `Aktif` = YA/TIDAK). Placeholders: `{{nama_pic}}`, `{{syarikat}}`, `{{kod_diskaun}}`, `{{nama_ejen}}`, `{{telefon_ejen}}`. A line containing `{{kod_diskaun}}` is left out when the agent gives no code. A blank line starts a new paragraph, `**text**` is bold, and links become clickable. The signature is added automatically.
+Templates: one row each in **Email Templates** (`Template ID`, `Nama Templat`, `Subjek`, `Isi Emel`, `Aktif` = YA/TIDAK, `Poster (pautan Drive)`). `setupAgentEmail` adds the Akta Kerja 1955 (Terengganu) invitation as the first template. Emails go out as HTML.
+
+- Placeholders: `{{nama_pic}}`, `{{syarikat}}`, `{{kod_diskaun}}`, `{{nama_ejen}}`, `{{telefon_ejen}}`. A line containing `{{kod_diskaun}}` is left out when the agent gives no code.
+- Markup: blank line = new paragraph, `- ` = bullet, `**bold**`, `*italic*`, `[text](https://link)`, `[[BUTANG: Text | https://link]]` (orange button), `[[POSTER]]` (where the poster goes; without it the poster follows the first paragraph).
+- Poster: paste the Google Drive link of a PNG/JPG (max 5MB) that the script's account can open. It is embedded in the email, not attached.
+- Signature (added automatically): Easy Latih logo (`assets/email-logo.jpg`), agent name | Training Advisor, agent phone, office phone, website, sales@ and the office address.

@@ -1479,12 +1479,53 @@ function fillEmailTemplate(text, data){
   return out.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in data) ? data[k] : m);
 }
 
-function emailTextToHtml(text){
-  return String(text || "").trim().split(/\n\s*\n/).map(para =>
-    "<p style='margin:0 0 12px'>" + esc(para)
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
-      .replace(/\n/g, "<br>") + "</p>").join("");
+// Same as emailMarkup_ in apps-script/AgentEmail.gs (preview only): keep them in step.
+//   blank line = new paragraph · "- " = bullet · **bold** · *italic*
+//   [text](https://link) · bare https:// links · [[POSTER]] · [[BUTANG: Text | https://link]]
+function emailMarkup(text, posterHtml) {
+  const inline = s => esc(s)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" style="color:#0d3b66">$1</a>')
+    .replace(/(^|[\s(])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" style="color:#0d3b66">$2</a>')
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+  const out = [];
+  let para = [];
+  let list = [];
+  let posterUsed = false;
+  const flush = () => {
+    if (para.length) out.push('<p style="margin:0 0 14px">' + para.map(inline).join("<br>") + "</p>");
+    if (list.length) out.push('<ul style="margin:0 0 14px;padding-left:22px">' + list.map(li => '<li style="margin:0 0 6px">' + inline(li) + "</li>").join("") + "</ul>");
+    para = []; list = [];
+  };
+  String(text || "").replace(/\r/g, "").trim().split("\n").forEach(raw => {
+    const line = raw.trim();
+    const button = line.match(/^\[\[\s*butang\s*:\s*(.+?)\s*\|\s*(https?:\/\/\S+?)\s*\]\]$/i);
+    const bullet = line.match(/^[-•]\s+(.*)$/);
+    if (!line) { flush(); return; }
+    if (/^\[\[\s*poster\s*\]\]$/i.test(line)) {
+      flush();
+      if (posterHtml) { out.push(posterHtml); posterUsed = true; }
+      return;
+    }
+    if (button) {
+      flush();
+      out.push('<p style="margin:6px 0 18px"><a href="' + esc(button[2]) + '" style="display:inline-block;background:#e8630a;color:#ffffff;' +
+        'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">' + esc(button[1]) + "</a></p>");
+      return;
+    }
+    if (bullet) {
+      if (para.length) { const keep = list; list = []; flush(); list = keep; }
+      list.push(bullet[1]);
+      return;
+    }
+    if (list.length) flush();
+    para.push(line);
+  });
+  flush();
+  // No [[POSTER]] in the template: the poster goes after the first paragraph.
+  if (posterHtml && !posterUsed) out.splice(Math.min(1, out.length), 0, posterHtml);
+  return out.join("");
 }
 
 function currentEmailTemplate(){
@@ -1510,11 +1551,19 @@ function renderEmailPreview(){
     telefon_ejen: agent.phone || ""
   };
   const to = document.getElementById("emailTo").value.trim();
+  const sig = emailData.signature || {};
+  const poster = t.hasPoster
+    ? `<div style="margin:0 0 16px;padding:2rem 1rem;border:2px dashed #cbd5e1;border-radius:10px;text-align:center;color:#64748b">🖼️ Poster program akan dipaparkan di sini</div>`
+    : "";
   box.innerHTML =
     `<div class="sop-muted" style="font-size:.85rem">Daripada: Easy Latih Consultancy &lt;${esc(emailData.sender)}&gt;<br>Kepada: ${esc(to) || "—"}</div>` +
     `<div class="subj">${esc(fillEmailTemplate(t.subject, data))}</div>` +
-    emailTextToHtml(fillEmailTemplate(t.body, data)) +
-    `<p style="margin:18px 0 0;padding-top:10px;border-top:1px solid #e2e8f0"><strong>${esc(data.nama_ejen)}</strong><br>Easy Latih Consultancy<br>HRD Corp Registered Training Provider<br>Tel / WhatsApp: ${esc(data.telefon_ejen) || "—"}<br>${esc(emailData.sender)} · www.easylatih.my</p>`;
+    emailMarkup(fillEmailTemplate(t.body, data), poster) +
+    `<table cellpadding="0" cellspacing="0" style="margin-top:18px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.55"><tr>` +
+    `<td style="padding:12px 14px 0 0;vertical-align:top"><img src="${esc(sig.logo || "")}" width="110" alt="Easy Latih"></td>` +
+    `<td style="padding-top:12px;vertical-align:top"><strong>${esc(data.nama_ejen)}</strong> | ${esc(sig.title || "")}<br><strong>Easy Latih Consultancy</strong><br>` +
+    `Tel / WhatsApp: ${esc(data.telefon_ejen) || "—"} · Pejabat: ${esc(sig.officePhone || "")}<br>www.easylatih.my · ${esc(emailData.sender)}<br>` +
+    `<span style="color:#64748b">${esc(sig.address || "")}</span></td></tr></table>`;
 }
 
 function resetEmailForm(){
