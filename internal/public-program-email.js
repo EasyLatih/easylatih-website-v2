@@ -17,7 +17,29 @@
   // ---- Default draft for a new template (Easy Latih house format) ----
   const BULAN = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
   const HARI = ['satu','dua','tiga','empat','lima'];
-  const ymd = value => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || '')); return m ? {y: +m[1], m: +m[2], d: +m[3]} : null; };
+  const BULAN_EN = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  // Accepts 2026-12-13 and "13 Dec 2026" (the calendar mirror's format).
+  const ymd = value => {
+    const v = String(value || '').trim();
+    let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+    if (m) return {y: +m[1], m: +m[2], d: +m[3]};
+    m = /^(\d{1,2})\s+([A-Za-z]{3})[A-Za-z]*\s+(\d{4})$/.exec(v);
+    const mon = m ? BULAN_EN.indexOf(m[2].toLowerCase()) : -1;
+    return mon >= 0 ? {y: +m[3], m: mon + 1, d: +m[1]} : null;
+  };
+  // Dates and the course outline / trainer profile links from the Programs sheet,
+  // through the public calendar mirror in Supabase. Missing data falls back to markers.
+  async function programInfo(db, courseId) {
+    if (!db || !courseId) return {};
+    try {
+      const { data } = await db.from('public_training_calendar_mirror')
+        .select('start_date,end_date,course_content_url,trainer_profile_url')
+        .eq('course_id', courseId).limit(1);
+      const row = (data && data[0]) || {};
+      return { startDate: row.start_date || '', endDate: row.end_date || '',
+        outlineUrl: row.course_content_url || '', trainerUrl: row.trainer_profile_url || '' };
+    } catch (error) { return {}; }
+  }
   function tarikhMelayu(program) {
     const a = ymd(program.startDate), b = ymd(program.endDate) || a;
     if (!a) return program.programDate || '[Tulis tarikh]';
@@ -34,8 +56,13 @@
     return ' selama ' + (days >= 1 && days <= HARI.length ? HARI[days - 1] : days) + ' hari';
   }
   const PLACEHOLDER = /\[Tulis |TAMPAL-PAUTAN/;
-  function defaultDraft(program) {
+  function defaultDraft(program, info = {}) {
     const link = 'https://TAMPAL-PAUTAN-DI-SINI';
+    const okUrl = u => /^https:\/\/\S+$/.test(String(u || '')) ? u : link;
+    program = Object.assign({}, program, {
+      startDate: program.startDate || info.startDate,
+      endDate: program.endDate || info.endDate || program.startDate || info.startDate
+    });
     return [
       'Assalamualaikum dan Salam Sejahtera {{nama_pic}},', '',
       '[Tulis 1 ayat pembuka yang menarik tentang topik kursus ini.]', '',
@@ -63,7 +90,7 @@
       '- **[Tulis topik 4]:** [Tulis penerangan ringkas]',
       '- **[Tulis topik 5]:** [Tulis penerangan ringkas]', '',
       '**Sesuai untuk:** [Tulis kumpulan sasaran]', '',
-      'Lihat [rangka kursus](' + link + ') dan [profil pengajar](' + link + ').', '',
+      'Lihat [rangka kursus](' + okUrl(info.outlineUrl) + ') dan [profil pengajar](' + okUrl(info.trainerUrl) + ').', '',
       '[[KOTAK]]',
       '🎁 **Khas untuk anda:** gunakan kod diskaun **{{kod_diskaun}}** semasa pendaftaran.',
       'Tempat adalah **TERHAD** bagi memastikan sesi praktikal dan kajian kes berjalan secara optimal.',
@@ -99,7 +126,7 @@
       </fieldset></form><div><h3 style="margin:0 0 6px">Pratonton email</h3><p class="hint" data-subject></p><p class="hint">Contoh maklumat penerima dan ejen digunakan di sini.</p><iframe class="marketing-preview" title="Pratonton draf email program" sandbox="" referrerpolicy="no-referrer"></iframe></div></div>`;
     host.append(section);
     const state = current = { section, courseId: program.courseId, dirty: false, busy: false,
-      templates: [], selected: null, poster: '', image: null, imagePreview: '', sequence: 0, signature: {} };
+      templates: [], selected: null, poster: '', image: null, imagePreview: '', sequence: 0, signature: {}, info: {} };
     const form = section.querySelector('form'), f = form.elements;
     const fieldset = section.querySelector('fieldset');
     const notice = (message, type = 'info') => {
@@ -144,7 +171,7 @@
       f.template.value = t?.id || '';
       f.templateName.value = t?.name || program.programName;
       f.subject.value = t?.subject || 'Jemputan: ' + program.programName;
-      f.body.value = t ? t.body : defaultDraft(program);
+      f.body.value = t ? t.body : defaultDraft(program, state.info);
       f.specialCode.value = t?.specialCode || ''; f.active.checked = t?.active || false;
       state.dirty = false;
       section.querySelector('[data-poster-note]').textContent = t?.poster ? 'Memuatkan poster tersimpan…' : 'Belum ada poster.';
@@ -176,7 +203,8 @@
       fieldset.disabled = true;
       notice('Memuatkan templat…');
       try {
-        const result = await request('adminEmailTemplates');
+        const [result, info] = await Promise.all([request('adminEmailTemplates'), programInfo(db, state.courseId)]);
+        state.info = info;
         state.templates = result.templates || []; state.signature = result.signature || {};
         const linked = state.templates.find(t => t.courseId === state.courseId);
         renderOptions(linked?.id || '');
