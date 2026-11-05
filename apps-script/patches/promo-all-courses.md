@@ -30,3 +30,10 @@ with
 ```
 
 then deploy a new version of the web app. Pair with `supabase/promo-codes-all-courses.sql`.
+
+## Server re-checks the discount on submit
+
+In `doPost`, the registration `data` object no longer takes `discountCode` / `discountAmount` from the
+browser. After building `data`, the submitted code is looked up again with `validatePromoCode(courseId, code)`;
+an invalid code returns `ERROR: …` (the `/api/public-registration` proxy reports it as a failed submission),
+and a valid one sets `data.discountCode` and `data.discountAmount` from the PromoCodes sheet.
