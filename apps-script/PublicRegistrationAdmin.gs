@@ -305,6 +305,7 @@ function praProgramDetail_(courseId) {
       const ppl = people[praParticipantKey_(r.CourseID, r.PICEmail)] || [];
       return {
         registrationId: id,
+        registeredDate: praIso_(r.DateCreated),
         companyName: praText_(r.CompanyName),
         picName: praText_(r.PICName),
         picEmail: praText_(r.PICEmail),

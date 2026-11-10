@@ -173,7 +173,35 @@
     if (s.whatsAppLink) en.push('', '*Programme WhatsApp group:* ' + s.whatsAppLink, 'Please share this link with all the participants you registered.');
     return ms.concat(['', '---', ''], en, ['', 'Terima kasih / Thank you.', 'Easy Latih Consultancy']).join('\n');
   }
+  // Follow-up while waiting for the grant (HRD) or payment (self): has the PIC applied / paid, and can we help?
+  function waFollowUp(r) {
+    const p = detail.program, s = detail.settings || {}, hrd = r.paymentMethod === 'HRD';
+    const venue = p.venue + (p.deliveryMode ? ' (' + p.deliveryMode + ')' : '');
+    const reg = r.registeredDate ? nice(r.registeredDate) : '';
+    const guide = hrd && httpsUrl(s.guidelineUrl) ? s.guidelineUrl : '';
+    const ms = ['Assalamualaikum dan salam sejahtera Tuan/Puan' + (r.picName ? ' ' + r.picName : '') + ',', '',
+      'Terima kasih kerana mendaftar program bersama Easy Latih Consultancy' + (reg ? ' pada ' + reg : '') + '.', '',
+      '*Program:* ' + p.programName, '*Tarikh:* ' + p.programDate, '*Tempat:* ' + venue, '*Bilangan peserta:* ' + r.requestedPax, '*No. pendaftaran:* ' + r.registrationId, '',
+      hrd ? 'Kami ingin bertanya, adakah pihak tuan/puan sudah membuat *permohonan geran HRD Corp* bagi program ini? Sebut harga dan panduan permohonan geran telah kami emelkan ke *' + r.picEmail + '*.'
+          : 'Kami ingin bertanya, adakah pihak tuan/puan sudah membuat *bayaran* bagi program ini? Invois telah kami emelkan ke *' + r.picEmail + '*.'];
+    if (guide) ms.push('', '*Panduan permohonan geran:* ' + guide);
+    ms.push('', hrd ? 'Jika ada apa-apa yang kami boleh bantu, contohnya cara memohon geran dalam sistem HRD Corp, sila maklumkan. Setelah geran diluluskan, mohon kongsikan no. rujukan geran kepada kami.'
+                    : 'Jika ada apa-apa yang kami boleh bantu, sila maklumkan. Setelah bayaran dibuat, mohon kongsikan bukti bayaran kepada kami.');
+    const en = ['Dear ' + (r.picName || 'Sir/Madam') + ',', '',
+      'Thank you for registering with Easy Latih Consultancy' + (reg ? ' on ' + reg : '') + '.', '',
+      '*Programme:* ' + p.programName, '*Date:* ' + p.programDate, '*Venue:* ' + venue, '*Participants:* ' + r.requestedPax, '*Registration no.:* ' + r.registrationId, '',
+      hrd ? 'May we check whether you have *applied for the HRD Corp grant* for this programme? We emailed the quotation and the grant application guide to *' + r.picEmail + '*.'
+          : 'May we check whether you have *made the payment* for this programme? We emailed the invoice to *' + r.picEmail + '*.'];
+    if (guide) en.push('', '*Grant application guide:* ' + guide);
+    en.push('', hrd ? 'If there is anything we can help with, such as applying for the grant in the HRD Corp system, please let us know. Once the grant is approved, please share the grant reference number with us.'
+                    : 'If there is anything we can help with, please let us know. Once paid, please share the proof of payment with us.');
+    return ms.concat(['', '---', ''], en, ['', 'Terima kasih / Thank you.', 'Easy Latih Consultancy']).join('\n');
+  }
   function waButton(r) {
+    if (['AWAITING_GRANT', 'AWAITING_PAYMENT'].includes(r.stage.key)) {
+      const f = waNumber(r.picPhone);
+      return f ? '<a class="small wa-btn" style="display:inline-flex;align-items:center;padding:6px 11px;border-radius:8px;font-size:.74rem;font-weight:600;background:#25D366;color:#fff;text-decoration:none" href="https://wa.me/' + f + '?text=' + encodeURIComponent(waFollowUp(r)) + '" target="_blank" rel="noopener">WhatsApp follow-up</a>' : '';
+    }
     const n = waNumber(r.picPhone);
     const st = r.stage.key;
     const show = (['CONFIRMED', 'ATTENDED'].includes(st)) || (st === 'CANCELLED' && r.stage.label === 'Not approved');
