@@ -91,6 +91,7 @@ function adminToolsActions_() {
     jd14Email: function (d) { return adminJd14Email_(d || {}); },
     jd14List: function () { return adminJd14List_(); },
     jd14Signed: function (d) { return adminJd14MarkSigned_(String(d.jd14Id || '')); },
+    jd14SetPhone: function (d) { return adminJd14SetPhone_(String(d.jd14Id || ''), d.picPhone); },
     hrdInvoiceDraft: function (d) { return adminHrdInvoiceDraft_(String(d.jd14Id || '')); },
     hrdInvoiceFinalise: function (d) { return adminHrdInvoiceFinalise_(String(d.jd14Id || '')); },
 
@@ -369,7 +370,7 @@ function adminJd14Details_(id) {
 // ---------------------------------------------------------------------------
 const ADMIN_JD14_SHEET_ = 'JD14Documents';
 const ADMIN_JD14_HEADERS_ = ['JD14ID', 'SourceRef', 'CompanyName', 'CourseTitle', 'TrainingStartDate', 'TrainingEndDate', 'TotalPax', 'PICName', 'PICEmail', 'SlidesId', 'SlidesUrl', 'PdfId', 'PdfUrl', 'Status', 'CreatedDate', 'FinalisedDate', 'SentDate', 'SentTo', 'UpdatedDate',
-  'CompanyAddress', 'Venue', 'TotalFee', 'ApprovalNo', 'EmployerCode', 'SignedDate', 'InvoiceNo', 'InvoiceDocId', 'InvoiceDocUrl', 'InvoicePdfId', 'InvoicePdfUrl', 'InvoiceStatus', 'InvoiceFinalisedDate'];
+  'CompanyAddress', 'Venue', 'TotalFee', 'ApprovalNo', 'EmployerCode', 'SignedDate', 'InvoiceNo', 'InvoiceDocId', 'InvoiceDocUrl', 'InvoicePdfId', 'InvoicePdfUrl', 'InvoiceStatus', 'InvoiceFinalisedDate', 'PICPhone'];
 
 function adminJd14Sheet_() {
   const book = SpreadsheetApp.openById(SHEET_ID);
@@ -408,15 +409,22 @@ function adminJd14Set_(row, fields) {
   Object.keys(fields).forEach(function (k) { if (k in map) sheet.getRange(row, map[k] + 1).setValue(fields[k]); });
 }
 
-// PIC name and email for the company the JD14 is for.
+// PIC name, email and phone for the company the JD14 is for.
+function adminJd14PicOf_(r) {
+  return r ? { name: String(r.PICName || ''), email: String(r.PICEmail || ''), phone: adminJd14Phone_(r.PICPhone || r.PICMobile || r.Phone || ''), courseId: String(r.CourseID || '') } : {};
+}
 function adminJd14Pic_(ref) {
   ref = String(ref || '');
   if (ref.indexOf('REG:') === 0) {
-    const reg = adminJd14Rows_('Registrations').filter(function (r) { return String(r.RegistrationID || '') === ref.slice(4); })[0];
-    return reg ? { name: String(reg.PICName || ''), email: String(reg.PICEmail || ''), courseId: String(reg.CourseID || '') } : {};
+    return adminJd14PicOf_(adminJd14Rows_('Registrations').filter(function (r) { return String(r.RegistrationID || '') === ref.slice(4); })[0]);
   }
-  const q = adminJd14Rows_('QuotationRequests').filter(function (r) { return String(r.RequestID || '') === ref; })[0];
-  return q ? { name: String(q.PICName || ''), email: String(q.PICEmail || ''), courseId: String(q.CourseID || '') } : {};
+  return adminJd14PicOf_(adminJd14Rows_('QuotationRequests').filter(function (r) { return String(r.RequestID || '') === ref; })[0]);
+}
+// Phone kept as text; Sheets may have dropped the leading 0 (e.g. 123456789).
+function adminJd14Phone_(v) {
+  let d = String(v == null ? '' : v).replace(/\D/g, '');
+  if (/^1\d{8,9}$/.test(d)) d = '0' + d;
+  return d;
 }
 
 function adminJd14Public_(rec) {
@@ -428,6 +436,7 @@ function adminJd14Public_(rec) {
     trainingStartDate: iso(rec.TrainingStartDate),
     picName: String(rec.PICName || ''),
     picEmail: String(rec.PICEmail || ''),
+    picPhone: adminJd14Phone_(rec.PICPhone),
     slidesUrl: String(rec.SlidesUrl || ''),
     pdfUrl: String(rec.PdfUrl || ''),
     status: String(rec.Status || ''),
@@ -477,7 +486,7 @@ function adminJd14CreateDraft_(d) {
   const rec = {
     JD14ID: id, SourceRef: ref, CompanyName: company, CourseTitle: course,
     TrainingStartDate: String(d.trainingStartDate || ''), TrainingEndDate: String(d.trainingEndDate || ''), TotalPax: String(d.totalPax || ''),
-    PICName: pic.name || '', PICEmail: pic.email || '',
+    PICName: pic.name || '', PICEmail: pic.email || '', PICPhone: pic.phone ? "'" + pic.phone : '',
     SlidesId: copy.getId(), SlidesUrl: copy.getUrl(), PdfId: '', PdfUrl: '',
     Status: 'DRAFT', CreatedDate: now, FinalisedDate: '', SentDate: '', SentTo: '', UpdatedDate: now,
     CompanyAddress: String(d.companyAddress || ''), Venue: String(d.venue || ''), TotalFee: String(d.totalFee || ''),
@@ -518,6 +527,7 @@ function adminJd14Email_(d) {
   if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(to)) throw new Error('Enter the PIC email address.');
   const cc = String(d.cc || '').split(/[,;\s]+/).filter(function (x) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); }).join(',');
   const pic = String(d.picName || rec.PICName || '').trim();
+  const phone = adminJd14Phone_(d.picPhone || rec.PICPhone || '');
   const iso = function (v) { return v instanceof Date ? Utilities.formatDate(v, 'Asia/Kuala_Lumpur', 'dd/MM/yyyy') : String(v || '').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1'); };
   const dates = iso(rec.TrainingStartDate) + (rec.TrainingEndDate && iso(rec.TrainingEndDate) !== iso(rec.TrainingStartDate) ? ' – ' + iso(rec.TrainingEndDate) : '');
   const course = String(rec.CourseTitle), company = String(rec.CompanyName);
@@ -559,7 +569,7 @@ function adminJd14Email_(d) {
   GmailApp.sendEmail(typeof getSafeEmail === 'function' ? getSafeEmail(to) : to, typeof getEmailSubject === 'function' ? getEmailSubject(subject) : subject, text, options);
 
   const now = new Date();
-  adminJd14Set_(rec._row, { Status: 'SENT', SentDate: now, SentTo: to + (cc ? ' (cc ' + cc + ')' : ''), PICEmail: to, PICName: pic, UpdatedDate: now });
+  adminJd14Set_(rec._row, { Status: 'SENT', SentDate: now, SentTo: to + (cc ? ' (cc ' + cc + ')' : ''), PICEmail: to, PICName: pic, PICPhone: phone ? "'" + phone : '', UpdatedDate: now });
 
   // Public programme: tick "JD14 sent" on the registration's progress.
   const ref = String(rec.SourceRef || '');
@@ -569,7 +579,17 @@ function adminJd14Email_(d) {
       praUpsert_(praProgressSheet_(), 'RegistrationID', ref.slice(4), { CourseID: p.courseId || '', JD14SentDate: now, UpdatedDate: now });
     } catch (e) { console.warn('JD14 sent date not recorded: ' + e.message); }
   }
-  rec.Status = 'SENT'; rec.SentDate = now; rec.SentTo = to; rec.PICEmail = to; rec.PICName = pic;
+  rec.Status = 'SENT'; rec.SentDate = now; rec.SentTo = to; rec.PICEmail = to; rec.PICName = pic; rec.PICPhone = phone;
+  return adminJd14Public_(rec);
+}
+
+function adminJd14SetPhone_(jd14Id, phone) {
+  const rec = adminJd14Find_(jd14Id);
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  const p = adminJd14Phone_(phone);
+  if (!/^0\d{8,10}$/.test(p) && !/^60\d{8,10}$/.test(p)) throw new Error('Enter a valid WhatsApp number, e.g. 0123456789.');
+  adminJd14Set_(rec._row, { PICPhone: "'" + p, UpdatedDate: new Date() });
+  rec.PICPhone = p;
   return adminJd14Public_(rec);
 }
 
@@ -578,7 +598,15 @@ function adminJd14List_() {
   if (sheet.getLastRow() < 2) return [];
   const map = adminHeaderMap_(sheet);
   const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
-  return values.map(function (r) { const rec = {}; Object.keys(map).forEach(function (k) { rec[k] = r[map[k]]; }); return adminJd14Public_(rec); })
+  const recs = values.map(function (r) { const rec = {}; Object.keys(map).forEach(function (k) { rec[k] = r[map[k]]; }); return rec; });
+  // Older JD14s were saved before the PIC phone was kept: look it up from the source.
+  if (recs.some(function (rec) { return rec.JD14ID && !adminJd14Phone_(rec.PICPhone); })) {
+    const phones = {};
+    try { adminJd14Rows_('Registrations').forEach(function (r) { phones['REG:' + String(r.RegistrationID || '')] = adminJd14PicOf_(r).phone; }); } catch (e) { console.warn(e.message); }
+    try { adminJd14Rows_('QuotationRequests').forEach(function (r) { phones[String(r.RequestID || '')] = adminJd14PicOf_(r).phone; }); } catch (e) { console.warn(e.message); }
+    recs.forEach(function (rec) { if (!adminJd14Phone_(rec.PICPhone)) rec.PICPhone = phones[String(rec.SourceRef || '')] || ''; });
+  }
+  return recs.map(adminJd14Public_)
     .filter(function (x) { return x.jd14Id; })
     .reverse()
     .slice(0, 40);

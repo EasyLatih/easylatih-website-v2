@@ -129,6 +129,43 @@
   // JD14 documents: draft -> final PDF -> emailed to PIC
   let jdDocs = [], jdLoaded = false, openJd = '', emailJd = '';
   const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4) : (d || '');
+  // WhatsApp reminder to the PIC: which email the JD14 went to, when, and please return it signed.
+  const waIntl = p => { const d = String(p || '').replace(/\D/g, ''); if (!d) return ''; if (d.startsWith('0')) return '6' + d; if (/^1\d{8,9}$/.test(d)) return '60' + d; return d; };
+  function jdWaText(x) {
+    const email = String(x.sentTo || x.picEmail || '').replace(/\s*\(cc.*$/, '').trim();
+    const sent = fmtDate(x.sentDate), course = x.courseTitle || '', dates = fmtDate(x.trainingStartDate);
+    const ms = ['Assalamualaikum dan salam sejahtera Tuan/Puan' + (x.picName ? ' ' + x.picName : '') + ',', '',
+      'Ini peringatan mesra daripada Easy Latih Consultancy berkenaan *Borang JD14* untuk tuntutan HRD Corp.', '',
+      '*Program:* ' + course, dates ? '*Tarikh latihan:* ' + dates : null, '*Syarikat:* ' + (x.companyName || ''), '',
+      'Borang JD14 telah kami emelkan ke *' + email + '* pada *' + sent + '*.', '',
+      'Mohon pihak tuan/puan lengkapkan Tandatangan, Nama, No. MyKad, Jawatan, Cop syarikat dan Tarikh, kemudian kembalikan borang yang telah diimbas (scan) dengan *membalas emel tersebut*.', '',
+      'Jika emel tidak ditemui, sila semak folder Spam/Junk atau maklumkan kepada kami untuk dihantar semula.'];
+    const en = ['Dear ' + (x.picName || 'Sir/Madam') + ',', '',
+      'This is a friendly reminder from Easy Latih Consultancy about the *JD14 form* for the HRD Corp claim.', '',
+      '*Programme:* ' + course, dates ? '*Training date:* ' + dates : null, '*Company:* ' + (x.companyName || ''), '',
+      'We emailed the JD14 form to *' + email + '* on *' + sent + '*.', '',
+      'Please complete the Signature, Name, MyKad no., Designation, Company stamp and Date, then return the scanned form by *replying to that email*.', '',
+      'If you cannot find the email, please check your Spam/Junk folder or let us know and we will resend it.'];
+    const keep = l => l !== null;
+    return ms.filter(keep).concat(['', '---', ''], en.filter(keep), ['', 'Terima kasih / Thank you.', 'Easy Latih Consultancy']).join('\n');
+  }
+  async function jdWhatsApp(id, btn) {
+    let x = jdDocs.find(d => d.jd14Id === id); if (!x) return;
+    // Open the tab now so the browser does not block it after the save below.
+    let n = waIntl(x.picPhone), win = null;
+    if (!n) {
+      const input = prompt('PIC WhatsApp number for ' + x.companyName + ' (e.g. 0123456789):', '');
+      if (!input) return;
+      win = window.open('', '_blank');
+      try {
+        x = await busy(btn, 'Saving…', () => call('jd14SetPhone', {jd14Id:id, picPhone:input}));
+        jdDocs = jdDocs.map(d => d.jd14Id === id ? x : d); renderJd();
+        n = waIntl(x.picPhone);
+      } catch (e) { if (win) win.close(); return note('jd14Result', esc(e.message), 'danger'); }
+    }
+    const url = 'https://wa.me/' + n + '?text=' + encodeURIComponent(jdWaText(x));
+    if (win) win.location.href = url; else window.open(url, '_blank', 'noopener');
+  }
   function jdLink(url, label) { const u = safeUrl(url); return u ? '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+label+' ↗</a>' : ''; }
   function jdItem(x) {
     const st = x.status || 'DRAFT';
@@ -137,6 +174,7 @@
     acts.push('<button type="button" class="small'+(st === 'DRAFT' ? ' primary' : '')+'" data-jfin="'+esc(x.jd14Id)+'">'+(st === 'DRAFT' ? 'Finalise PDF' : 'Re-finalise')+'</button>');
     if (x.pdfUrl) acts.push(jdLink(x.pdfUrl, 'Open PDF'));
     if (x.pdfUrl) acts.push('<button type="button" class="small'+(st === 'FINAL' ? ' primary' : '')+'" data-jmail="'+esc(x.jd14Id)+'">'+(st === 'SENT' || st === 'SIGNED' ? 'Resend to PIC' : 'Email PIC')+'</button>');
+    if (st === 'SENT') acts.push('<button type="button" class="small" style="background:#25D366;border-color:#25D366;color:#fff" data-jwa="'+esc(x.jd14Id)+'" title="'+esc(x.picPhone ? 'WhatsApp '+x.picPhone : 'No PIC number yet: you will be asked for it')+'">WhatsApp reminder</button>');
     if (st === 'SENT') acts.push('<button type="button" class="small primary" data-jsigned="'+esc(x.jd14Id)+'">Signed JD14 received</button>');
     // HRD Corp invoice, once the signed JD14 is back
     const inv = [];
@@ -151,6 +189,7 @@
     const form = emailJd === x.jd14Id ? '<form class="form-grid" data-jsend="'+esc(x.jd14Id)+'">'+
       '<label>PIC name<input name="picName" value="'+esc(x.picName || '')+'"></label>'+
       '<label>PIC email<input name="to" type="email" required value="'+esc(x.picEmail || '')+'"></label>'+
+      '<label>PIC WhatsApp no. (for reminders)<input name="picPhone" inputmode="tel" placeholder="0123456789" value="'+esc(x.picPhone || '')+'"></label>'+
       '<label class="wide">CC (optional)<input name="cc" placeholder="Separate several with commas"></label>'+
       '<p class="hint wide">The email is in Bahasa Malaysia then English, with the JD14 PDF attached. It asks the PIC to fill in signature, name, MyKad no., designation, company stamp and date, then reply to the email with the signed form.</p>'+
       '<div class="actions wide"><button type="submit" class="primary">Send email</button><button type="button" data-jcancel="1">Cancel</button></div></form>' : '';
@@ -182,9 +221,9 @@
     const to = String(fd.get('to') || '').trim();
     if (!confirm('Email the JD14 for '+(x ? x.companyName : '')+' to '+to+'?')) return;
     try {
-      const r = await busy(form.querySelector('button[type=submit]'), 'Sending…', () => call('jd14Email', {jd14Id:id, to, cc:String(fd.get('cc') || ''), picName:String(fd.get('picName') || '')}));
+      const r = await busy(form.querySelector('button[type=submit]'), 'Sending…', () => call('jd14Email', {jd14Id:id, to, cc:String(fd.get('cc') || ''), picName:String(fd.get('picName') || ''), picPhone:String(fd.get('picPhone') || '')}));
       jdDocs = jdDocs.map(d => d.jd14Id === id ? r : d); emailJd = ''; renderJd();
-      note('jd14Result', 'JD14 emailed to '+esc(r.sentTo || to)+'. When the signed form comes back, record it in Registrations.', 'success');
+      note('jd14Result', 'JD14 emailed to '+esc(r.sentTo || to)+'. If it does not come back, use <b>WhatsApp reminder</b> to nudge the PIC. When the signed form comes back, press <b>Signed JD14 received</b>.', 'success');
     } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
   }
 
@@ -365,6 +404,7 @@
       if (b.dataset.jfin) jdFinalise(b.dataset.jfin, b);
       else if (b.dataset.jmail) { emailJd = emailJd === b.dataset.jmail ? '' : b.dataset.jmail; renderJd(); }
       else if (b.dataset.jcancel) { emailJd = ''; renderJd(); }
+      else if (b.dataset.jwa) jdWhatsApp(b.dataset.jwa, b);
       else if (b.dataset.jsigned) { if (confirm('Record that the signed JD14 has come back from the PIC?')) jdAct('jd14Signed', b.dataset.jsigned, b, 'Saving…', r => 'Signed JD14 recorded for '+esc(r.companyName)+'. Next: create the HRD Corp invoice draft.'); }
       else if (b.dataset.idraft) jdAct('hrdInvoiceDraft', b.dataset.idraft, b, 'Creating…', r => 'Invoice '+esc(r.invoiceNo)+' drafted. '+jdLink(r.invoiceDocUrl, 'Open the draft')+' to check it, then press <b>Finalise invoice PDF</b>.');
       else if (b.dataset.ifin) jdAct('hrdInvoiceFinalise', b.dataset.ifin, b, 'Finalising…', r => 'Invoice '+esc(r.invoiceNo)+' saved as PDF in Google Drive. '+(safeUrl(r.invoiceDownloadUrl) ? '<a href="'+esc(r.invoiceDownloadUrl)+'" target="_blank" rel="noopener">⬇ Download PDF</a> to upload it to the HRD Corp system.' : ''));
