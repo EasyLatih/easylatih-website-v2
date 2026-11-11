@@ -21,7 +21,7 @@ const PRA_TZ_ = 'Asia/Kuala_Lumpur';
 const PRA_SETTINGS_SHEET_ = 'ProgrammeSettings';
 const PRA_SETTINGS_HEADERS_ = ['CourseID', 'GuidelineUrl', 'WhatsAppLink', 'JoiningInstructions', 'ParticipantListSentDate', 'ArchivedDate', 'UpdatedDate', 'GrantFolderId'];
 const PRA_PROGRESS_SHEET_ = 'RegistrationProgress';
-const PRA_PROGRESS_HEADERS_ = ['RegistrationID', 'CourseID', 'ConfirmationSentDate', 'ReceiptNo', 'ReceiptUrl', 'AmountReceived', 'JD14SentDate', 'JD14SignedDate', 'ClaimSubmittedDate', 'ClaimRefNo', 'ClaimAmount', 'ClaimPaidDate', 'UpdatedDate'];
+const PRA_PROGRESS_HEADERS_ = ['RegistrationID', 'CourseID', 'ConfirmationSentDate', 'ReceiptNo', 'ReceiptUrl', 'AmountReceived', 'JD14SentDate', 'JD14SignedDate', 'ClaimSubmittedDate', 'ClaimRefNo', 'ClaimAmount', 'ClaimPaidDate', 'UpdatedDate', 'GrantHistory'];
 const PRA_HRD_STEPS_ = {
   JD14_SENT: 'JD14SentDate',
   JD14_SIGNED: 'JD14SignedDate',
@@ -43,6 +43,7 @@ function publicRegistrationActions_() {
     regSaveStatus: function (d) { return praSaveStatus_(d); },
     regPaymentReceived: function (d) { return praPaymentReceived_(d); },
     regGrantApproved: function (d) { return praGrantApproved_(d); },
+    regGrantUpdate: function (d) { return praGrantUpdate_(d); },
     regHrdStep: function (d) { return praHrdStep_(d); },
     regCancel: function (d) { return praCancel_(d); },
     regFreeDecision: function (d) { return freeRegistrationDecision_(d); },
@@ -327,6 +328,7 @@ function praProgramDetail_(courseId) {
         claimRefNo: praText_(pr.ClaimRefNo),
         claimAmount: praText_(pr.ClaimAmount),
         claimPaidDate: praIso_(pr.ClaimPaidDate),
+        grantHistory: praText_(pr.GrantHistory),
         stage: praStage_(r, pr, ppl),
         participants: ppl.map(function (x) {
           return {
@@ -566,6 +568,59 @@ function praGrantApproved_(d) {
     warnings.push('Confirmation email was not sent: ' + error.message);
   }
   return { ok: true, warnings: warnings };
+}
+
+// The client revised their application and HRD Corp issued a new grant. The new
+// grant replaces (supersedes) the old one; the old reference is kept in the
+// progress sheet's GrantHistory column. JD14 / HRD invoice read GrantRefNo, so
+// anything generated after this uses the new grant.
+function praGrantUpdate_(d) {
+  const registrationId = praText_(d.registrationId);
+  const found = praRegistration_(registrationId);
+  const reg = found.reg;
+  if (praUpper_(reg.RegistrationStatus) === 'CANCELLED') throw new Error('This registration is cancelled.');
+  if (praUpper_(reg.PaymentMethod) !== 'HRD') throw new Error('This is not an HRD Corp registration.');
+  if (praUpper_(reg.GrantStatus) !== 'APPROVED') throw new Error('No approved grant yet. Use Grant approved instead.');
+  const oldRef = praText_(reg.GrantRefNo);
+  const oldDate = praIso_(reg.GrantApprovedDate);
+  const grantRef = praText_(d.grantRef);
+  if (!grantRef) throw new Error('Enter the new HRD Corp grant reference.');
+  if (grantRef.toUpperCase() === oldRef.toUpperCase()) throw new Error('The new grant reference is the same as the current one (' + oldRef + ').');
+  const approvalDate = praText_(d.approvalDate) || praToday_();
+  const reason = praText_(d.reason);
+
+  const progressSheet = praProgressSheet_();
+  const pr = praIndex_(praRead_(progressSheet).rows, 'RegistrationID')[registrationId] || {};
+  if (pr.ClaimSubmittedDate) throw new Error('The claim was already submitted to HRD Corp under grant ' + oldRef + '. The grant can no longer be changed here.');
+
+  const entry = Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd') + ': ' +
+    (oldRef || '(blank)') + (oldDate ? ' (approved ' + oldDate + ')' : '') + ' superseded by ' + grantRef + (reason ? ' – ' + reason : '');
+  const history = praText_(pr.GrantHistory);
+
+  updateRowValue(found.sheet, 'RegistrationID', registrationId, {
+    GrantStatus: 'APPROVED',
+    GrantRefNo: grantRef,
+    GrantApprovedDate: approvalDate
+  });
+  praUpsert_(progressSheet, 'RegistrationID', registrationId, {
+    CourseID: praText_(reg.CourseID),
+    GrantHistory: history ? history + '\n' + entry : entry,
+    UpdatedDate: new Date()
+  });
+
+  const warnings = [];
+  if (pr.JD14SentDate) warnings.push('The JD14 was already sent with the old grant ' + oldRef + '. Generate a new JD14 in Documents and send it to the PIC again.');
+  if (d.notifyPic === true || d.notifyPic === 'true' || d.notifyPic === 'on') {
+    try {
+      const program = praProgramRecord_(praText_(reg.CourseID));
+      reg.GrantRefNo = grantRef;
+      praSendConfirmation_(reg, program, 'GRANT', { grantRef: grantRef });
+      praMarkConfirmationSent_(found.sheet, registrationId, praText_(reg.CourseID));
+    } catch (error) {
+      warnings.push('Updated confirmation email was not sent: ' + error.message);
+    }
+  }
+  return { ok: true, previousRef: oldRef, grantRef: grantRef, warnings: warnings };
 }
 
 function praResendConfirmation_(d) {

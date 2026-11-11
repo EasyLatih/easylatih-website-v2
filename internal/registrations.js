@@ -126,6 +126,14 @@
         '<label>Remarks<input name="remarks" placeholder="Optional"></label>' +
         '<div class="act wide"><button type="submit" class="primary">Confirm grant and email PIC</button><button type="button" data-close>Cancel</button></div></form>';
     }
+    if (kind === 'GRANT_UPDATE') {
+      return '<form class="form-grid" data-form="GRANT_UPDATE" data-id="'+id+'"><p class="hint wide" style="margin:0">Current grant: <b>'+esc(r.grantRef||'-')+'</b>'+(r.grantDate?' (approved '+nice(r.grantDate)+')':'')+'. The new grant replaces it; the old one is kept in the history.</p>' +
+        '<label>New grant reference<input name="grantRef" required placeholder="New HRD Corp grant ID"></label>' +
+        '<label>New approval date<input name="approvalDate" type="date" value="'+t+'" required></label>' +
+        '<label class="wide">Reason<input name="reason" placeholder="e.g. Client revised pax / amount and reapplied"></label>' +
+        '<label class="wide" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="notifyPic" style="width:auto"> Email the PIC an updated confirmation with the new grant reference</label>' +
+        '<div class="act wide"><button type="submit" class="primary">Replace old grant with new grant</button><button type="button" data-close>Cancel</button></div></form>';
+    }
     if (HRD_STEP[kind]) {
       // Original amount: HRD fee × pax, less any discount (same basis as the quotation).
       const claim = Math.max(0, detail.program.hrdFee * r.requestedPax - (r.discountAmount || 0));
@@ -215,6 +223,7 @@
       : st.next === 'GRANT' ? '<button type="button" class="primary small" data-open-form="GRANT" data-id="'+id+'">Grant approved</button>'
       : HRD_STEP[st.next] ? '<button type="button" class="primary small" data-open-form="'+st.next+'" data-id="'+id+'">'+esc(HRD_STEP[st.next])+'</button>' : '';
     const resend = r.confirmationSentDate || ['CONFIRMED','ATTENDED'].includes(st.key) ? '<button type="button" class="small" data-resend="'+id+'">Resend confirmation</button>' : '';
+    const grantUpd = r.paymentMethod === 'HRD' && r.grantRef && st.key !== 'CANCELLED' && st.key !== 'AWAITING_GRANT' && !r.claimSubmittedDate ? '<button type="button" class="small" data-open-form="GRANT_UPDATE" data-id="'+id+'">Update grant</button>' : '';
     const cancel = !st.done && st.next !== 'APPROVE' ? '<button type="button" class="small" data-open-form="CANCEL" data-id="'+id+'">Cancel</button>' : '';
     const receipt = httpsUrl(r.receiptUrl) ? '<a href="'+esc(r.receiptUrl)+'" target="_blank" rel="noopener">Receipt '+esc(r.receiptNo)+' ↗</a>' : '';
     const people = r.participants.length ? '<details><summary>'+r.participants.length+' participant'+(r.participants.length===1?'':'s')+'</summary><ul class="people">'+r.participants.map(p => '<li><span>'+esc(p.name)+'</span><small>'+esc(p.icNo)+' · '+esc(p.email)+'</small><span class="chip '+(p.attendance==='ATTENDED'?'good':p.attendance==='ABSENT'?'bad':'grey')+'">'+esc(p.attendance)+'</span>'+(p.certificateStatus==='SENT'?'<span class="chip good">Certificate sent</span>':'')+'</li>').join('')+'</ul></details>' : '';
@@ -222,8 +231,8 @@
     return '<article class="reg" id="reg-'+id+'"><div class="reg-top"><div><h4>'+esc(r.companyName || 'Company')+'</h4>' +
       '<p class="who">'+esc(r.picName)+' · <a href="mailto:'+esc(r.picEmail)+'">'+esc(r.picEmail)+'</a>'+(r.picPhone?' · '+esc(r.picPhone)+' '+phoneLink(r.picPhone):'')+'<br>'+esc(r.registrationId)+' · '+r.requestedPax+' pax'+(extra?' · '+extra:'')+'</p></div>' +
       '<div class="chips" style="align-content:flex-start;justify-content:flex-end"><span class="chip">'+(r.paymentMethod==='HRD'?'HRD Corp':r.paymentMethod==='FREE'?'Free programme':'Self payment')+'</span><span class="chip '+(STAGE_CLASS[st.key]||'')+'">'+esc(st.label)+'</span></div></div>' +
-      stepsLine(r) + people +
-      '<div class="act">'+next+resend+waButton(r)+cancel+receipt+'</div><div class="inline-form" data-slot="'+id+'"></div></article>';
+      stepsLine(r) + (r.grantHistory ? '<p class="hint" style="margin:6px 0 0">Superseded grant'+(r.grantHistory.split('\n').length>1?'s':'')+': '+r.grantHistory.split('\n').map(esc).join('<br>')+'</p>' : '') + people +
+      '<div class="act">'+next+grantUpd+resend+waButton(r)+cancel+receipt+'</div><div class="inline-form" data-slot="'+id+'"></div></article>';
   }
   function statusPanel(p) {
     const opts = ['DRAFT','TENTATIVE'].concat(p.status === 'CONFIRMED' ? ['CONFIRMED'] : []).concat(['CANCELLED','COMPLETED']);
@@ -318,6 +327,10 @@
       let res;
       if (kind === 'PAYMENT') res = await call('regPaymentReceived', {registrationId:id, paymentDate:f.paymentDate, amount:f.amount, method:f.method, paymentRef:f.paymentRef, remarks:f.remarks});
       else if (kind === 'GRANT') res = await call('regGrantApproved', {registrationId:id, grantRef:f.grantRef, approvalDate:f.approvalDate, remarks:f.remarks});
+      else if (kind === 'GRANT_UPDATE') {
+        if (!confirm('Replace grant '+(form.querySelector('b')?form.querySelector('b').textContent:'')+' with '+f.grantRef+'?')) { btn.disabled = false; btn.textContent = old; return; }
+        res = await call('regGrantUpdate', {registrationId:id, grantRef:f.grantRef, approvalDate:f.approvalDate, reason:f.reason, notifyPic: f.notifyPic === 'on'});
+      }
       else if (kind === 'STEP') res = await call('regHrdStep', {registrationId:id, step:form.dataset.step, date:f.date, ref:f.ref, amount:f.amount});
       else if (kind === 'CANCEL') res = await call('regCancel', {registrationId:id, remarks:f.remarks});
       else if (kind === 'APPROVE') {
@@ -326,7 +339,7 @@
         res = await call('regFreeDecision', {registrationId:id, decision:decision, remarks:f.remarks});
       }
       const warn = res && res.warnings && res.warnings.length ? res.warnings.join(' ') : '';
-      banner(warn ? 'Saved, but: '+warn : kind === 'PAYMENT' ? 'Payment recorded. Receipt and confirmation emailed to the PIC.' : kind === 'GRANT' ? 'Grant recorded. Confirmation emailed to the PIC.' : kind === 'CANCEL' ? 'Registration cancelled.' : kind === 'APPROVE' ? (res && res.decision === 'REJECTED' ? 'Registration rejected. The PIC has been emailed. Use the green WhatsApp button to message them too.' : 'Registration approved. Confirmation emailed to the PIC. Use the green WhatsApp button to send it by WhatsApp too.') : 'Step recorded.', warn ? 'danger' : 'success');
+      banner(warn ? 'Saved, but: '+warn : kind === 'PAYMENT' ? 'Payment recorded. Receipt and confirmation emailed to the PIC.' : kind === 'GRANT' ? 'Grant recorded. Confirmation emailed to the PIC.' : kind === 'GRANT_UPDATE' ? 'Grant updated: '+(res.previousRef||'')+' replaced by '+(res.grantRef||'')+'. New JD14 / HRD invoice will use the new grant.' : kind === 'CANCEL' ? 'Registration cancelled.' : kind === 'APPROVE' ? (res && res.decision === 'REJECTED' ? 'Registration rejected. The PIC has been emailed. Use the green WhatsApp button to message them too.' : 'Registration approved. Confirmation emailed to the PIC. Use the green WhatsApp button to send it by WhatsApp too.') : 'Step recorded.', warn ? 'danger' : 'success');
       detail = await call('regProgramDetail', {courseId: detail.program.courseId}); renderDetail();
     } catch (e) { btn.disabled = false; btn.textContent = old; banner(e.message, 'danger'); }
   }
