@@ -488,6 +488,7 @@
           butang <strong>🔓 Unlock 10 Prospek Lagi</strong> akan keluar. Tiada had berapa kali sehari.
           Hubungi dalam <strong>3 hari</strong> selepas ambil, atau prospek kembali ke pool.
           Maklumat syarikat salah? Laporkan di kad tersebut. Ia tidak dikira dalam had anda.
+          Tersalah ambil? Tekan <strong>↩️ Pulangkan ke Pool</strong> di kad tersebut sebelum menghubungi (maks 3 sehari).
         </p>
         <div class="kpi">
           <div class="kpi-card"><h3>Diambil Hari Ini</h3><h1 id="poolTaken">0/10</h1></div>
@@ -1778,6 +1779,8 @@ function renderContactNow(list){
           </select>
         </details>
         <button onclick="saveContact(${r}, this)">Simpan Hasil</button>
+        ${String(p.source || "").toUpperCase().startsWith("POOL") ? `
+        <button class="secondary-btn" style="margin-top:.5rem" onclick="returnToPool(${r}, this)">↩️ Pulangkan ke Pool (tersalah ambil)</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -1830,6 +1833,22 @@ async function saveContact(r, btn){
     document.getElementById("contactNowNotice")?.remove();
     await loadDashboard();
     if(data.canUnlock) showUnlockReady(data);
+  }
+}
+
+async function returnToPool(r, btn){
+  const company = document.querySelector(`#contact_${r} .prospect-company`)?.textContent.trim() || "syarikat ini";
+  if(!confirm(`Pulangkan ${company} ke pool?\n\nSyarikat ini akan dibuka semula untuk ejen lain. Hanya untuk syarikat yang tersalah ambil dan belum dihubungi (maks 3 sehari).`)) return;
+  btn.disabled = true;
+  btn.textContent = "Memulangkan...";
+  const data = await apiRequest(new URLSearchParams({ action: "returnToPool", rowNumber: r }));
+  alert(data.message || (data.success ? "Dipulangkan." : "Gagal memulangkan."));
+  if(data.success){
+    document.getElementById("contactNowNotice")?.remove();
+    loadDashboard();
+  } else {
+    btn.disabled = false;
+    btn.textContent = "↩️ Pulangkan ke Pool (tersalah ambil)";
   }
 }
 

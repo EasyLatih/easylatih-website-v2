@@ -87,3 +87,25 @@ test('unlocks reset on a new day', () => {
   f.props.POOL_UNLOCKS = JSON.stringify({day: '2000-01-01', counts: {A1: 5}});
   assert.equal(f.call('getPool').allowance, 10);
 });
+
+test('return to pool: frees slot, company reclaimable, blocked after contact, max 3 a day', async () => {
+  const f = fixture();
+  const rows = [];
+  for (let i = 1; i <= 10; i++) rows.push(f.claim(i).rowNumber);
+  let r = f.call('returnToPool', {rowNumber: String(rows[0])});
+  assert.equal(r.success, true); assert.equal(r.remainingToday, 1); assert.equal(r.returnsLeft, 2);
+  const poolRow = f.ctx.readRows_(f.ctx.poolSheet_(), 21).find(x => x[0] === 'P1');
+  assert.equal(poolRow[13], 'AVAILABLE'); assert.equal(poolRow[17], '', 'origin kept');
+  assert.equal(f.call('returnToPool', {rowNumber: String(rows[0])}).code, 'FORBIDDEN', 'no longer theirs');
+  assert.equal(f.claim(1).success, true, 'can be taken again');
+
+  await new Promise(res => setTimeout(res, 5));
+  f.contact(rows[1]);
+  r = f.call('returnToPool', {rowNumber: String(rows[1])});
+  assert.equal(r.success, false); assert.match(r.message, /sudah dihubungi/);
+
+  assert.equal(f.call('returnToPool', {rowNumber: String(rows[2])}).success, true);
+  assert.equal(f.call('returnToPool', {rowNumber: String(rows[3])}).success, true);
+  r = f.call('returnToPool', {rowNumber: String(rows[4])});
+  assert.equal(r.success, false); assert.match(r.message, /Had 3/);
+});
