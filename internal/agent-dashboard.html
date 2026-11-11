@@ -484,8 +484,10 @@
         <p class="sop-muted">
           Syarikat baharu (anggaran 10 pekerja ke atas) ditambah setiap pagi. Siapa ambil dahulu, dia punya.
           Selepas anda ambil, telefon, emel dan alamat syarikat dipaparkan di kad <strong>📞 Hubungi Sekarang</strong> di Dashboard.
-          Had: <strong>10 syarikat sehari</strong>. Hubungi dalam <strong>3 hari</strong> selepas ambil, atau prospek kembali ke pool.
-          Maklumat syarikat salah? Laporkan di kad tersebut. Ia tidak dikira dalam had harian anda.
+          Had: <strong>10 syarikat pada satu masa</strong>. Selepas anda rekod hasil panggilan untuk kesemua 10 di kad Hubungi Sekarang,
+          butang <strong>🔓 Unlock 10 Prospek Lagi</strong> akan keluar. Tiada had berapa kali sehari.
+          Hubungi dalam <strong>3 hari</strong> selepas ambil, atau prospek kembali ke pool.
+          Maklumat syarikat salah? Laporkan di kad tersebut. Ia tidak dikira dalam had anda.
         </p>
         <div class="kpi">
           <div class="kpi-card"><h3>Diambil Hari Ini</h3><h1 id="poolTaken">0/10</h1></div>
@@ -495,6 +497,7 @@
           <input id="poolSearch" placeholder="Cari syarikat atau industri..." onkeyup="renderPool()">
           <select id="poolDistrict" onchange="renderPool()"><option value="">Semua Daerah</option></select>
         </div>
+        <div id="poolUnlock"></div>
         <div id="poolList" class="prospect-grid">Loading...</div>
       </div>
     </div>
@@ -1825,8 +1828,25 @@ async function saveContact(r, btn){
   alert(data.message || (data.success ? "Disimpan" : "Gagal simpan"));
   if(data.success){
     document.getElementById("contactNowNotice")?.remove();
-    loadDashboard();
+    await loadDashboard();
+    if(data.canUnlock) showUnlockReady(data);
   }
+}
+
+function showUnlockReady(q){
+  const card = document.getElementById("contactNowCard");
+  if(!card) return;
+  const note = document.createElement("div");
+  note.id = "contactNowNotice";
+  note.className = "success-box";
+  note.innerHTML = `✅ Semua ${q.takenToday} syarikat hari ini sudah dihubungi.
+    <button style="margin-left:.5rem" onclick="goUnlock()">🔓 Unlock ${q.batchSize || 10} Prospek Lagi</button>`;
+  card.insertBefore(note, card.children[1] || null);
+}
+
+function goUnlock(){
+  const btn = document.querySelector('.tab-btn[onclick*="poolTab"]');
+  if(btn){ showTab("poolTab", btn); loadPool(); }
 }
 
 function picForm(p){
@@ -1872,9 +1892,10 @@ async function loadPool(){
     return;
   }
   poolItems = data.available || [];
-  setText("poolTaken", `${data.takenToday || 0}/${data.limit || 10}`);
+  setText("poolTaken", `${data.takenToday || 0}/${data.allowance || data.limit || 10}`);
   setText("poolAvailableCount", poolItems.length);
   document.getElementById("poolList").dataset.remaining = data.remainingToday;
+  renderPoolUnlock(data);
 
   const select = document.getElementById("poolDistrict");
   const current = select.value;
@@ -1930,6 +1951,35 @@ async function sendInvites(ids, btn, email){
   loadAdminAgents();
 }
 
+// Batch of 10: once every company taken today has an outcome recorded, offer the next 10.
+function renderPoolUnlock(q){
+  const box = document.getElementById("poolUnlock");
+  if(!box) return;
+  const batch = q.batchSize || 10;
+  if(q.canUnlock){
+    box.innerHTML = `<div class="success-box">
+      ✅ Tahniah! Anda sudah hubungi semua <strong>${q.takenToday}</strong> syarikat yang diambil hari ini.
+      <div style="margin-top:.6rem"><button onclick="unlockPool(this)">🔓 Unlock ${batch} Prospek Lagi</button></div>
+    </div>`;
+  } else if((q.remainingToday || 0) <= 0 && q.pendingContact > 0){
+    box.innerHTML = `<div class="warning-box">
+      Anda sudah ambil ${q.takenToday} syarikat. Rekod hasil panggilan untuk <strong>${q.pendingContact}</strong> syarikat lagi
+      di kad <strong>📞 Hubungi Sekarang</strong> untuk unlock ${batch} prospek lagi
+      (${q.contactedToday}/${q.takenToday} siap).
+    </div>`;
+  } else {
+    box.innerHTML = "";
+  }
+}
+
+async function unlockPool(btn){
+  btn.disabled = true;
+  btn.textContent = "Membuka...";
+  const data = await apiRequest(new URLSearchParams({ action: "unlockPool" }));
+  if(!data.success) alert(data.message || "Gagal unlock.");
+  loadPool();
+}
+
 function renderPool(){
   const search = (document.getElementById("poolSearch").value || "").toUpperCase();
   const district = document.getElementById("poolDistrict").value;
@@ -1954,7 +2004,7 @@ function renderPool(){
       <div class="pool-meta">📍 ${esc(i.district) || "-"}, ${esc(i.state) || "-"}</div>
       <div class="pool-meta">👥 ${i.employees ? "Anggaran " + esc(i.employees) + " pekerja" : "Saiz belum pasti"}${i.confidence ? " (" + esc(i.confidence) + ")" : ""}</div>
       <button onclick="claimPool('${esc(i.poolId)}', this)" ${remaining <= 0 ? "disabled" : ""}>
-        ${remaining <= 0 ? "Had harian dicapai" : "✋ Ambil Prospek"}
+        ${remaining <= 0 ? "🔒 Unlock untuk ambil lagi" : "✋ Ambil Prospek"}
       </button>
     </div>`).join("");
 }

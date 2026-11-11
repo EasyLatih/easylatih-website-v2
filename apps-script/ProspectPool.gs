@@ -4,7 +4,9 @@
  * - Every morning a CSV of new companies (min 10 staff) is dropped into a Drive
  *   folder. importPoolFromDrive() moves them into the "Prospect Pool" sheet.
  * - Agents see only the company name, industry and district, and press "Ambil".
- *   The first agent wins (LockService). Each agent may take 10 a day.
+ *   The first agent wins (LockService). Each agent may take 10 at a time: once
+ *   every company taken today has a contact outcome recorded, the agent presses
+ *   "Unlock 10 Prospek Lagi" for another 10 (no daily cap on batches).
  * - After claiming, the company address, phone and email appear, and the agent
  *   records the PIC (name, position, email, mobile).
  * - releaseStaleProspects() runs daily and returns to the pool:
@@ -23,7 +25,8 @@
  */
 
 const POOL_SHEET = "Prospect Pool";
-const POOL_DAILY_CLAIM_LIMIT = 10;
+const POOL_DAILY_CLAIM_LIMIT = 10; // size of one batch; agents unlock more batches (see poolQuota_)
+const POOL_UNLOCK_PROP = "POOL_UNLOCKS"; // {"day":"yyyy-MM-dd","counts":{"AGENT_ID":n}}
 const POOL_FIRST_CONTACT_DAYS = 3;
 const POOL_STALE_DAYS = 30;
 const POOL_WARN_DAYS = 21;
@@ -72,6 +75,7 @@ function isDeadStatus_(status) {
 function routeProspectPool_(action, e, session) {
   if (action === "getPool") return getPool_(e, session);
   if (action === "claimProspect") return claimProspect_(e, session);
+  if (action === "unlockPool") return unlockPool_(e, session);
   if (action === "updatePic") return updatePic_(e, session);
   if (action === "recordContact") return recordContact_(e, session);
   if (action === "updateOffers") return updateOffers_(e, session);
@@ -202,18 +206,94 @@ function touchProspect_(sheet, rowNumber) {
 /* ---------- agent actions ---------- */
 
 function claimsToday_(agentId, prospects) {
+  return todaysClaims_(agentId, prospects).length;
+}
+
+function todaysClaims_(agentId, prospects) {
   const today = dayKey_(new Date());
   return prospects.filter(r =>
     String(r[1]) === String(agentId) &&
     String(r[X.source] || "").toUpperCase().indexOf("POOL") === 0 &&
     dayKey_(r[X.claimedAt]) === today
-  ).length;
+  );
+}
+
+// A taken company counts as contacted once an outcome or call is recorded after it
+// was taken (the "Hubungi Sekarang" card, or a call log). "Jangan hubungi" counts.
+// "Maklumat salah" removes the company from the agent, so it frees a slot instead.
+function isContactedSinceClaim_(row) {
+  const claimedAt = toTime_(row[X.claimedAt]);
+  return isDeadStatus_(row[13]) || (claimedAt > 0 && toTime_(row[20]) >= claimedAt);
+}
+
+function readUnlocks_() {
+  const today = dayKey_(new Date());
+  let data = null;
+  try { data = JSON.parse(PropertiesService.getScriptProperties().getProperty(POOL_UNLOCK_PROP) || "null"); } catch (err) { data = null; }
+  if (!data || data.day !== today || typeof data.counts !== "object" || !data.counts) data = { day: today, counts: {} };
+  return data;
+}
+
+function unlocksToday_(agentId) {
+  return Number(readUnlocks_().counts[String(agentId)] || 0);
+}
+
+// How many companies the agent may still take today, and whether "Unlock" is open.
+function poolQuota_(agentId, prospects) {
+  const claims = todaysClaims_(agentId, prospects);
+  const taken = claims.length;
+  const contacted = claims.filter(isContactedSinceClaim_).length;
+  const unlocks = unlocksToday_(agentId);
+  const allowance = POOL_DAILY_CLAIM_LIMIT * (1 + unlocks);
+  return {
+    batchSize: POOL_DAILY_CLAIM_LIMIT,
+    allowance: allowance,
+    takenToday: taken,
+    contactedToday: contacted,
+    pendingContact: taken - contacted,
+    unlocksToday: unlocks,
+    remainingToday: Math.max(0, allowance - taken),
+    canUnlock: taken >= allowance && contacted >= taken
+  };
+}
+
+function limitMessage_(quota) {
+  if (quota.canUnlock) {
+    return "Anda sudah hubungi semua " + quota.takenToday + " syarikat. Tekan \"Unlock " + POOL_DAILY_CLAIM_LIMIT + " Prospek Lagi\" di tab Prospek Baharu.";
+  }
+  return "Rekod hasil panggilan untuk " + quota.pendingContact + " syarikat lagi di kad Hubungi Sekarang, kemudian unlock " +
+    POOL_DAILY_CLAIM_LIMIT + " prospek lagi.";
+}
+
+function unlockPool_(e, session) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) return jsonOutput({ success: false, message: "Sistem sibuk. Cuba lagi sebentar." });
+  try {
+    const prospects = readRows_(prospectSheet_(), PROSPECT_WIDTH);
+    const quota = poolQuota_(session.agentId, prospects);
+    if (!quota.canUnlock) {
+      const message = quota.remainingToday > 0
+        ? "Anda masih boleh ambil " + quota.remainingToday + " syarikat lagi sebelum perlu unlock."
+        : limitMessage_(quota);
+      return jsonOutput(Object.assign({ success: false, code: "NOT_READY", message: message }, quota));
+    }
+    const data = readUnlocks_();
+    const id = String(session.agentId);
+    data.counts[id] = Number(data.counts[id] || 0) + 1;
+    PropertiesService.getScriptProperties().setProperty(POOL_UNLOCK_PROP, JSON.stringify(data));
+    return jsonOutput(Object.assign(
+      { success: true, message: POOL_DAILY_CLAIM_LIMIT + " prospek lagi dibuka. Selamat menghubungi!" },
+      poolQuota_(session.agentId, prospects)
+    ));
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getPool_(e, session) {
   const pool = readRows_(poolSheet_(), POOL_HEADERS.length);
   const prospects = readRows_(prospectSheet_(), PROSPECT_WIDTH);
-  const taken = claimsToday_(session.agentId, prospects);
+  const quota = poolQuota_(session.agentId, prospects);
 
   const available = pool
     .filter(r => String(r[P.status]).toUpperCase() === "AVAILABLE")
@@ -230,13 +310,11 @@ function getPool_(e, session) {
     }))
     .sort((a, b) => String(b.dateAdded).localeCompare(String(a.dateAdded)));
 
-  return jsonOutput({
+  return jsonOutput(Object.assign({
     success: true,
-    limit: POOL_DAILY_CLAIM_LIMIT,
-    takenToday: taken,
-    remainingToday: Math.max(0, POOL_DAILY_CLAIM_LIMIT - taken),
+    limit: quota.allowance,
     available: available
-  });
+  }, quota));
 }
 
 function claimProspect_(e, session) {
@@ -263,8 +341,9 @@ function claimProspect_(e, session) {
       return jsonOutput({ success: false, code: "TAKEN", message: "Maaf, syarikat ini sudah diambil oleh ejen lain." });
     }
 
-    if (claimsToday_(session.agentId, prospects) >= POOL_DAILY_CLAIM_LIMIT) {
-      return jsonOutput({ success: false, code: "LIMIT", message: "Anda sudah ambil " + POOL_DAILY_CLAIM_LIMIT + " syarikat hari ini. Cuba lagi esok." });
+    const quota = poolQuota_(session.agentId, prospects);
+    if (quota.remainingToday <= 0) {
+      return jsonOutput(Object.assign({ success: false, code: "LIMIT", message: limitMessage_(quota) }, quota));
     }
 
     const now = new Date();
@@ -459,12 +538,14 @@ function recordContact_(e, session) {
     sheet.getRange(rowNumber, X.offers + 1).setValue(merged);
   }
   sheet.getRange(rowNumber, X.lastActivity + 1).setValue(now);
+  SpreadsheetApp.flush();
 
-  return jsonOutput({ success: true, message: "Hasil panggilan disimpan." });
+  const quota = poolQuota_(session.agentId, readRows_(sheet, PROSPECT_WIDTH));
+  return jsonOutput(Object.assign({ success: true, message: "Hasil panggilan disimpan." }, quota));
 }
 
 // A pool company whose details are wrong: remove it from the agent and the pool,
-// and do not count it towards the agent's 10-a-day limit.
+// and do not count it towards the agent's current batch of 10.
 function reportWrongInfo_(sheet, rowNumber, row, session, remark, now) {
   const stamp = Utilities.formatDate(now, POOL_TZ, "dd/MM/yyyy");
   sheet.getRange(rowNumber, 2, 1, 2).setValues([["", ""]]);
@@ -484,7 +565,7 @@ function reportWrongInfo_(sheet, rowNumber, row, session, remark, now) {
       poolSheet.getRange(i + 2, P.notes + 1).setValue("Dilapor salah oleh " + session.agentId + " (" + stamp + "): " + remark);
     }
   }
-  return jsonOutput({ success: true, message: "Terima kasih. Syarikat ini dikeluarkan dan tidak dikira dalam had harian anda." });
+  return jsonOutput({ success: true, message: "Terima kasih. Syarikat ini dikeluarkan dan tidak dikira dalam had anda." });
 }
 
 function adminPool_(e, session) {
