@@ -127,7 +127,9 @@
   }
 
   // JD14 documents: draft -> final PDF -> emailed to PIC
-  let jdDocs = [], jdLoaded = false, openJd = '', emailJd = '';
+  let jdDocs = [], jdLoaded = false, openJd = '', emailJd = '', jdArchived = false, jdForm = '', jdQuery = '';
+  const rm = v => v === '' || v == null || isNaN(Number(v)) ? '' : Number(v).toFixed(2);
+  const today = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
   const fmtDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4) : (d || '');
   // WhatsApp reminder to the PIC: which email the JD14 went to, when, and please return it signed.
   const waIntl = p => { const d = String(p || '').replace(/\D/g, ''); if (!d) return ''; if (d.startsWith('0')) return '6' + d; if (/^1\d{8,9}$/.test(d)) return '60' + d; return d; };
@@ -183,9 +185,25 @@
       inv.push(jdLink(x.invoiceDocUrl, 'Edit invoice draft'));
       inv.push('<button type="button" class="small'+(x.invoiceStatus === 'DRAFT' ? ' primary' : '')+'" data-ifin="'+esc(x.jd14Id)+'">'+(x.invoiceStatus === 'FINAL' ? 'Re-finalise invoice' : 'Finalise invoice PDF')+'</button>');
       if (x.invoicePdfUrl) inv.push(jdLink(x.invoicePdfUrl, 'Open invoice PDF'));
-      const dl = safeUrl(x.invoiceDownloadUrl); if (dl) inv.push('<a class="btnlink" href="'+esc(dl)+'" target="_blank" rel="noopener">⬇ Download PDF</a>');
+      if (x.invoicePdfUrl) inv.push('<button type="button" class="small" data-idl="'+esc(x.jd14Id)+'">⬇ Download PDF</button>');
     }
-    const invBlock = inv.length ? '<div class="jd-inv"><div class="jd-meta"><b>HRD Corp invoice</b>'+(x.invoiceNo ? ' · '+esc(x.invoiceNo)+' · <span class="chip '+esc(x.invoiceStatus || 'DRAFT')+'">'+esc(x.invoiceStatus || 'DRAFT')+'</span>' : '')+'</div><div class="actions">'+inv.filter(Boolean).join('')+'</div></div>' : '';
+    // Claim reference, then HRD Corp payment (which settles and archives the case)
+    if (x.invoiceStatus === 'FINAL' && !x.claimRefNo && !x.archived) inv.push('<button type="button" class="small primary" data-cform="'+esc(x.jd14Id)+'">Claim submitted (enter claim ref.)</button>');
+    if (x.claimRefNo && !x.archived) inv.push('<button type="button" class="small primary" data-pform="'+esc(x.jd14Id)+'">HRD Corp payment received</button>');
+    if (x.archived) inv.push('<button type="button" class="small" data-unarch="'+esc(x.jd14Id)+'">Restore to open list</button>');
+    const claimLine = [x.claimRefNo ? 'Claim '+x.claimRefNo+(x.claimSubmittedDate ? ' · submitted '+fmtDate(x.claimSubmittedDate) : '')+(rm(x.claimAmount) ? ' · RM '+rm(x.claimAmount) : '') : '',
+      x.paymentDate ? 'HRD Corp paid '+fmtDate(x.paymentDate)+(rm(x.paymentAmount) ? ' · RM '+rm(x.paymentAmount) : '')+(x.paymentRef ? ' · ref '+x.paymentRef : '') : ''].filter(Boolean).map(esc).join('<br>');
+    let stepForm = '';
+    if (jdForm === 'C:'+x.jd14Id) stepForm = '<form class="form-grid" data-cstep="'+esc(x.jd14Id)+'"><label>Claim reference no.<input name="claimRef" required placeholder="HRD Corp claim ID"></label>'+
+      '<label>Date submitted<input name="date" type="date" value="'+today()+'" required></label>'+
+      '<label>Claim amount (RM)<input name="amount" type="number" min="0" step="0.01" value="'+esc(rm(x.totalFee))+'"></label>'+
+      '<div class="actions wide"><button type="submit" class="primary">Save claim reference</button><button type="button" data-fcancel="1">Cancel</button></div></form>';
+    if (jdForm === 'P:'+x.jd14Id) stepForm = '<form class="form-grid" data-pstep="'+esc(x.jd14Id)+'"><label>Date received<input name="date" type="date" value="'+today()+'" required></label>'+
+      '<label>Amount received (RM)<input name="amount" type="number" min="0" step="0.01" value="'+esc(rm(x.claimAmount || x.totalFee))+'"></label>'+
+      '<label>Payment reference (optional)<input name="paymentRef" placeholder="e.g. HRD Corp payment advice no."></label>'+
+      '<p class="hint wide">Saving this settles the case: the JD14, invoice and claim move to the archive (Show settled).</p>'+
+      '<div class="actions wide"><button type="submit" class="primary">Record payment and archive</button><button type="button" data-fcancel="1">Cancel</button></div></form>';
+    const invBlock = inv.length ? '<div class="jd-inv"><div class="jd-meta"><b>HRD Corp invoice</b>'+(x.invoiceNo ? ' · '+esc(x.invoiceNo)+' · <span class="chip '+esc(x.invoiceStatus || 'DRAFT')+'">'+esc(x.invoiceStatus || 'DRAFT')+'</span>' : '')+'</div>'+(claimLine ? '<div class="jd-meta">'+claimLine+'</div>' : '')+'<div class="actions">'+inv.filter(Boolean).join('')+'</div>'+stepForm+'</div>' : '';
     const form = emailJd === x.jd14Id ? '<form class="form-grid" data-jsend="'+esc(x.jd14Id)+'">'+
       '<label>PIC name<input name="picName" value="'+esc(x.picName || '')+'"></label>'+
       '<label>PIC email<input name="to" type="email" required value="'+esc(x.picEmail || '')+'"></label>'+
@@ -193,14 +211,43 @@
       '<label class="wide">CC (optional)<input name="cc" placeholder="Separate several with commas"></label>'+
       '<p class="hint wide">The email is in Bahasa Malaysia then English, with the JD14 PDF attached. It asks the PIC to fill in signature, name, MyKad no., designation, company stamp and date, then reply to the email with the signed form.</p>'+
       '<div class="actions wide"><button type="submit" class="primary">Send email</button><button type="button" data-jcancel="1">Cancel</button></div></form>' : '';
-    return '<div class="jd'+(openJd === x.jd14Id ? ' focus' : '')+'"><div class="jd-head"><div><div class="jd-title">'+esc(x.companyName)+'</div><div class="jd-meta">'+esc(x.courseTitle)+'</div><div class="jd-meta">'+meta+'</div></div><span class="chip '+esc(st)+'">'+esc(st)+'</span></div>'+
+    return '<div class="jd'+(openJd === x.jd14Id ? ' focus' : '')+'"><div class="jd-head"><div><div class="jd-title">'+esc(x.companyName)+'</div><div class="jd-meta">'+esc(x.courseTitle)+'</div><div class="jd-meta">'+meta+'</div></div><span class="chip '+esc(x.archived ? 'PAID' : x.claimRefNo ? 'CLAIMED' : st)+'">'+esc(x.archived ? 'SETTLED' : x.claimRefNo ? 'CLAIM SUBMITTED' : st)+'</span></div>'+
       '<div class="actions">'+acts.filter(Boolean).join('')+'</div>'+form+invBlock+'</div>';
   }
-  function renderJd() { $('j-list').innerHTML = jdDocs.length ? jdDocs.map(jdItem).join('') : '<p class="hint">No JD14 documents yet. Generate one above.</p>'; }
+  function renderJd() {
+    const q = jdQuery.toLowerCase();
+    const list = jdDocs.filter(x => !!x.archived === jdArchived).filter(x => !q || [x.companyName, x.courseTitle, x.invoiceNo, x.claimRefNo, x.picName].join(' ').toLowerCase().includes(q));
+    $('j-listTitle').textContent = jdArchived ? 'JD14 documents · settled (archived)' : 'JD14 documents · open';
+    $('j-toggleArchived').textContent = jdArchived ? '← Back to open' : 'Show settled (archived)';
+    $('j-search').hidden = !jdArchived;
+    $('j-list').innerHTML = list.length ? list.map(jdItem).join('') : '<p class="hint">'+(jdArchived ? (q ? 'Nothing matches.' : 'No settled cases yet.') : 'Nothing open. Settled cases are under Show settled.')+'</p>';
+  }
   async function loadJd(force) {
     if (jdLoaded && !force) return; jdLoaded = true;
-    try { jdDocs = await call('jd14List') || []; renderJd(); }
+    $('j-list').innerHTML = '<p class="hint">Loading…</p>';
+    try { jdDocs = await call('jd14List', {archived: jdArchived}) || []; renderJd(); }
     catch (e) { $('j-list').innerHTML = '<p class="hint">JD14 list could not be loaded: '+esc(e.message)+'</p>'; }
+  }
+  async function jdDownload(id, btn) {
+    try {
+      const r = await busy(btn, 'Preparing…', () => call('hrdInvoiceDownload', {jd14Id:id}));
+      const bin = atob(r.base64), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], {type: r.mimeType || 'application/pdf'}));
+      a.download = (r.fileName || 'invoice').replace(/[\\/:*?"<>|]/g, '-').replace(/(\.pdf)?$/i, '.pdf');
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
+  }
+  async function jdStep(form, kind) {
+    const id = form.dataset[kind === 'C' ? 'cstep' : 'pstep'], f = Object.fromEntries(new FormData(form).entries()), x = jdDocs.find(d => d.jd14Id === id) || {};
+    if (kind === 'P' && !confirm('Record HRD Corp payment for '+(x.companyName || '')+' and archive this case?')) return;
+    try {
+      const r = await busy(form.querySelector('button[type=submit]'), 'Saving…', () => call(kind === 'C' ? 'hrdClaimSubmitted' : 'hrdPaymentReceived', Object.assign({jd14Id:id}, f)));
+      jdForm = '';
+      if (kind === 'P') { jdDocs = jdDocs.filter(d => d.jd14Id !== id); renderJd(); note('jd14Result', 'Payment recorded. '+esc(r.companyName)+' is settled and archived.', 'success'); }
+      else { jdDocs = jdDocs.map(d => d.jd14Id === id ? r : d); renderJd(); note('jd14Result', 'Claim '+esc(r.claimRefNo)+' saved for '+esc(r.companyName)+'. When HRD Corp pays, press <b>HRD Corp payment received</b>.', 'success'); }
+    } catch (e) { note('jd14Result', esc(e.message), 'danger'); }
   }
   async function jdFinalise(id, btn) {
     try {
@@ -399,17 +446,24 @@
     $('j-loadDetails').onclick = e => jd14Details(e.currentTarget);
     $('jd14Form').addEventListener('submit', jd14Generate);
     $('j-refreshList').onclick = () => loadJd(true);
+    $('j-toggleArchived').onclick = () => { jdArchived = !jdArchived; jdForm = ''; jdQuery = ''; $('j-search').value = ''; loadJd(true); };
+    $('j-search').addEventListener('input', e => { jdQuery = e.target.value.trim(); renderJd(); });
     $('j-list').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
-      if (b.dataset.jfin) jdFinalise(b.dataset.jfin, b);
+      if (b.dataset.idl) jdDownload(b.dataset.idl, b);
+      else if (b.dataset.cform) { jdForm = jdForm === 'C:'+b.dataset.cform ? '' : 'C:'+b.dataset.cform; renderJd(); }
+      else if (b.dataset.pform) { jdForm = jdForm === 'P:'+b.dataset.pform ? '' : 'P:'+b.dataset.pform; renderJd(); }
+      else if (b.dataset.fcancel) { jdForm = ''; renderJd(); }
+      else if (b.dataset.unarch) { if (confirm('Move this case back to the open list? The recorded payment will be cleared.')) jdAct('jd14Unarchive', b.dataset.unarch, b, 'Restoring…', r => { jdDocs = jdDocs.filter(d => d.jd14Id !== r.jd14Id); setTimeout(renderJd); return esc(r.companyName)+' is back in the open list.'; }); }
+      else if (b.dataset.jfin) jdFinalise(b.dataset.jfin, b);
       else if (b.dataset.jmail) { emailJd = emailJd === b.dataset.jmail ? '' : b.dataset.jmail; renderJd(); }
       else if (b.dataset.jcancel) { emailJd = ''; renderJd(); }
       else if (b.dataset.jwa) jdWhatsApp(b.dataset.jwa, b);
       else if (b.dataset.jsigned) { if (confirm('Record that the signed JD14 has come back from the PIC?')) jdAct('jd14Signed', b.dataset.jsigned, b, 'Saving…', r => 'Signed JD14 recorded for '+esc(r.companyName)+'. Next: create the HRD Corp invoice draft.'); }
       else if (b.dataset.idraft) jdAct('hrdInvoiceDraft', b.dataset.idraft, b, 'Creating…', r => 'Invoice '+esc(r.invoiceNo)+' drafted. '+jdLink(r.invoiceDocUrl, 'Open the draft')+' to check it, then press <b>Finalise invoice PDF</b>.');
-      else if (b.dataset.ifin) jdAct('hrdInvoiceFinalise', b.dataset.ifin, b, 'Finalising…', r => 'Invoice '+esc(r.invoiceNo)+' saved as PDF in Google Drive. '+(safeUrl(r.invoiceDownloadUrl) ? '<a href="'+esc(r.invoiceDownloadUrl)+'" target="_blank" rel="noopener">⬇ Download PDF</a> to upload it to the HRD Corp system.' : ''));
+      else if (b.dataset.ifin) jdAct('hrdInvoiceFinalise', b.dataset.ifin, b, 'Finalising…', r => 'Invoice '+esc(r.invoiceNo)+' saved as PDF in Google Drive. '+'Press <b>⬇ Download PDF</b> to save it for the HRD Corp system, then <b>Claim submitted</b> once the claim is in.');
     });
-    $('j-list').addEventListener('submit', e => { e.preventDefault(); jdSend(e.target); });
+    $('j-list').addEventListener('submit', e => { e.preventDefault(); const f = e.target; if (f.dataset.cstep) jdStep(f, 'C'); else if (f.dataset.pstep) jdStep(f, 'P'); else jdSend(f); });
     $('c-reloadPrograms').onclick = () => loadPrograms();
     $('c-loadPeople').onclick = e => loadPeople(e.currentTarget);
     $('c-peopleList').addEventListener('change', e => { const i = e.target.dataset.i; if (i != null) { people[i].on = e.target.checked; const n = people.filter(p => p.on).length; $('c-peopleCount').textContent = $('c-peopleCount').textContent.replace(/\d+ marked attended/, n + ' marked attended'); } });

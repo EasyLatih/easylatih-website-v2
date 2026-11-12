@@ -89,11 +89,15 @@ function adminToolsActions_() {
     jd14Generate: function (d) { return adminJd14CreateDraft_(d || {}); },
     jd14Finalise: function (d) { return adminJd14Finalise_(String(d.jd14Id || '')); },
     jd14Email: function (d) { return adminJd14Email_(d || {}); },
-    jd14List: function () { return adminJd14List_(); },
+    jd14List: function (d) { return adminJd14List_(d && d.archived === true); },
     jd14Signed: function (d) { return adminJd14MarkSigned_(String(d.jd14Id || '')); },
     jd14SetPhone: function (d) { return adminJd14SetPhone_(String(d.jd14Id || ''), d.picPhone); },
     hrdInvoiceDraft: function (d) { return adminHrdInvoiceDraft_(String(d.jd14Id || '')); },
     hrdInvoiceFinalise: function (d) { return adminHrdInvoiceFinalise_(String(d.jd14Id || '')); },
+    hrdInvoiceDownload: function (d) { return adminHrdInvoiceDownload_(String(d.jd14Id || '')); },
+    hrdClaimSubmitted: function (d) { return adminHrdClaimSubmitted_(d || {}); },
+    hrdPaymentReceived: function (d) { return adminHrdPaymentReceived_(d || {}); },
+    jd14Unarchive: function (d) { return adminJd14Unarchive_(String(d.jd14Id || '')); },
 
     // Certificates: template
     certSettings: function () { return getCertificateTemplateSettings(); },
@@ -370,7 +374,8 @@ function adminJd14Details_(id) {
 // ---------------------------------------------------------------------------
 const ADMIN_JD14_SHEET_ = 'JD14Documents';
 const ADMIN_JD14_HEADERS_ = ['JD14ID', 'SourceRef', 'CompanyName', 'CourseTitle', 'TrainingStartDate', 'TrainingEndDate', 'TotalPax', 'PICName', 'PICEmail', 'SlidesId', 'SlidesUrl', 'PdfId', 'PdfUrl', 'Status', 'CreatedDate', 'FinalisedDate', 'SentDate', 'SentTo', 'UpdatedDate',
-  'CompanyAddress', 'Venue', 'TotalFee', 'ApprovalNo', 'EmployerCode', 'SignedDate', 'InvoiceNo', 'InvoiceDocId', 'InvoiceDocUrl', 'InvoicePdfId', 'InvoicePdfUrl', 'InvoiceStatus', 'InvoiceFinalisedDate', 'PICPhone'];
+  'CompanyAddress', 'Venue', 'TotalFee', 'ApprovalNo', 'EmployerCode', 'SignedDate', 'InvoiceNo', 'InvoiceDocId', 'InvoiceDocUrl', 'InvoicePdfId', 'InvoicePdfUrl', 'InvoiceStatus', 'InvoiceFinalisedDate', 'PICPhone',
+  'ClaimRefNo', 'ClaimSubmittedDate', 'ClaimAmount', 'PaymentReceivedDate', 'PaymentAmount', 'PaymentRefNo', 'ArchivedDate'];
 
 function adminJd14Sheet_() {
   const book = SpreadsheetApp.openById(SHEET_ID);
@@ -449,7 +454,15 @@ function adminJd14Public_(rec) {
     invoiceDocUrl: String(rec.InvoiceDocUrl || ''),
     invoicePdfUrl: String(rec.InvoicePdfUrl || ''),
     invoiceDownloadUrl: rec.InvoicePdfId ? 'https://drive.google.com/uc?export=download&id=' + String(rec.InvoicePdfId) : '',
-    invoiceStatus: String(rec.InvoiceStatus || '')
+    invoiceStatus: String(rec.InvoiceStatus || ''),
+    claimRefNo: String(rec.ClaimRefNo || ''),
+    claimSubmittedDate: iso(rec.ClaimSubmittedDate),
+    claimAmount: rec.ClaimAmount === '' || rec.ClaimAmount == null ? '' : String(rec.ClaimAmount),
+    paymentDate: iso(rec.PaymentReceivedDate),
+    paymentAmount: rec.PaymentAmount === '' || rec.PaymentAmount == null ? '' : String(rec.PaymentAmount),
+    paymentRef: String(rec.PaymentRefNo || ''),
+    archivedDate: iso(rec.ArchivedDate),
+    archived: !!rec.ArchivedDate
   };
 }
 
@@ -593,7 +606,7 @@ function adminJd14SetPhone_(jd14Id, phone) {
   return adminJd14Public_(rec);
 }
 
-function adminJd14List_() {
+function adminJd14List_(archived) {
   const sheet = adminJd14Sheet_();
   if (sheet.getLastRow() < 2) return [];
   const map = adminHeaderMap_(sheet);
@@ -606,10 +619,30 @@ function adminJd14List_() {
     try { adminJd14Rows_('QuotationRequests').forEach(function (r) { phones[String(r.RequestID || '')] = adminJd14PicOf_(r).phone; }); } catch (e) { console.warn(e.message); }
     recs.forEach(function (rec) { if (!adminJd14Phone_(rec.PICPhone)) rec.PICPhone = phones[String(rec.SourceRef || '')] || ''; });
   }
+  // Claim steps already recorded on the Registrations page count too: copy them
+  // across so those JD14s settle (and archive) without re-entering anything.
+  if (typeof praRead_ === 'function' && typeof praProgressSheet_ === 'function') {
+    try {
+      const prog = {};
+      praRead_(praProgressSheet_()).rows.forEach(function (r) { prog['REG:' + String(r.RegistrationID || '')] = r; });
+      recs.forEach(function (rec) {
+        const p = prog[String(rec.SourceRef || '')];
+        if (!p || !rec.JD14ID) return;
+        const fields = {};
+        if (!rec.ClaimRefNo && p.ClaimRefNo) { fields.ClaimRefNo = p.ClaimRefNo; fields.ClaimSubmittedDate = p.ClaimSubmittedDate || ''; fields.ClaimAmount = p.ClaimAmount === undefined ? '' : p.ClaimAmount; }
+        if (!rec.ArchivedDate && p.ClaimPaidDate) { fields.PaymentReceivedDate = p.ClaimPaidDate; fields.ArchivedDate = new Date(); }
+        if (!Object.keys(fields).length) return;
+        const row = adminJd14Find_(String(rec.JD14ID));
+        if (row) adminJd14Set_(row._row, fields);
+        Object.keys(fields).forEach(function (k) { rec[k] = fields[k]; });
+      });
+    } catch (e) { console.warn('Claim steps not synced from registrations: ' + e.message); }
+  }
+  // Active list: everything not yet settled. Archived list: settled (HRD Corp paid), newest first.
   return recs.map(adminJd14Public_)
-    .filter(function (x) { return x.jd14Id; })
+    .filter(function (x) { return x.jd14Id && x.archived === !!archived; })
     .reverse()
-    .slice(0, 40);
+    .slice(0, archived ? 100 : 200);
 }
 
 // ---------------------------------------------------------------------------
@@ -718,5 +751,79 @@ function adminHrdInvoiceFinalise_(jd14Id) {
       { DocumentType: 'HRD Invoice', Status: 'FINAL', PdfLink: pdf.getUrl(), FinalPDFLink: pdf.getUrl(), FinalisedDate: now });
   } catch (e) { console.warn('Documents record not updated: ' + e.message); }
   rec.InvoicePdfId = pdf.getId(); rec.InvoicePdfUrl = pdf.getUrl(); rec.InvoiceStatus = 'FINAL';
+  return adminJd14Public_(rec);
+}
+
+// ---------------------------------------------------------------------------
+// After the HRD Corp invoice: claim submitted (claim reference) -> HRD Corp
+// payment received. Payment received settles the case and archives the JD14,
+// its invoice and the registration's claim steps, so the active list only shows
+// open work. Archived items stay searchable in the "Settled (archived)" view.
+// ---------------------------------------------------------------------------
+function adminDateOrNow_(v) {
+  const s = String(v || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const p = s.split('-'); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); }
+  return new Date();
+}
+
+// Serves the invoice PDF through the bridge so the download works whichever
+// Google account (if any) the browser is signed in to.
+function adminHrdInvoiceDownload_(jd14Id) {
+  const rec = adminJd14Find_(jd14Id);
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  if (!rec.InvoicePdfId) throw new Error('Finalise the invoice PDF first.');
+  const file = DriveApp.getFileById(String(rec.InvoicePdfId));
+  const blob = file.getBlob();
+  return { fileName: file.getName(), mimeType: blob.getContentType() || 'application/pdf', base64: Utilities.base64Encode(blob.getBytes()) };
+}
+
+function adminHrdClaimSubmitted_(d) {
+  const rec = adminJd14Find_(String(d.jd14Id || ''));
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  if (String(rec.InvoiceStatus) !== 'FINAL') throw new Error('Finalise the HRD Corp invoice first.');
+  const ref = String(d.claimRef || '').trim();
+  if (!ref) throw new Error('Enter the HRD Corp claim reference number.');
+  const date = adminDateOrNow_(d.date);
+  const amount = d.amount === '' || d.amount == null ? '' : Number(d.amount);
+  if (amount !== '' && !(amount >= 0)) throw new Error('Enter a valid claim amount.');
+  const now = new Date();
+  adminJd14Set_(rec._row, { ClaimRefNo: ref, ClaimSubmittedDate: date, ClaimAmount: amount, UpdatedDate: now });
+  adminJd14Progress_(rec.SourceRef, { ClaimSubmittedDate: date, ClaimRefNo: ref, ClaimAmount: amount });
+  try {
+    updateRowValue(SpreadsheetApp.openById(SHEET_ID).getSheetByName('Documents'), 'DocumentNo', String(rec.InvoiceNo), { Status: 'CLAIM SUBMITTED' });
+  } catch (e) { console.warn('Documents record not updated: ' + e.message); }
+  rec.ClaimRefNo = ref; rec.ClaimSubmittedDate = date; rec.ClaimAmount = amount;
+  return adminJd14Public_(rec);
+}
+
+function adminHrdPaymentReceived_(d) {
+  const rec = adminJd14Find_(String(d.jd14Id || ''));
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  if (!String(rec.ClaimRefNo || '').trim()) throw new Error('Record the claim reference number first.');
+  const date = adminDateOrNow_(d.date);
+  const amount = d.amount === '' || d.amount == null ? '' : Number(d.amount);
+  if (amount !== '' && !(amount >= 0)) throw new Error('Enter a valid amount received.');
+  const ref = String(d.paymentRef || '').trim();
+  const now = new Date();
+  adminJd14Set_(rec._row, { PaymentReceivedDate: date, PaymentAmount: amount, PaymentRefNo: ref, ArchivedDate: now, UpdatedDate: now });
+  adminJd14Progress_(rec.SourceRef, { ClaimPaidDate: date });
+  try {
+    updateRowValue(SpreadsheetApp.openById(SHEET_ID).getSheetByName('Documents'), 'DocumentNo', String(rec.InvoiceNo), { Status: 'PAID' });
+  } catch (e) { console.warn('Documents record not updated: ' + e.message); }
+  rec.PaymentReceivedDate = date; rec.PaymentAmount = amount; rec.PaymentRefNo = ref; rec.ArchivedDate = now;
+  return adminJd14Public_(rec);
+}
+
+// Puts a settled item back in the active list (e.g. payment recorded by mistake).
+function adminJd14Unarchive_(jd14Id) {
+  const rec = adminJd14Find_(jd14Id);
+  if (!rec) throw new Error('JD14 not found. Refresh the list.');
+  const now = new Date();
+  adminJd14Set_(rec._row, { ArchivedDate: '', PaymentReceivedDate: '', PaymentAmount: '', PaymentRefNo: '', UpdatedDate: now });
+  adminJd14Progress_(rec.SourceRef, { ClaimPaidDate: '' });
+  try {
+    updateRowValue(SpreadsheetApp.openById(SHEET_ID).getSheetByName('Documents'), 'DocumentNo', String(rec.InvoiceNo), { Status: 'CLAIM SUBMITTED' });
+  } catch (e) { console.warn('Documents record not updated: ' + e.message); }
+  rec.ArchivedDate = ''; rec.PaymentReceivedDate = ''; rec.PaymentAmount = ''; rec.PaymentRefNo = '';
   return adminJd14Public_(rec);
 }

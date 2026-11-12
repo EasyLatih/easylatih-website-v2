@@ -49,7 +49,7 @@ label.stack{gap:5px;font-size:.76rem;font-weight:600;color:var(--navy)}
 .jd .actions{margin-top:8px}
 .jd .actions a{font-size:.76rem;align-self:center}
 .chip{font-size:.62rem;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:99px;background:#eef2f6;color:#4b5d6b}
-.chip.FINAL{background:#e8f0fb;color:#24508f}.chip.SENT{background:#e9f6ef;color:#1d7a46}.chip.DRAFT{background:#fff4e8;color:#a5520f}.chip.SIGNED{background:#1d7a46;color:#fff}
+.chip.FINAL{background:#e8f0fb;color:#24508f}.chip.SENT{background:#e9f6ef;color:#1d7a46}.chip.DRAFT{background:#fff4e8;color:#a5520f}.chip.SIGNED{background:#1d7a46;color:#fff}.chip.CLAIMED{background:#efe9fb;color:#5b3aa0}.chip.PAID{background:#555;color:#fff}
 .jd-inv{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .jd-inv .chip{font-size:.58rem;padding:2px 7px}
 .btnlink{font-size:.76rem;font-weight:600}
@@ -171,7 +171,9 @@ th{background:var(--soft);color:var(--muted);font-weight:600;text-transform:uppe
       </form>
       <div class="result" id="jd14Result"></div>
       <div class="sub">
-        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0">JD14 documents</h3><button type="button" class="small" id="j-refreshList">↻ Refresh</button></div>
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0" id="j-listTitle">JD14 documents · open</h3><div class="row" style="gap:6px"><button type="button" class="small" id="j-toggleArchived">Show settled (archived)</button><button type="button" class="small" id="j-refreshList">↻ Refresh</button></div></div>
+        <p class="hint" id="j-listHint" style="margin:0 0 8px">Flow: JD14 → signed JD14 → HRD Corp invoice → claim reference → HRD Corp payment received. Once payment is recorded the case is settled and moves to the archive.</p>
+        <input id="j-search" placeholder="Search company, course, invoice or claim no." hidden style="width:100%;margin-bottom:8px">
         <div id="j-list" class="jdlist"><p class="hint">Loading…</p></div>
       </div>
     </section>
@@ -244,5 +246,5 @@ th{background:var(--soft);color:var(--muted);font-weight:600;text-transform:uppe
   </section>
 </div>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script><script src="../trainer/config.js"></script><script src="documents.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0"></script><script src="../trainer/config.js"></script><script src="documents.js?v=3"></script>
 </body></html>
